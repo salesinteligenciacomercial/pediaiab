@@ -41,6 +41,7 @@ import { LeadAttachments } from "@/components/leads/LeadAttachments";
 import { ProdutoSelectorDialog } from "@/components/conversas/ProdutoSelectorDialog";
 import { VendasLeadPanel } from "@/components/conversas/VendasLeadPanel";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
+import { ClienteLTVFidelidadePanel } from "@/components/conversas/ClienteLTVFidelidadePanel";
 import { PropostasBancariasPanel } from "@/components/conversas/PropostasBancariasPanel";
 import { ProcessosJuridicosPanel } from "@/components/conversas/ProcessosJuridicosPanel";
 import { isSegmentoFinanceiro, isSegmentoJuridico } from "@/lib/segmentos";
@@ -9429,6 +9430,36 @@ function Conversas() {
                         </p>
                       )}
                     </div>
+
+                    {/* Botão Editar Informações do Contato */}
+                    {leadVinculado && (
+                      <EditarLeadDialog
+                        lead={{
+                          id: leadVinculado.id,
+                          name: leadVinculado.name || selectedConv.contactName,
+                          email: leadVinculado.email || "",
+                          phone: leadVinculado.phone || leadVinculado.telefone || selectedConv.phoneNumber || "",
+                          status: leadVinculado.status || "novo",
+                          source: leadVinculado.source || leadVinculado.origem || "whatsapp",
+                          tags: leadVinculado.tags || [],
+                          value: leadVinculado.value || 0,
+                          notes: leadVinculado.notes || "",
+                        } as any}
+                        onLeadUpdated={async () => {
+                          if (selectedConv.phoneNumber || selectedConv.id) {
+                            const telefoneFormatado = safeFormatPhoneNumber(selectedConv.phoneNumber || selectedConv.id);
+                            const { data } = await supabase.from('leads').select('*').eq('telefone', telefoneFormatado).maybeSingle();
+                            if (data) setLeadVinculado(data);
+                          }
+                        }}
+                      />
+                    )}
+
+                    {/* LTV + Programa de Fidelidade */}
+                    <ClienteLTVFidelidadePanel
+                      leadId={leadVinculado?.id || null}
+                      companyId={userCompanyId}
+                    />
                   </div>
                 </div>}
             </div>

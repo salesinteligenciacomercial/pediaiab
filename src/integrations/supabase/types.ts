@@ -3878,6 +3878,75 @@ export type Database = {
           },
         ]
       }
+      loyalty_cards: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          selos_atuais: number
+          total_premios_resgatados: number
+          ultimo_resgate_em: string | null
+          ultimo_selo_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          selos_atuais?: number
+          total_premios_resgatados?: number
+          ultimo_resgate_em?: string | null
+          ultimo_selo_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          selos_atuais?: number
+          total_premios_resgatados?: number
+          ultimo_resgate_em?: string | null
+          ultimo_selo_em?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      loyalty_settings: {
+        Row: {
+          ativo: boolean
+          company_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          nome_premio: string
+          selos_para_premio: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          company_id: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome_premio?: string
+          selos_para_premio?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          company_id?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome_premio?: string
+          selos_para_premio?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meeting_chat_messages: {
         Row: {
           created_at: string

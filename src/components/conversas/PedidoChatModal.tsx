@@ -16,6 +16,7 @@ type Product = {
   id: string;
   nome: string;
   descricao_curta?: string | null;
+  descricao?: string | null;
   preco_sugerido: number;
   categoria?: string | null;
   imagem_url?: string | null;
@@ -85,16 +86,15 @@ export function PedidoChatModal({
     setLoading(true);
     try {
       const [prodRes, cfgRes] = await Promise.all([
-        supabase
-          .from("produtos_servicos")
-          .select("id, nome, descricao_curta, preco_sugerido, categoria, imagem_url, destaque_cardapio")
+        (supabase
+          .from("produtos_servicos") as any)
+          .select("id, nome, descricao, preco_sugerido, categoria")
           .eq("company_id", companyId)
           .eq("ativo", true)
-          .neq("tipo_produto", "insumo")
           .order("categoria")
           .order("nome"),
-        supabase
-          .from("loja_configuracoes" as any)
+        (supabase
+          .from("loja_configuracoes" as any) as any)
           .select("*")
           .eq("company_id", companyId)
           .maybeSingle(),

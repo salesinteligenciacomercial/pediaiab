@@ -81,9 +81,9 @@ export default function Pedidos() {
       if (!cid) return;
 
       const [pedidosRes, itensRes, produtosRes] = await Promise.all([
-        supabase.from("pedidos" as any).select("*").eq("company_id", cid).order("created_at", { ascending: false }),
-        supabase.from("pedido_itens" as any).select("*").eq("company_id", cid),
-        supabase.from("produtos_servicos").select("id, nome, preco_sugerido").eq("company_id", cid).eq("ativo", true).neq("tipo_produto", "insumo"),
+        (supabase.from("pedidos" as any) as any).select("*").eq("company_id", cid).order("created_at", { ascending: false }),
+        (supabase.from("pedido_itens" as any) as any).select("*").eq("company_id", cid),
+        (supabase.from("produtos_servicos") as any).select("id, nome, preco_sugerido").eq("company_id", cid).eq("ativo", true),
       ]);
 
       if (pedidosRes.error) throw pedidosRes.error;
@@ -92,7 +92,7 @@ export default function Pedidos() {
 
       setPedidos((pedidosRes.data || []) as Pedido[]);
       setItens((itensRes.data || []) as PedidoItem[]);
-      setProdutos(produtosRes.data || []);
+      setProdutos((produtosRes.data || []) as any);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar pedidos");
@@ -168,8 +168,8 @@ export default function Pedidos() {
       const quantidade = Number(form.quantidade || 1);
       const subtotal = Number(produto.preco_sugerido || 0) * quantidade;
 
-      const { data: pedido, error } = await supabase
-        .from("pedidos" as any)
+      const { data: pedido, error } = await (supabase
+        .from("pedidos" as any) as any)
         .insert({
           company_id: companyId,
           cliente_nome: form.cliente_nome.trim(),
@@ -184,9 +184,10 @@ export default function Pedidos() {
         .select("*")
         .single();
       if (error) throw error;
+      const pedidoData = pedido as any;
 
-      const { error: itemError } = await supabase.from("pedido_itens" as any).insert({
-        pedido_id: pedido.id,
+      const { error: itemError } = await (supabase.from("pedido_itens" as any) as any).insert({
+        pedido_id: pedidoData.id,
         company_id: companyId,
         produto_id: produto.id,
         produto_nome: produto.nome,
@@ -196,9 +197,9 @@ export default function Pedidos() {
       });
       if (itemError) throw itemError;
 
-      await supabase.from("pedido_eventos" as any).insert({
+      await (supabase.from("pedido_eventos" as any) as any).insert({
         company_id: companyId,
-        pedido_id: pedido.id,
+        pedido_id: pedidoData.id,
         status: "novo",
         descricao: "Pedido criado manualmente no painel",
       });
