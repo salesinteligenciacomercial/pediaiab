@@ -168,8 +168,8 @@ export default function Pedidos() {
       const quantidade = Number(form.quantidade || 1);
       const subtotal = Number(produto.preco_sugerido || 0) * quantidade;
 
-      const { data: pedido, error } = await supabase
-        .from("pedidos" as any)
+      const { data: pedido, error } = await (supabase
+        .from("pedidos" as any) as any)
         .insert({
           company_id: companyId,
           cliente_nome: form.cliente_nome.trim(),
@@ -184,6 +184,7 @@ export default function Pedidos() {
         .select("*")
         .single();
       if (error) throw error;
+      const pedidoData = pedido as any;
 
       const { error: itemError } = await supabase.from("pedido_itens" as any).insert({
         pedido_id: pedido.id,
