@@ -139,11 +139,11 @@ export default function CardapioPublico() {
 
   // Configuração de tamanhos: multiplicador sobre preço base e máximo de sabores
   const SIZE_OPTIONS = [
-    { id: "brotinho", label: "Brotinho", multiplier: 0.625, maxFlavors: 1 },
-    { id: "pequena", label: "Pequena", multiplier: 1, maxFlavors: 1 },
-    { id: "media", label: "Média", multiplier: 1.343, maxFlavors: 2 },
-    { id: "grande", label: "Grande", multiplier: 1.5, maxFlavors: 2 },
-    { id: "gigante", label: "Gigante", multiplier: 1.875, maxFlavors: 3 },
+    { id: "brotinho", label: "Brotinho", multiplier: 0.625, maxFlavors: 1, slices: 1 },
+    { id: "pequena", label: "Pequena", multiplier: 1, maxFlavors: 2, slices: 4 },
+    { id: "media", label: "Média", multiplier: 1.343, maxFlavors: 2, slices: 6 },
+    { id: "grande", label: "Grande", multiplier: 1.5, maxFlavors: 3, slices: 8 },
+    { id: "gigante", label: "Gigante", multiplier: 1.875, maxFlavors: 3, slices: 12 },
   ];
 
   const currentSize = useMemo(
