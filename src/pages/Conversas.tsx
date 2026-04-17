@@ -9386,6 +9386,18 @@ function Conversas() {
                       </DialogContent>
                     </Dialog>
                     
+                    {/* 🛒 Botão flutuante de Novo Pedido */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setPedidoModalOpen(true)}
+                      className="bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 shadow-md"
+                      title="Novo Pedido (Cardápio)"
+                    >
+                      <ShoppingCart className="h-5 w-5" />
+                    </Button>
+
                     <Button onClick={() => {
                   handleSendMessage();
                   setReplyingTo(null);
