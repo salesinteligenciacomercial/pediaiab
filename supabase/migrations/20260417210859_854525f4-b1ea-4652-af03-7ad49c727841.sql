@@ -1,0 +1,1 @@
+UPDATE produtos_servicos SET permite_meio_a_meio = true WHERE categoria ILIKE '%pizza%' OR nome ILIKE 'Pizza %';
