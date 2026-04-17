@@ -16,6 +16,7 @@ type Product = {
   id: string;
   nome: string;
   descricao_curta?: string | null;
+  descricao?: string | null;
   preco_sugerido: number;
   categoria?: string | null;
   imagem_url?: string | null;
