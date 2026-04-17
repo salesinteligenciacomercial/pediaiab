@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Minus, Search, Share2, Home, ClipboardList, ShoppingCart, UtensilsCrossed, X, Instagram, MapPin, MessageCircle } from "lucide-react";
+import { Loader2, Plus, Minus, Search, Share2, Home, ClipboardList, ShoppingCart, UtensilsCrossed, X, Instagram, MapPin, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
 type Product = {
@@ -66,6 +66,8 @@ export default function CardapioPublico() {
   const [selectedQty, setSelectedQty] = useState(1);
   const [extraFlavors, setExtraFlavors] = useState<string[]>([]);
   const [selectedSize, setSelectedSize] = useState<string>("pequena");
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const PREVIEW_LIMIT = 4;
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -509,14 +511,37 @@ export default function CardapioPublico() {
         {categories.map((category) => {
           const items = filteredProducts.filter((p) => (p.categoria || "Outros") === category);
           if (!items.length) return null;
+          const isExpanded = !!expandedCategories[category] || !!search.trim();
+          const visibleItems = isExpanded ? items : items.slice(0, PREVIEW_LIMIT);
+          const hiddenCount = items.length - visibleItems.length;
           return (
             <section key={category} id={`section-${category.replace(/\s+/g, '-')}`} className="scroll-mt-32 animate-fade-in">
-              <h2 className="text-xl font-extrabold text-neutral-900 mb-4 tracking-tight flex items-center gap-2">
-                {category}
-                <span className="text-xs font-medium text-neutral-400">({items.length})</span>
-              </h2>
+              <button
+                type="button"
+                onClick={() => setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }))}
+                className="w-full flex items-center justify-between mb-4 group"
+              >
+                <h2 className="text-xl font-extrabold text-neutral-900 tracking-tight flex items-center gap-2">
+                  {category}
+                  <span className="text-xs font-medium text-neutral-400">({items.length})</span>
+                </h2>
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border border-neutral-200 group-hover:border-neutral-400 transition"
+                  style={{ color: primary }}
+                >
+                  {isExpanded ? (
+                    <>
+                      Recolher <ChevronUp className="h-3.5 w-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      Ver tudo <ChevronDown className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </span>
+              </button>
               <div className="grid gap-3 sm:grid-cols-2">
-                {items.map((product) => (
+                {visibleItems.map((product) => (
                   <button
                     key={product.id}
                     onClick={() => setSelectedProduct(product)}
@@ -559,6 +584,26 @@ export default function CardapioPublico() {
                   </button>
                 ))}
               </div>
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedCategories((prev) => ({ ...prev, [category]: true }))}
+                  className="mt-4 w-full py-3 rounded-xl border-2 border-dashed text-sm font-semibold hover:bg-neutral-50 transition flex items-center justify-center gap-2"
+                  style={{ borderColor: primary, color: primary }}
+                >
+                  Ver mais {hiddenCount} {hiddenCount === 1 ? "item" : "itens"}
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              )}
+              {isExpanded && items.length > PREVIEW_LIMIT && !search.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedCategories((prev) => ({ ...prev, [category]: false }))}
+                  className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold text-neutral-500 hover:text-neutral-700 transition flex items-center justify-center gap-2"
+                >
+                  Recolher categoria <ChevronUp className="h-4 w-4" />
+                </button>
+              )}
             </section>
           );
         })}
