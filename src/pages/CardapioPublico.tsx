@@ -633,12 +633,53 @@ export default function CardapioPublico() {
             <DialogHeader className="text-left p-0 space-y-1">
               <DialogTitle className="text-xl">{selectedProduct?.nome}</DialogTitle>
               <p className="text-sm text-neutral-500">
-                {selectedProduct?.descricao_completa || selectedProduct?.descricao_curta || "Sem descrição."}
+                {selectedProduct?.descricao || selectedProduct?.descricao_completa || selectedProduct?.descricao_curta || "Sem descrição."}
               </p>
             </DialogHeader>
-            <div className="text-lg font-bold" style={{ color: primary }}>
-              {formatBRL(selectedProduct?.preco_sugerido || 0)}
-            </div>
+
+            {(() => {
+              const second = secondFlavor ? products.find((p) => p.id === secondFlavor) : null;
+              const finalPrice = second
+                ? Math.max(Number(selectedProduct?.preco_sugerido || 0), Number(second.preco_sugerido || 0))
+                : Number(selectedProduct?.preco_sugerido || 0);
+              return (
+                <div className="text-lg font-bold" style={{ color: primary }}>
+                  {formatBRL(finalPrice)}
+                </div>
+              );
+            })()}
+
+            {selectedProduct?.permite_meio_a_meio && (
+              <div className="space-y-1.5 rounded-lg border border-dashed p-3" style={{ borderColor: primary }}>
+                <Label className="font-semibold" style={{ color: primary }}>
+                  🍕 Pizza meio a meio (opcional)
+                </Label>
+                <p className="text-xs text-neutral-500">
+                  Escolha um segundo sabor. O valor cobrado será o do sabor mais caro.
+                </p>
+                <Select value={secondFlavor || "none"} onValueChange={(v) => setSecondFlavor(v === "none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar 2º sabor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Pizza inteira —</SelectItem>
+                    {products
+                      .filter(
+                        (p) =>
+                          p.permite_meio_a_meio &&
+                          p.id !== selectedProduct.id &&
+                          (p.categoria || "") === (selectedProduct.categoria || "")
+                      )
+                      .map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.nome} — {formatBRL(p.preco_sugerido)}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Observações</Label>
               <Textarea
@@ -658,13 +699,21 @@ export default function CardapioPublico() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <Button
-                className="text-white font-semibold"
-                style={{ backgroundColor: primary }}
-                onClick={addToCart}
-              >
-                Adicionar {formatBRL((selectedProduct?.preco_sugerido || 0) * selectedQty)}
-              </Button>
+              {(() => {
+                const second = secondFlavor ? products.find((p) => p.id === secondFlavor) : null;
+                const finalPrice = second
+                  ? Math.max(Number(selectedProduct?.preco_sugerido || 0), Number(second.preco_sugerido || 0))
+                  : Number(selectedProduct?.preco_sugerido || 0);
+                return (
+                  <Button
+                    className="text-white font-semibold"
+                    style={{ backgroundColor: primary }}
+                    onClick={addToCart}
+                  >
+                    Adicionar {formatBRL(finalPrice * selectedQty)}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         </DialogContent>
