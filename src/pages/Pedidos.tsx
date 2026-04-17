@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Loader2, Plus, Printer, Bike, CookingPot, MessageCircle, Instagram,
-  ShoppingBag, Store, Utensils, Users, Trash2, CheckCircle2,
+  ShoppingBag, Store, Utensils, Users, Trash2, CheckCircle2, X, ClipboardList,
 } from "lucide-react";
 
 type PedidoStatus = "novo" | "aceito" | "em_producao" | "pronto" | "saiu_entrega" | "entregue" | "cancelado";
