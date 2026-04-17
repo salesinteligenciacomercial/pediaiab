@@ -5108,38 +5108,56 @@ export type Database = {
       produtos_servicos: {
         Row: {
           ativo: boolean | null
+          ativo_cardapio: boolean | null
           categoria: string | null
           company_id: string
           created_at: string
           descricao: string | null
+          destaque_cardapio: boolean | null
           id: string
+          imagem_url: string | null
           nome: string
+          ordem_exibicao: number | null
+          permite_observacao: boolean | null
           preco_sugerido: number | null
           subcategoria: string | null
+          tipo_produto: string | null
           updated_at: string
         }
         Insert: {
           ativo?: boolean | null
+          ativo_cardapio?: boolean | null
           categoria?: string | null
           company_id: string
           created_at?: string
           descricao?: string | null
+          destaque_cardapio?: boolean | null
           id?: string
+          imagem_url?: string | null
           nome: string
+          ordem_exibicao?: number | null
+          permite_observacao?: boolean | null
           preco_sugerido?: number | null
           subcategoria?: string | null
+          tipo_produto?: string | null
           updated_at?: string
         }
         Update: {
           ativo?: boolean | null
+          ativo_cardapio?: boolean | null
           categoria?: string | null
           company_id?: string
           created_at?: string
           descricao?: string | null
+          destaque_cardapio?: boolean | null
           id?: string
+          imagem_url?: string | null
           nome?: string
+          ordem_exibicao?: number | null
+          permite_observacao?: boolean | null
           preco_sugerido?: number | null
           subcategoria?: string | null
+          tipo_produto?: string | null
           updated_at?: string
         }
         Relationships: [
