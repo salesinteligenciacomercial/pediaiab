@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Minus, Search, Share2, Home, ClipboardList, ShoppingCart, UtensilsCrossed, X } from "lucide-react";
+import { Loader2, Plus, Minus, Search, Share2, Home, ClipboardList, ShoppingCart, UtensilsCrossed, X, Instagram, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type Product = {
@@ -292,10 +292,28 @@ export default function CardapioPublico() {
     <div className="min-h-screen bg-white text-neutral-800 pb-24">
       {/* Header */}
       <header className="sticky top-0 z-40" style={{ backgroundColor: primary }}>
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-3 text-white">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-2 text-white">
           <h1 className="font-bold text-lg sm:text-xl truncate flex-1">
             {config.nome_loja || "Cardápio Digital"}
           </h1>
+          <a
+            href="https://www.instagram.com/roshpizzaria/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+            className="h-9 w-9 rounded-full hover:bg-white/15 flex items-center justify-center transition"
+          >
+            <Instagram className="h-5 w-5" />
+          </a>
+          <a
+            href="https://maps.app.goo.gl/c1MTAgZpNjRQSVKCA"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Localização no Google Maps"
+            className="h-9 w-9 rounded-full hover:bg-white/15 flex items-center justify-center transition"
+          >
+            <MapPin className="h-5 w-5" />
+          </a>
           <button
             aria-label="Buscar"
             onClick={() => setSearchOpen((v) => !v)}
