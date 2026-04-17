@@ -484,6 +484,17 @@ export default function CardapioPublico() {
         )}
       </main>
 
+      {/* WhatsApp floating button */}
+      <a
+        href="https://api.whatsapp.com/send/?phone=558798247745&text&type=phone_number&app_absent=0&utm_source=ig"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Falar no WhatsApp"
+        className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] shadow-lg flex items-center justify-center text-white transition-transform hover:scale-105"
+      >
+        <MessageCircle className="h-7 w-7" fill="currentColor" />
+      </a>
+
       {/* Bottom nav */}
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-neutral-200">
         <div className="max-w-5xl mx-auto grid grid-cols-3 h-16">
