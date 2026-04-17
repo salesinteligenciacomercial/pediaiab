@@ -1204,7 +1204,7 @@ export default function Analytics() {
 
         {/* Cardápio Digital - vitrine de produtos */}
         <TabsContent value="cardapio" className="space-y-6">
-          <ProductsAnalytics />
+          <ProductsAnalytics userCompanyId={userCompanyId} globalFilters={globalFilters} />
         </TabsContent>
 
         {/* Campanhas */}
