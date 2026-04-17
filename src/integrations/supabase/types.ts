@@ -3880,46 +3880,88 @@ export type Database = {
       }
       loja_configuracoes: {
         Row: {
+          aceita_entrega: boolean | null
           aceita_pedidos: boolean
+          aceita_retirada: boolean | null
+          banner_url: string | null
           company_id: string
+          cor_primaria: string | null
+          cor_secundaria: string | null
           created_at: string
+          descricao_loja: string | null
+          endereco_loja: string | null
           formas_pagamento: Json | null
           horario_funcionamento: Json | null
           id: string
+          impressao_automatica: boolean | null
+          logo_url: string | null
           mensagem_boas_vindas: string | null
+          mensagem_loja: string | null
           nome_loja: string | null
           pedido_minimo: number | null
+          print_bridge_url: string | null
+          slug: string | null
           taxa_entrega: number | null
+          telefone_loja: string | null
           tempo_preparo_min: number | null
           updated_at: string
+          whatsapp_loja: string | null
         }
         Insert: {
+          aceita_entrega?: boolean | null
           aceita_pedidos?: boolean
+          aceita_retirada?: boolean | null
+          banner_url?: string | null
           company_id: string
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
           created_at?: string
+          descricao_loja?: string | null
+          endereco_loja?: string | null
           formas_pagamento?: Json | null
           horario_funcionamento?: Json | null
           id?: string
+          impressao_automatica?: boolean | null
+          logo_url?: string | null
           mensagem_boas_vindas?: string | null
+          mensagem_loja?: string | null
           nome_loja?: string | null
           pedido_minimo?: number | null
+          print_bridge_url?: string | null
+          slug?: string | null
           taxa_entrega?: number | null
+          telefone_loja?: string | null
           tempo_preparo_min?: number | null
           updated_at?: string
+          whatsapp_loja?: string | null
         }
         Update: {
+          aceita_entrega?: boolean | null
           aceita_pedidos?: boolean
+          aceita_retirada?: boolean | null
+          banner_url?: string | null
           company_id?: string
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
           created_at?: string
+          descricao_loja?: string | null
+          endereco_loja?: string | null
           formas_pagamento?: Json | null
           horario_funcionamento?: Json | null
           id?: string
+          impressao_automatica?: boolean | null
+          logo_url?: string | null
           mensagem_boas_vindas?: string | null
+          mensagem_loja?: string | null
           nome_loja?: string | null
           pedido_minimo?: number | null
+          print_bridge_url?: string | null
+          slug?: string | null
           taxa_entrega?: number | null
+          telefone_loja?: string | null
           tempo_preparo_min?: number | null
           updated_at?: string
+          whatsapp_loja?: string | null
         }
         Relationships: [
           {
