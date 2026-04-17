@@ -16,11 +16,13 @@ type Product = {
   nome: string;
   descricao_curta?: string | null;
   descricao_completa?: string | null;
+  descricao?: string | null;
   preco_sugerido: number;
   categoria?: string | null;
   imagem_url?: string | null;
   destaque_cardapio?: boolean;
   permite_observacao?: boolean;
+  permite_meio_a_meio?: boolean;
 };
 
 type StoreConfig = {
@@ -62,6 +64,7 @@ export default function CardapioPublico() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedObs, setSelectedObs] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
+  const [secondFlavor, setSecondFlavor] = useState<string>("");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -133,20 +136,43 @@ export default function CardapioPublico() {
 
   const addToCart = () => {
     if (!selectedProduct) return;
+
+    let productToAdd: Product = selectedProduct;
+    let obs = selectedObs;
+
+    // Pizza meio a meio: combina nome dos dois sabores e usa o maior preço
+    if (selectedProduct.permite_meio_a_meio && secondFlavor) {
+      const second = products.find((p) => p.id === secondFlavor);
+      if (second) {
+        const maxPrice = Math.max(
+          Number(selectedProduct.preco_sugerido || 0),
+          Number(second.preco_sugerido || 0)
+        );
+        productToAdd = {
+          ...selectedProduct,
+          id: `${selectedProduct.id}__${second.id}`,
+          nome: `½ ${selectedProduct.nome} / ½ ${second.nome}`,
+          preco_sugerido: maxPrice,
+        };
+        obs = obs ? `Meio a meio. ${obs}` : "Meio a meio";
+      }
+    }
+
     setCart((prev) => {
       const existing = prev.find(
-        (item) => item.product.id === selectedProduct.id && item.observations === selectedObs
+        (item) => item.product.id === productToAdd.id && item.observations === obs
       );
       if (existing) {
         return prev.map((item) =>
           item === existing ? { ...item, quantity: item.quantity + selectedQty } : item
         );
       }
-      return [...prev, { product: selectedProduct, quantity: selectedQty, observations: selectedObs.trim() }];
+      return [...prev, { product: productToAdd, quantity: selectedQty, observations: obs.trim() }];
     });
     setSelectedProduct(null);
     setSelectedObs("");
     setSelectedQty(1);
+    setSecondFlavor("");
     toast.success("Item adicionado ao carrinho");
   };
 
@@ -389,7 +415,7 @@ export default function CardapioPublico() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-neutral-900">{product.nome}</div>
                       <p className="text-xs text-neutral-500 line-clamp-2 mt-0.5">
-                        {product.descricao_curta || product.descricao_completa || ""}
+                        {product.descricao || product.descricao_curta || product.descricao_completa || ""}
                       </p>
                       <div className="mt-3 text-xs text-neutral-500">A partir de</div>
                       <div className="font-bold text-neutral-900">{formatBRL(product.preco_sugerido)}</div>
@@ -607,12 +633,53 @@ export default function CardapioPublico() {
             <DialogHeader className="text-left p-0 space-y-1">
               <DialogTitle className="text-xl">{selectedProduct?.nome}</DialogTitle>
               <p className="text-sm text-neutral-500">
-                {selectedProduct?.descricao_completa || selectedProduct?.descricao_curta || "Sem descrição."}
+                {selectedProduct?.descricao || selectedProduct?.descricao_completa || selectedProduct?.descricao_curta || "Sem descrição."}
               </p>
             </DialogHeader>
-            <div className="text-lg font-bold" style={{ color: primary }}>
-              {formatBRL(selectedProduct?.preco_sugerido || 0)}
-            </div>
+
+            {(() => {
+              const second = secondFlavor ? products.find((p) => p.id === secondFlavor) : null;
+              const finalPrice = second
+                ? Math.max(Number(selectedProduct?.preco_sugerido || 0), Number(second.preco_sugerido || 0))
+                : Number(selectedProduct?.preco_sugerido || 0);
+              return (
+                <div className="text-lg font-bold" style={{ color: primary }}>
+                  {formatBRL(finalPrice)}
+                </div>
+              );
+            })()}
+
+            {selectedProduct?.permite_meio_a_meio && (
+              <div className="space-y-1.5 rounded-lg border border-dashed p-3" style={{ borderColor: primary }}>
+                <Label className="font-semibold" style={{ color: primary }}>
+                  🍕 Pizza meio a meio (opcional)
+                </Label>
+                <p className="text-xs text-neutral-500">
+                  Escolha um segundo sabor. O valor cobrado será o do sabor mais caro.
+                </p>
+                <Select value={secondFlavor || "none"} onValueChange={(v) => setSecondFlavor(v === "none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar 2º sabor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Pizza inteira —</SelectItem>
+                    {products
+                      .filter(
+                        (p) =>
+                          p.permite_meio_a_meio &&
+                          p.id !== selectedProduct.id &&
+                          (p.categoria || "") === (selectedProduct.categoria || "")
+                      )
+                      .map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.nome} — {formatBRL(p.preco_sugerido)}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Observações</Label>
               <Textarea
@@ -632,13 +699,21 @@ export default function CardapioPublico() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <Button
-                className="text-white font-semibold"
-                style={{ backgroundColor: primary }}
-                onClick={addToCart}
-              >
-                Adicionar {formatBRL((selectedProduct?.preco_sugerido || 0) * selectedQty)}
-              </Button>
+              {(() => {
+                const second = secondFlavor ? products.find((p) => p.id === secondFlavor) : null;
+                const finalPrice = second
+                  ? Math.max(Number(selectedProduct?.preco_sugerido || 0), Number(second.preco_sugerido || 0))
+                  : Number(selectedProduct?.preco_sugerido || 0);
+                return (
+                  <Button
+                    className="text-white font-semibold"
+                    style={{ backgroundColor: primary }}
+                    onClick={addToCart}
+                  >
+                    Adicionar {formatBRL(finalPrice * selectedQty)}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         </DialogContent>

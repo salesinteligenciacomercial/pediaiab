@@ -5118,6 +5118,7 @@ export type Database = {
           imagem_url: string | null
           nome: string
           ordem_exibicao: number | null
+          permite_meio_a_meio: boolean | null
           permite_observacao: boolean | null
           preco_sugerido: number | null
           subcategoria: string | null
@@ -5136,6 +5137,7 @@ export type Database = {
           imagem_url?: string | null
           nome: string
           ordem_exibicao?: number | null
+          permite_meio_a_meio?: boolean | null
           permite_observacao?: boolean | null
           preco_sugerido?: number | null
           subcategoria?: string | null
@@ -5154,6 +5156,7 @@ export type Database = {
           imagem_url?: string | null
           nome?: string
           ordem_exibicao?: number | null
+          permite_meio_a_meio?: boolean | null
           permite_observacao?: boolean | null
           preco_sugerido?: number | null
           subcategoria?: string | null
