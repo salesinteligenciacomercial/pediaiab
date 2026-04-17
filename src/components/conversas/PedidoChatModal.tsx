@@ -251,7 +251,28 @@ export function PedidoChatModal({
           nome_contato: customer.nome.trim(),
           telefone_contato: customer.telefone.trim(),
           logradouro: customer.endereco,
+          numero: customer.endereco_numero || null,
+          complemento: customer.endereco_complemento || null,
+          bairro: customer.endereco_bairro || null,
+          cidade: customer.endereco_cidade || null,
+          estado: customer.endereco_estado || null,
+          cep: customer.endereco_cep || null,
         });
+
+        // Salvar/atualizar endereço no contato (lead) para próximos pedidos
+        if (leadId) {
+          await (supabase.from("leads") as any)
+            .update({
+              endereco_logradouro: customer.endereco,
+              endereco_numero: customer.endereco_numero || null,
+              endereco_complemento: customer.endereco_complemento || null,
+              endereco_bairro: customer.endereco_bairro || null,
+              endereco_cidade: customer.endereco_cidade || null,
+              endereco_estado: customer.endereco_estado || null,
+              endereco_cep: customer.endereco_cep || null,
+            })
+            .eq("id", leadId);
+        }
       }
 
       await supabase.from("pedido_eventos" as any).insert({
