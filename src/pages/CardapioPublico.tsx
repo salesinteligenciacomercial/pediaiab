@@ -135,27 +135,59 @@ export default function CardapioPublico() {
   const deliveryFee = customer.tipo_atendimento === "entrega" ? Number(config.taxa_entrega || 0) : 0;
   const total = subtotal + deliveryFee;
 
+  // Configuração de tamanhos: multiplicador sobre preço base e máximo de sabores
+  const SIZE_OPTIONS = [
+    { id: "brotinho", label: "Brotinho", multiplier: 0.625, maxFlavors: 1 },
+    { id: "pequena", label: "Pequena", multiplier: 1, maxFlavors: 1 },
+    { id: "media", label: "Média", multiplier: 1.343, maxFlavors: 2 },
+    { id: "grande", label: "Grande", multiplier: 1.5, maxFlavors: 2 },
+    { id: "gigante", label: "Gigante", multiplier: 1.875, maxFlavors: 3 },
+  ];
+
+  const currentSize = useMemo(
+    () => SIZE_OPTIONS.find((s) => s.id === selectedSize) || SIZE_OPTIONS[1],
+    [selectedSize]
+  );
+
+  // Calcula o preço final de uma pizza considerando tamanho e múltiplos sabores (média)
+  const computePizzaPrice = (mainProduct: Product, extraIds: string[], sizeMultiplier: number) => {
+    const basePrices = [Number(mainProduct.preco_sugerido || 0)];
+    extraIds.forEach((id) => {
+      const flavor = products.find((p) => p.id === id);
+      if (flavor) basePrices.push(Number(flavor.preco_sugerido || 0));
+    });
+    const avg = basePrices.reduce((a, b) => a + b, 0) / basePrices.length;
+    return Math.round(avg * sizeMultiplier * 100) / 100;
+  };
+
   const addToCart = () => {
     if (!selectedProduct) return;
 
     let productToAdd: Product = selectedProduct;
     let obs = selectedObs;
+    const isPizza = !!selectedProduct.permite_meio_a_meio;
 
-    // Pizza meio a meio: combina nome dos dois sabores e usa o maior preço
-    if (selectedProduct.permite_meio_a_meio && secondFlavor) {
-      const second = products.find((p) => p.id === secondFlavor);
-      if (second) {
-        const maxPrice = Math.max(
-          Number(selectedProduct.preco_sugerido || 0),
-          Number(second.preco_sugerido || 0)
-        );
-        productToAdd = {
-          ...selectedProduct,
-          id: `${selectedProduct.id}__${second.id}`,
-          nome: `½ ${selectedProduct.nome} / ½ ${second.nome}`,
-          preco_sugerido: maxPrice,
-        };
-        obs = obs ? `Meio a meio. ${obs}` : "Meio a meio";
+    if (isPizza) {
+      const validExtras = extraFlavors.filter(Boolean).slice(0, currentSize.maxFlavors - 1);
+      const flavorObjs = validExtras
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p): p is Product => !!p);
+      const finalPrice = computePizzaPrice(selectedProduct, validExtras, currentSize.multiplier);
+      const allNames = [selectedProduct.nome, ...flavorObjs.map((f) => f.nome)];
+      const totalFlavors = allNames.length;
+      const fraction = totalFlavors === 2 ? "½" : totalFlavors === 3 ? "⅓" : "";
+      const composedName =
+        totalFlavors === 1
+          ? `${selectedProduct.nome} (${currentSize.label})`
+          : `${allNames.map((n) => `${fraction} ${n}`).join(" / ")} (${currentSize.label})`;
+      productToAdd = {
+        ...selectedProduct,
+        id: `${selectedProduct.id}__${currentSize.id}__${validExtras.join("_")}`,
+        nome: composedName,
+        preco_sugerido: finalPrice,
+      };
+      if (totalFlavors > 1) {
+        obs = obs ? `${totalFlavors} sabores. ${obs}` : `${totalFlavors} sabores`;
       }
     }
 
@@ -173,7 +205,8 @@ export default function CardapioPublico() {
     setSelectedProduct(null);
     setSelectedObs("");
     setSelectedQty(1);
-    setSecondFlavor("");
+    setExtraFlavors([]);
+    setSelectedSize("pequena");
     toast.success("Item adicionado ao carrinho");
   };
 
