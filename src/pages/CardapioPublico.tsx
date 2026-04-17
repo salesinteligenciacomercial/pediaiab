@@ -136,20 +136,43 @@ export default function CardapioPublico() {
 
   const addToCart = () => {
     if (!selectedProduct) return;
+
+    let productToAdd: Product = selectedProduct;
+    let obs = selectedObs;
+
+    // Pizza meio a meio: combina nome dos dois sabores e usa o maior preço
+    if (selectedProduct.permite_meio_a_meio && secondFlavor) {
+      const second = products.find((p) => p.id === secondFlavor);
+      if (second) {
+        const maxPrice = Math.max(
+          Number(selectedProduct.preco_sugerido || 0),
+          Number(second.preco_sugerido || 0)
+        );
+        productToAdd = {
+          ...selectedProduct,
+          id: `${selectedProduct.id}__${second.id}`,
+          nome: `½ ${selectedProduct.nome} / ½ ${second.nome}`,
+          preco_sugerido: maxPrice,
+        };
+        obs = obs ? `Meio a meio. ${obs}` : "Meio a meio";
+      }
+    }
+
     setCart((prev) => {
       const existing = prev.find(
-        (item) => item.product.id === selectedProduct.id && item.observations === selectedObs
+        (item) => item.product.id === productToAdd.id && item.observations === obs
       );
       if (existing) {
         return prev.map((item) =>
           item === existing ? { ...item, quantity: item.quantity + selectedQty } : item
         );
       }
-      return [...prev, { product: selectedProduct, quantity: selectedQty, observations: selectedObs.trim() }];
+      return [...prev, { product: productToAdd, quantity: selectedQty, observations: obs.trim() }];
     });
     setSelectedProduct(null);
     setSelectedObs("");
     setSelectedQty(1);
+    setSecondFlavor("");
     toast.success("Item adicionado ao carrinho");
   };
 
