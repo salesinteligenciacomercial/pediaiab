@@ -920,8 +920,7 @@ export default function CardapioPublico() {
                               (p) =>
                                 p.permite_meio_a_meio &&
                                 p.id !== selectedProduct.id &&
-                                !extraFlavors.filter((_, i) => i !== idx).includes(p.id) &&
-                                (p.categoria || "") === (selectedProduct.categoria || "")
+                                !extraFlavors.filter((_, i) => i !== idx).includes(p.id)
                             )
                             .map((p) => (
                               <SelectItem key={p.id} value={p.id}>
