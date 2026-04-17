@@ -69,7 +69,7 @@ serve(async (req) => {
     if (body.action === "menu") {
       const { data: products, error } = await supabase
         .from("produtos_servicos")
-        .select("id, nome, descricao_curta, descricao_completa, preco_sugerido, categoria, imagem_url, destaque_cardapio, permite_observacao, ordem_exibicao")
+        .select("id, nome, descricao, preco_sugerido, categoria, imagem_url, destaque_cardapio, permite_observacao, ordem_exibicao")
         .eq("company_id", store.company_id)
         .eq("ativo", true)
         .eq("ativo_cardapio", true)

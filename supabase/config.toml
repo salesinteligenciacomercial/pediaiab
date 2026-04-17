@@ -1,1 +1,4 @@
 project_id = "mashirzfqmpdaukhcxcw"
+
+[functions.api-public-pedidos]
+verify_jwt = false
