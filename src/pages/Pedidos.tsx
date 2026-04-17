@@ -88,6 +88,7 @@ export default function Pedidos() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [mesaDialogOpen, setMesaDialogOpen] = useState(false);
+  const [pedidoMesaDialog, setPedidoMesaDialog] = useState<Mesa | null>(null);
   const [filtroCanal, setFiltroCanal] = useState<string>("todos");
 
   const [form, setForm] = useState({
@@ -105,6 +106,16 @@ export default function Pedidos() {
     nome: "",
     capacidade: "4",
     localizacao: "",
+  });
+
+  // Carrinho do pedido na mesa
+  const [mesaPedidoForm, setMesaPedidoForm] = useState({
+    cliente_nome: "",
+    observacoes: "",
+    itens: [] as Array<{ produto_id: string; nome: string; preco: number; quantidade: number; obs: string }>,
+    produto_id: "",
+    quantidade: "1",
+    item_obs: "",
   });
 
   const load = useCallback(async () => {
