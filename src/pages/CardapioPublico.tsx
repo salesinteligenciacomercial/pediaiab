@@ -16,11 +16,13 @@ type Product = {
   nome: string;
   descricao_curta?: string | null;
   descricao_completa?: string | null;
+  descricao?: string | null;
   preco_sugerido: number;
   categoria?: string | null;
   imagem_url?: string | null;
   destaque_cardapio?: boolean;
   permite_observacao?: boolean;
+  permite_meio_a_meio?: boolean;
 };
 
 type StoreConfig = {
