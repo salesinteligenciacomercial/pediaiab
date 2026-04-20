@@ -346,7 +346,7 @@ export default function CardapioPublico() {
           slug,
           customer,
           items: cart.map((item) => ({
-            produto_id: item.product.id,
+            produto_id: String(item.product.id).split("__")[0],
             produto_nome: item.product.nome,
             quantidade: item.quantity,
             valor_unitario: item.product.preco_sugerido,

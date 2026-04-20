@@ -241,6 +241,36 @@ serve(async (req) => {
         }
       }
 
+      // Enviar mensagem de confirmação via WhatsApp
+      try {
+        const telefoneEnvio = telefone || String(body.customer.telefone || "").replace(/\D/g, "");
+        if (telefoneEnvio && telefoneEnvio.length >= 10) {
+          const itensTexto = body.items
+            .map((it) => `• ${it.quantidade}x ${it.produto_nome} - R$ ${(Number(it.valor_unitario) * Number(it.quantidade)).toFixed(2)}`)
+            .join("\n");
+          const tipoAtend = body.customer.tipo_atendimento === "entrega" ? "🛵 Entrega" : "🏠 Retirada";
+          const enderecoLinha = body.customer.endereco ? `\n📍 *Endereço:* ${body.customer.endereco}` : "";
+          const taxaLinha = deliveryFee > 0 ? `\nTaxa de entrega: R$ ${deliveryFee.toFixed(2)}` : "";
+          const mensagem = `🍕 *Pedido confirmado!*\n\nOlá ${body.customer.nome}, recebemos seu pedido *${pedido.codigo_pedido}* na ${store.nome_loja || "nossa loja"}.\n\n*Itens:*\n${itensTexto}\n\nSubtotal: R$ ${subtotal.toFixed(2)}${taxaLinha}\n*Total: R$ ${total.toFixed(2)}*\n\n${tipoAtend}\n💳 *Pagamento:* ${body.customer.forma_pagamento}${enderecoLinha}\n\nAssim que seu pedido for aceito, avisaremos por aqui. Obrigado pela preferência! 🧡`;
+
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/enviar-whatsapp`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              companyId: store.company_id,
+              numero: telefoneEnvio,
+              mensagem,
+              origem: "cardapio-digital",
+            }),
+          });
+        }
+      } catch (msgError) {
+        console.error("[api-public-pedidos] erro ao enviar confirmação WhatsApp:", msgError);
+      }
+
       return new Response(JSON.stringify({
         success: true,
         pedido_id: pedido.id,
