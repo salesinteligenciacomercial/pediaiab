@@ -12,7 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, Package, Plus, ImagePlus, CookingPot, Boxes, Settings2 } from "lucide-react";
+import { Loader2, Package, Plus, ImagePlus, CookingPot, Boxes, Settings2, Pizza } from "lucide-react";
+import { PizzaTamanhosManager } from "@/components/produtos/PizzaTamanhosManager";
 
 type TipoProduto = "produto" | "insumo" | "combo" | "adicional";
 
@@ -397,6 +398,7 @@ export default function Produtos() {
           <TabsTrigger value="adicional">Adicionais</TabsTrigger>
           <TabsTrigger value="insumo">Insumos</TabsTrigger>
           <TabsTrigger value="opcoes">Grupos e opções</TabsTrigger>
+          <TabsTrigger value="tamanhos"><Pizza className="h-4 w-4 mr-1" /> Tamanhos de Pizza</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tipoTab} className="space-y-4">
@@ -525,6 +527,10 @@ export default function Produtos() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="tamanhos" className="space-y-4">
+          <PizzaTamanhosManager />
         </TabsContent>
       </Tabs>
 

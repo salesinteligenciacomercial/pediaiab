@@ -79,10 +79,18 @@ serve(async (req) => {
 
       if (error) throw error;
 
+      const { data: pizzaSizes } = await supabase
+        .from("pizza_tamanhos")
+        .select("id, nome, slug, multiplicador, max_sabores, fatias, descricao, ordem")
+        .eq("company_id", store.company_id)
+        .eq("ativo", true)
+        .order("ordem");
+
       return new Response(JSON.stringify({
         success: true,
         store,
         products: products || [],
+        pizzaSizes: pizzaSizes || [],
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
