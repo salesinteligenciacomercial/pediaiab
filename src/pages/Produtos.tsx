@@ -12,7 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, Package, Plus, ImagePlus, CookingPot, Boxes, Settings2 } from "lucide-react";
+import { Loader2, Package, Plus, ImagePlus, CookingPot, Boxes, Settings2, Pizza } from "lucide-react";
+import { PizzaTamanhosManager } from "@/components/produtos/PizzaTamanhosManager";
 
 type TipoProduto = "produto" | "insumo" | "combo" | "adicional";
 
