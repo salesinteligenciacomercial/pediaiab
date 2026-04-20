@@ -260,22 +260,30 @@ export default function CardapioPublico() {
       const flavorObjs = validExtras
         .map((id) => products.find((p) => p.id === id))
         .filter((p): p is Product => !!p);
-      const finalPrice = computePizzaPrice(selectedProduct, validExtras, selectedPizzaSize.multiplier);
+      const basePrice = computePizzaPrice(selectedProduct, validExtras, selectedPizzaSize.multiplier);
+      const bordaPrice = selectedBorda && selectedPizzaSize.tamanhoId
+        ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId)
+        : 0;
+      const finalPrice = Math.round((basePrice + bordaPrice) * 100) / 100;
       const allNames = [selectedProduct.nome, ...flavorObjs.map((f) => f.nome)];
       const totalFlavors = allNames.length;
       const fraction = totalFlavors === 2 ? "½" : totalFlavors === 3 ? "⅓" : "";
-      const composedName =
+      const baseName =
         totalFlavors === 1
           ? `${selectedProduct.nome} (${selectedPizzaSize.label})`
           : `${allNames.map((n) => `${fraction} ${n}`).join(" / ")} (${selectedPizzaSize.label})`;
+      const composedName = selectedBorda ? `${baseName} • Borda ${selectedBorda.nome}` : baseName;
       productToAdd = {
         ...selectedProduct,
-        id: `${selectedProduct.id}__${selectedPizzaSize.id}__${validExtras.join("_")}`,
+        id: `${selectedProduct.id}__${selectedPizzaSize.id}__${validExtras.join("_")}__${selectedBorda?.id || "noborda"}`,
         nome: composedName,
         preco_sugerido: finalPrice,
       };
       if (totalFlavors > 1) {
         obs = obs ? `${totalFlavors} sabores. ${obs}` : `${totalFlavors} sabores`;
+      }
+      if (selectedBorda) {
+        obs = obs ? `Borda ${selectedBorda.nome}. ${obs}` : `Borda ${selectedBorda.nome}`;
       }
     }
 
