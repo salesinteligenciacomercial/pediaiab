@@ -4651,6 +4651,51 @@ export type Database = {
           },
         ]
       }
+      pizza_tamanhos: {
+        Row: {
+          ativo: boolean
+          company_id: string
+          created_at: string
+          descricao: string | null
+          fatias: number
+          id: string
+          max_sabores: number
+          multiplicador: number
+          nome: string
+          ordem: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          company_id: string
+          created_at?: string
+          descricao?: string | null
+          fatias?: number
+          id?: string
+          max_sabores?: number
+          multiplicador?: number
+          nome: string
+          ordem?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          company_id?: string
+          created_at?: string
+          descricao?: string | null
+          fatias?: number
+          id?: string
+          max_sabores?: number
+          multiplicador?: number
+          nome?: string
+          ordem?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       process_blocks: {
         Row: {
           block_type: string
