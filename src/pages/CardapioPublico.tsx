@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Minus, Search, Share2, Home, ClipboardList, ShoppingCart, UtensilsCrossed, X, Instagram, MapPin, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, Plus, Minus, Search, Share2, Home, ClipboardList, ShoppingCart, UtensilsCrossed, X, Instagram, MapPin, MessageCircle, ChevronDown, ChevronUp, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 type Product = {
@@ -66,6 +68,7 @@ export default function CardapioPublico() {
   const [selectedObs, setSelectedObs] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
   const [extraFlavors, setExtraFlavors] = useState<string[]>([]);
+  const [openFlavorPicker, setOpenFlavorPicker] = useState<number | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const PREVIEW_LIMIT = 4;
@@ -953,38 +956,90 @@ export default function CardapioPublico() {
                     <p className="text-xs text-neutral-500">
                       O preço final é a média dos sabores escolhidos.
                     </p>
-                    {Array.from({ length: selectedPizzaSize.maxFlavors - 1 }).map((_, idx) => (
-                      <Select
-                        key={idx}
-                        value={extraFlavors[idx] || "none"}
-                        onValueChange={(v) =>
-                          setExtraFlavors((prev) => {
-                            const next = [...prev];
-                            next[idx] = v === "none" ? "" : v;
-                            return next;
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={`Sabor extra ${idx + 2}`} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-72">
-                          <SelectItem value="none">— Sem este sabor —</SelectItem>
-                          {products
-                            .filter(
-                              (p) =>
-                                isPizzaProduct(p) &&
-                                p.id !== selectedProduct.id &&
-                                !extraFlavors.filter((_, i) => i !== idx).includes(p.id)
-                            )
-                            .map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.nome}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    ))}
+                    {Array.from({ length: selectedPizzaSize.maxFlavors - 1 }).map((_, idx) => {
+                      const selectedFlavorId = extraFlavors[idx] || "";
+                      const selectedFlavor = products.find((p) => p.id === selectedFlavorId);
+                      const availableFlavors = products.filter(
+                        (p) =>
+                          isPizzaProduct(p) &&
+                          p.id !== selectedProduct.id &&
+                          !extraFlavors.filter((_, i) => i !== idx).includes(p.id)
+                      );
+
+                      return (
+                        <div key={idx} className="space-y-1.5">
+                          <Popover open={openFlavorPicker === idx} onOpenChange={(open) => setOpenFlavorPicker(open ? idx : null)}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openFlavorPicker === idx}
+                                className="w-full justify-between font-normal"
+                              >
+                                <span className="truncate text-left">
+                                  {selectedFlavor ? selectedFlavor.nome : `Pesquisar sabor ${idx + 2}`}
+                                </span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder={`Pesquisar sabor ${idx + 2}...`} />
+                                <CommandList>
+                                  <CommandEmpty>Nenhum sabor encontrado.</CommandEmpty>
+                                  <CommandGroup>
+                                    <CommandItem
+                                      value={`none-${idx}`}
+                                      onSelect={() => {
+                                        setExtraFlavors((prev) => {
+                                          const next = [...prev];
+                                          next[idx] = "";
+                                          return next;
+                                        });
+                                        setOpenFlavorPicker(null);
+                                      }}
+                                    >
+                                      <Check className={`mr-2 h-4 w-4 ${!selectedFlavorId ? 'opacity-100' : 'opacity-0'}`} />
+                                      <div className="min-w-0">
+                                        <div className="font-medium">— Sem este sabor —</div>
+                                      </div>
+                                    </CommandItem>
+                                    {availableFlavors.map((p) => (
+                                      <CommandItem
+                                        key={p.id}
+                                        value={`${p.nome} ${(p.descricao || p.descricao_curta || p.descricao_completa || "")}`}
+                                        onSelect={() => {
+                                          setExtraFlavors((prev) => {
+                                            const next = [...prev];
+                                            next[idx] = p.id;
+                                            return next;
+                                          });
+                                          setOpenFlavorPicker(null);
+                                        }}
+                                      >
+                                        <Check className={`mr-2 h-4 w-4 ${selectedFlavorId === p.id ? 'opacity-100' : 'opacity-0'}`} />
+                                        <div className="min-w-0">
+                                          <div className="font-medium leading-tight">{p.nome}</div>
+                                          <div className="text-xs text-muted-foreground line-clamp-2">
+                                            {p.descricao || p.descricao_curta || p.descricao_completa || "Sem descrição."}
+                                          </div>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          {selectedFlavor && (
+                            <p className="text-xs text-neutral-500">
+                              {selectedFlavor.descricao || selectedFlavor.descricao_curta || selectedFlavor.descricao_completa || "Sem descrição."}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </>
