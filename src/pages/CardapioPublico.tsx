@@ -96,6 +96,7 @@ export default function CardapioPublico() {
         }
         setConfig(data.store || {});
         setProducts(data.products || []);
+        setPizzaSizes(data.pizzaSizes || []);
       } catch (error) {
         console.error(error);
         setNotFound(true);
