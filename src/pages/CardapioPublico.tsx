@@ -298,12 +298,18 @@ export default function CardapioPublico() {
       }
       return [...prev, { product: productToAdd, quantity: selectedQty, observations: obs.trim() }];
     });
+    const wasPizza = isPizzaProduct(selectedProduct);
     setSelectedProduct(null);
     setSelectedObs("");
     setSelectedQty(1);
     setExtraFlavors([]);
     setSelectedSize("");
+    setSelectedBordaId("");
     toast.success("Item adicionado ao carrinho");
+    // Sugerir bebida quando adicionar pizza e ainda não há bebida no carrinho
+    if (wasPizza && drinkProducts.length > 0 && !cartHasDrink) {
+      setTimeout(() => setDrinkSuggestionOpen(true), 300);
+    }
   };
 
   const updateQuantity = (index: number, delta: number) => {
