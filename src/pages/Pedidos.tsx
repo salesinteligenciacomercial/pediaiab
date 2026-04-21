@@ -194,6 +194,42 @@ export default function Pedidos() {
   const totalMesa = (mesaId: string) =>
     (pedidosPorMesa[mesaId] || []).reduce((s, p) => s + Number(p.total || 0), 0);
 
+  const sendWhatsAppStatusMessage = async (pedido: Pedido, nextStatus: PedidoStatus) => {
+    try {
+      const telefone = String(pedido.cliente_telefone || "").replace(/\D/g, "");
+      if (!telefone || telefone.length < 10) return;
+
+      let mensagem = "";
+      const codigo = pedido.codigo_pedido || "";
+      const nome = pedido.cliente_nome || "Cliente";
+
+      if (nextStatus === "aceito") {
+        mensagem = `✅ *Pedido aceito!*\n\nOlá ${nome}, seu pedido *${codigo}* foi aceito e já entrou na fila de preparo. 🍕\n\nEm breve avisaremos quando estiver pronto. Obrigado pela preferência! 🧡`;
+      } else if (nextStatus === "em_producao") {
+        mensagem = `👨‍🍳 *Pedido em produção!*\n\n${nome}, seu pedido *${codigo}* já está sendo preparado com muito carinho. 🔥`;
+      } else if (nextStatus === "pronto") {
+        mensagem = `🎉 *Pedido pronto!*\n\n${nome}, seu pedido *${codigo}* está pronto! Em instantes sairá para entrega ou estará disponível para retirada.`;
+      } else if (nextStatus === "saiu_entrega") {
+        mensagem = `🛵 *Saiu para entrega!*\n\n${nome}, seu pedido *${codigo}* já está a caminho. Prepare-se para receber! 🧡`;
+      } else if (nextStatus === "entregue") {
+        mensagem = `✨ *Pedido entregue!*\n\n${nome}, esperamos que aproveite seu pedido *${codigo}*. Obrigado pela preferência e volte sempre! 🧡`;
+      } else {
+        return;
+      }
+
+      await supabase.functions.invoke("enviar-whatsapp", {
+        body: {
+          companyId: pedido.company_id,
+          numero: telefone,
+          mensagem,
+          origem: "pedidos-status",
+        },
+      });
+    } catch (err) {
+      console.error("Erro ao enviar mensagem de status:", err);
+    }
+  };
+
   const advanceStatus = async (pedido: Pedido) => {
     const idx = STATUS_FLOW.indexOf(pedido.status);
     const nextStatus = STATUS_FLOW[Math.min(idx + 1, STATUS_FLOW.length - 1)];
@@ -207,6 +243,8 @@ export default function Pedidos() {
         status: nextStatus,
         descricao: `Status alterado para ${STATUS_LABELS[nextStatus]}`,
       });
+      // Envia notificação ao cliente via WhatsApp
+      sendWhatsAppStatusMessage(pedido, nextStatus);
       toast.success(`Pedido movido para ${STATUS_LABELS[nextStatus]}`);
       await load();
     } catch {
