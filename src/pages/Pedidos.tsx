@@ -633,9 +633,27 @@ export default function Pedidos() {
 
                             <div className="flex flex-wrap gap-2">
                               {pedido.status !== "entregue" && pedido.status !== "cancelado" && (
-                                <Button size="sm" onClick={() => advanceStatus(pedido)}>
-                                  {pedido.status === "pronto" ? <Bike className="h-4 w-4 mr-1" /> : <CookingPot className="h-4 w-4 mr-1" />}
-                                  Avançar
+                                <Button
+                                  size="sm"
+                                  onClick={() => advanceStatus(pedido)}
+                                  className={pedido.status === "novo" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                                >
+                                  {pedido.status === "novo" ? (
+                                    <>
+                                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                                      Aceitar Pedido
+                                    </>
+                                  ) : pedido.status === "pronto" ? (
+                                    <>
+                                      <Bike className="h-4 w-4 mr-1" />
+                                      Avançar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CookingPot className="h-4 w-4 mr-1" />
+                                      Avançar
+                                    </>
+                                  )}
                                 </Button>
                               )}
                               <Button size="sm" variant="outline" onClick={() => printOrder(pedido.id)}>
