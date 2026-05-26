@@ -416,6 +416,45 @@ export default function CardapioPublico() {
     }
   };
 
+  const openAccount = async () => {
+    setAccountOpen(true);
+    if (!customer.telefone) return;
+    setAccountLoading(true);
+    try {
+      const { data } = await supabase.functions.invoke("api-public-pedidos", {
+        body: { action: "customer", slug, telefone: customer.telefone },
+      });
+      if (data?.success) {
+        const total = Number(data.total || 0);
+        setAccountData({
+          pedidos: Number(data.pedidos || 0),
+          total,
+          pontos: Math.floor(total / 10), // 1 ponto a cada R$10
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const logoutAccount = () => {
+    try { localStorage.removeItem(CUSTOMER_STORAGE_KEY); } catch {/* ignore */}
+    setCustomer({
+      nome: "",
+      telefone: "",
+      tipo_atendimento: "entrega",
+      forma_pagamento: "pix",
+      observacoes: "",
+      endereco: "",
+    });
+    setAccountData(null);
+    setAccountOpen(false);
+    toast.success("Cadastro removido deste dispositivo");
+  };
+
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
