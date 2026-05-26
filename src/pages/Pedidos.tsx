@@ -194,7 +194,7 @@ export default function Pedidos() {
   const totalMesa = (mesaId: string) =>
     (pedidosPorMesa[mesaId] || []).reduce((s, p) => s + Number(p.total || 0), 0);
 
-  const sendWhatsAppStatusMessage = async (pedido: Pedido, nextStatus: PedidoStatus) => {
+  const sendWhatsAppStatusMessage = async (pedido: Pedido, nextStatus: PedidoStatus, tempoMin?: number) => {
     try {
       const telefone = String(pedido.cliente_telefone || "").replace(/\D/g, "");
       if (!telefone || telefone.length < 10) return;
@@ -202,11 +202,14 @@ export default function Pedidos() {
       let mensagem = "";
       const codigo = pedido.codigo_pedido || "";
       const nome = pedido.cliente_nome || "Cliente";
+      const tempoLinha = tempoMin && tempoMin > 0
+        ? `\n\n⏱️ *Tempo estimado:* aproximadamente ${tempoMin} minutos.`
+        : "";
 
       if (nextStatus === "aceito") {
-        mensagem = `✅ *Pedido aceito!*\n\nOlá ${nome}, seu pedido *${codigo}* foi aceito e já entrou na fila de preparo. 🍕\n\nEm breve avisaremos quando estiver pronto. Obrigado pela preferência! 🧡`;
+        mensagem = `✅ *Pedido aceito!*\n\nOlá ${nome}, recebemos e *aceitamos seu pedido ${codigo}*. 🍕 Já entrou na fila de preparo.${tempoLinha}\n\nAvisaremos assim que estiver pronto. Obrigado pela preferência! 🧡`;
       } else if (nextStatus === "em_producao") {
-        mensagem = `👨‍🍳 *Pedido em produção!*\n\n${nome}, seu pedido *${codigo}* já está sendo preparado com muito carinho. 🔥`;
+        mensagem = `👨‍🍳 *Pedido em produção!*\n\n${nome}, seu pedido *${codigo}* já está sendo preparado com muito carinho. 🔥${tempoLinha}`;
       } else if (nextStatus === "pronto") {
         mensagem = `🎉 *Pedido pronto!*\n\n${nome}, seu pedido *${codigo}* está pronto! Em instantes sairá para entrega ou estará disponível para retirada.`;
       } else if (nextStatus === "saiu_entrega") {
@@ -234,6 +237,30 @@ export default function Pedidos() {
     const idx = STATUS_FLOW.indexOf(pedido.status);
     const nextStatus = STATUS_FLOW[Math.min(idx + 1, STATUS_FLOW.length - 1)];
     if (nextStatus === pedido.status) return;
+
+    // Quando aceitar o pedido, perguntar o tempo estimado de preparo
+    let tempoMin: number | undefined;
+    if (nextStatus === "aceito") {
+      let defaultTempo = 30;
+      try {
+        const { data: cfg } = await supabase
+          .from("loja_configuracoes" as any)
+          .select("tempo_preparo_min")
+          .eq("company_id", pedido.company_id)
+          .maybeSingle();
+        if (cfg && (cfg as any).tempo_preparo_min) {
+          defaultTempo = Number((cfg as any).tempo_preparo_min);
+        }
+      } catch {}
+      const input = window.prompt(
+        `Tempo estimado de preparo (em minutos) para enviar ao cliente:`,
+        String(defaultTempo)
+      );
+      if (input === null) return; // cancelou
+      const parsed = parseInt(input, 10);
+      tempoMin = Number.isFinite(parsed) && parsed > 0 ? parsed : defaultTempo;
+    }
+
     try {
       const { error } = await supabase.from("pedidos" as any).update({ status: nextStatus }).eq("id", pedido.id);
       if (error) throw error;
@@ -241,10 +268,10 @@ export default function Pedidos() {
         company_id: pedido.company_id,
         pedido_id: pedido.id,
         status: nextStatus,
-        descricao: `Status alterado para ${STATUS_LABELS[nextStatus]}`,
+        descricao: `Status alterado para ${STATUS_LABELS[nextStatus]}${tempoMin ? ` (tempo estimado: ${tempoMin} min)` : ""}`,
       });
       // Envia notificação ao cliente via WhatsApp
-      sendWhatsAppStatusMessage(pedido, nextStatus);
+      sendWhatsAppStatusMessage(pedido, nextStatus, tempoMin);
       toast.success(`Pedido movido para ${STATUS_LABELS[nextStatus]}`);
       await load();
     } catch {
