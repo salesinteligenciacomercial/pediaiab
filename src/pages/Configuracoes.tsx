@@ -739,7 +739,7 @@ export default function Configuracoes() {
                     Acesso total ao sistema, incluindo gestão de subcontas e todas as funcionalidades.
                   </p>
                   <div className="text-xs text-muted-foreground">
-                    Permissões: Todas ({permissions.length} permissões)
+                    Acesso total ({permissions.length} módulos)
                   </div>
                 </div>
                 <div className="rounded-md border p-4 bg-blue-500/5 border-blue-500/20">
