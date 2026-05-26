@@ -118,7 +118,7 @@ export default function IA() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-          Fluxos e Automação com IA
+          Fluxos e Automação Inteligente
         </h1>
         <p className="text-muted-foreground text-lg">
           Agentes inteligentes, automações e campanhas
