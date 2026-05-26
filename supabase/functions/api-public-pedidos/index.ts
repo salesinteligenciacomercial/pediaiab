@@ -260,7 +260,7 @@ serve(async (req) => {
               Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             },
             body: JSON.stringify({
-              companyId: store.company_id,
+              company_id: store.company_id,
               numero: telefoneEnvio,
               mensagem,
               origem: "cardapio-digital",
