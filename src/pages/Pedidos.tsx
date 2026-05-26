@@ -222,7 +222,7 @@ export default function Pedidos() {
 
       await supabase.functions.invoke("enviar-whatsapp", {
         body: {
-          companyId: pedido.company_id,
+          company_id: pedido.company_id,
           numero: telefone,
           mensagem,
           origem: "pedidos-status",
