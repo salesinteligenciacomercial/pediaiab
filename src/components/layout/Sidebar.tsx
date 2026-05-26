@@ -119,8 +119,8 @@ export function Sidebar({
             <div className="flex items-center gap-3">
               <img src="/logo-waze.png" alt="Waze Platform" className="h-10 w-10 object-contain" />
               <div>
-                <span className="text-sidebar-foreground font-bold text-lg block leading-tight">Waze CRM </span>
-                <span className="text-sidebar-foreground/60 text-xs">Sistema inteligente de gestão comercial</span>
+                <span className="text-sidebar-foreground font-bold text-lg block leading-tight">Rosh Pizzaria</span>
+                <span className="text-sidebar-foreground/60 text-xs">Sistema inteligente de gestão de pedidos</span>
               </div>
             </div>
             {/* Botão fechar apenas em mobile */}
