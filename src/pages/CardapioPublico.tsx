@@ -962,7 +962,7 @@ export default function CardapioPublico() {
                   <Label className="font-semibold" style={{ color: primary }}>
                     📏 Escolha primeiro o tamanho da pizza
                   </Label>
-                  <div className={`grid gap-1.5`} style={{ gridTemplateColumns: `repeat(${Math.min(SIZE_OPTIONS.length, 5)}, minmax(0, 1fr))` }}>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                     {SIZE_OPTIONS.map((size) => {
                       const price = computePizzaPrice(selectedProduct, [], size.multiplier);
                       const active = selectedSize === size.id;
@@ -981,8 +981,8 @@ export default function CardapioPublico() {
                           title={size.descricao || ""}
                         >
                           <div className="text-[11px] font-bold leading-tight">{size.label}</div>
-                          <div className="text-[10px] text-neutral-500">
-                            {size.maxFlavors} sabor{size.maxFlavors > 1 ? "es" : ""} · {size.slices} fat.
+                          <div className="text-[10px] text-neutral-500 leading-tight">
+                            {size.maxFlavors} sab · {size.slices} fat
                           </div>
                           <div className="text-[11px] font-semibold mt-0.5" style={{ color: primary }}>
                             {formatBRL(price)}
