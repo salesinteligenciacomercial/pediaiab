@@ -761,7 +761,7 @@ export default function Configuracoes() {
                     Acesso a relatórios, leads, funis e conversas. Pode visualizar métricas da equipe.
                   </p>
                   <div className="text-xs text-muted-foreground">
-                    Permissões: {rolePermissions['gestor']?.length || 0} permissões
+                    Acesso gerencial ({rolePermissions['gestor']?.length || 0} módulos)
                   </div>
                 </div>
                 <div className="rounded-md border p-4">
