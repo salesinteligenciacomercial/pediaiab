@@ -783,7 +783,7 @@ export default function Configuracoes() {
                     Acesso a conversas e agenda. Focado em atendimento ao cliente.
                   </p>
                   <div className="text-xs text-muted-foreground">
-                    Permissões: {rolePermissions['suporte']?.length || 0} permissões
+                    Acesso suporte ({rolePermissions['suporte']?.length || 0} módulos)
                   </div>
                 </div>
               </div>
