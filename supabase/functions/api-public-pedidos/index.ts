@@ -115,6 +115,31 @@ serve(async (req) => {
       });
     }
 
+    if (body.action === "customer") {
+      const tel = normalizePhone(body.telefone);
+      if (!tel) {
+        return new Response(JSON.stringify({ success: false, error: "Telefone obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: pedidos } = await supabase
+        .from("pedidos")
+        .select("total, status")
+        .eq("company_id", store.company_id)
+        .eq("cliente_telefone", tel);
+      const validos = (pedidos || []).filter((p: any) => p.status !== "cancelado");
+      const total = validos.reduce((s: number, p: any) => s + Number(p.total || 0), 0);
+      return new Response(JSON.stringify({
+        success: true,
+        pedidos: validos.length,
+        total,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (body.action === "create") {
       if (!body.customer?.nome || !body.customer?.telefone || !body.items?.length) {
         return new Response(JSON.stringify({ success: false, error: "Cliente, telefone e itens são obrigatórios" }), {
