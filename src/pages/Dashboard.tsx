@@ -279,7 +279,7 @@ export default function Dashboard() {
       color: "text-accent",
     },
     {
-      title: "Negócios Ativos",
+      title: "Pedidos Ativos",
       value: stats.activeDeals,
       icon: Target,
       description: "Em andamento",
