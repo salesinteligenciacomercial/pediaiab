@@ -1031,7 +1031,7 @@ title: "Clientes excluídos",
                     R$ {Number(lead.value).toLocaleString("pt-BR")}
                   </div>
                   {!selectionMode && <div className="flex gap-2">
-                      <LeadQuickActions leadId={lead.id} leadName={lead.name} leadPhone={lead.phone || lead.telefone || undefined} onEdit={() => handleEditarLead(lead)} onDelete={() => handleExcluirLead(lead)} onOpenConversa={() => abrirConversa(lead)} onOpenAgenda={() => abrirAgenda(lead)} onOpenTarefa={() => abrirTarefa(lead)} />
+                      <LeadQuickActions onEdit={() => handleEditarLead(lead)} />
                       <LeadTagsDialog leadId={lead.id} currentTags={lead.tags} onTagsUpdated={carregarLeads} triggerButton={<Button variant="outline" size="sm">
                             <Tag className="h-4 w-4 mr-2" />
                             Tags
