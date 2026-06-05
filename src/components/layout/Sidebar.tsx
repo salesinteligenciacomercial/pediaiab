@@ -42,11 +42,6 @@ const navigation = [{
   menuKey: "conversas",
   showConversasBadge: true
 }, {
-  name: "Fluxos e Automação",
-  href: "/ia",
-  icon: Bot,
-  menuKey: "automacao"
-}, {
   name: "Caixa/PDV",
   href: "/financeiro",
   icon: DollarSign,
