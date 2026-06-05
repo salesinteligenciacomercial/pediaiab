@@ -7,7 +7,7 @@ import Auth from "./pages/Auth";
 import Analytics from "./pages/Analytics";
 import Leads from "./pages/Leads";
 import Pedidos from "./pages/Pedidos";
-import KDS from "./pages/KDS";
+
 import Conversas from "./pages/Conversas";
 import AgendaPublica from "./pages/AgendaPublica";
 import IA from "./pages/IA";
@@ -77,7 +77,7 @@ const App = () => (
               <Route path="dashboard" element={<Navigate to="/analytics" replace />} />
               <Route path="leads" element={<Leads />} />
               <Route path="kanban" element={<Pedidos />} />
-              <Route path="kds" element={<KDS />} />
+              
               <Route path="produtos" element={<Produtos />} />
               <Route path="cardapio-digital" element={<CardapioDigital />} />
               <Route path="analytics" element={<Analytics />} />
