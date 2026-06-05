@@ -164,7 +164,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const fetchMesas = useCallback(async () => {
     const all: Mesa[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await (supabase.from("mesas" as any) as any)
+      const { data, error } = await supabase.from("mesas")
         .select("*")
         .eq("company_id", companyId)
         .order("numero")
@@ -184,7 +184,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const fetchPedidos = useCallback(async () => {
     const all: Pedido[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await (supabase.from("pedidos" as any) as any)
+      const { data, error } = await supabase.from("pedidos")
         .select("*")
         .eq("company_id", companyId)
         .eq("tipo_atendimento", "mesa")
@@ -202,7 +202,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
     if (!pedidoIds.length) return [] as PedidoItem[];
     const all: PedidoItem[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await (supabase.from("pedido_itens" as any) as any)
+      const { data, error } = await supabase.from("pedido_itens")
         .select("*")
         .eq("company_id", companyId)
         .in("pedido_id", pedidoIds)
@@ -217,7 +217,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const fetchProdutos = useCallback(async () => {
     const all: Produto[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await (supabase.from("produtos_servicos" as any) as any)
+      const { data, error } = await supabase.from("produtos_servicos")
         .select("id,nome,categoria,preco_sugerido")
         .eq("company_id", companyId)
         .eq("ativo", true)
@@ -238,8 +238,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
       setPedidos(pedidosData);
       setItens(itensData);
       setProdutos(produtosData);
-    } catch (error: any) {
-      toast.error(`Erro ao carregar mesas: ${error?.message || "tente novamente"}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "tente novamente";
+      toast.error(`Erro ao carregar mesas: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -323,7 +324,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
 
   const criarMesa = async (numero: string, capacidade: number) => {
     if (!numero.trim()) return toast.error("Informe o número da mesa");
-    const { error } = await (supabase.from("mesas" as any) as any).insert({
+    const { error } = await supabase.from("mesas").insert({
       company_id: companyId,
       numero: numero.trim(),
       capacidade,
@@ -350,14 +351,14 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const atualizarTotalPedido = async (pedidoId: string, extraItems: ModalItem[] = []) => {
     const existingTotal = (pedidoItens[pedidoId] || []).reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
     const extraTotal = extraItems.reduce((sum, item) => sum + Number(item.preco_sugerido || 0) * item.quantidade, 0);
-    await (supabase.from("pedidos" as any) as any)
+    await supabase.from("pedidos")
       .update({ subtotal: existingTotal + extraTotal, total: existingTotal + extraTotal })
       .eq("id", pedidoId);
   };
 
   const abrirComanda = async (mesa: Mesa, pessoas: number, nome: string, modalItems: ModalItem[]) => {
     const total = modalItems.reduce((sum, item) => sum + Number(item.preco_sugerido || 0) * item.quantidade, 0);
-    const { data, error } = await (supabase.from("pedidos" as any) as any)
+    const { data, error } = await supabase.from("pedidos")
       .insert({
         company_id: companyId,
         mesa_id: mesa.id,
@@ -377,11 +378,11 @@ export default function MesasView({ companyId }: { companyId: string }) {
     if (error || !data) return toast.error(`Erro ao abrir comanda: ${error?.message || "sem retorno"}`);
 
     if (modalItems.length) {
-      const { error: itemError } = await (supabase.from("pedido_itens" as any) as any).insert(createItemsPayload((data as any).id, modalItems));
+      const { error: itemError } = await supabase.from("pedido_itens").insert(createItemsPayload(data.id, modalItems));
       if (itemError) return toast.error(`Comanda aberta, mas os itens falharam: ${itemError.message}`);
     }
 
-    await (supabase.from("mesas" as any) as any).update({ status: "ocupada" }).eq("id", mesa.id);
+    await supabase.from("mesas").update({ status: "ocupada" }).eq("id", mesa.id);
     toast.success(`Mesa ${mesa.numero} aberta com ${modalItems.length} item(ns)`);
     setShowComandaMesa(null);
     setSelectedMesaId(mesa.id);
@@ -394,7 +395,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
     let pedidoId = openPedido?.id;
 
     if (!pedidoId) {
-      const { data, error } = await (supabase.from("pedidos" as any) as any)
+      const { data, error } = await supabase.from("pedidos")
         .insert({
           company_id: companyId,
           mesa_id: mesa.id,
@@ -411,13 +412,13 @@ export default function MesasView({ companyId }: { companyId: string }) {
         .select("id")
         .single();
       if (error || !data) return toast.error(`Erro ao abrir comanda: ${error?.message || "sem retorno"}`);
-      pedidoId = (data as any).id;
+      pedidoId = data.id;
     }
 
-    const { error } = await (supabase.from("pedido_itens" as any) as any).insert(createItemsPayload(pedidoId, modalItems));
+    const { error } = await supabase.from("pedido_itens").insert(createItemsPayload(pedidoId, modalItems));
     if (error) return toast.error(`Erro ao adicionar item: ${error.message}`);
     await atualizarTotalPedido(pedidoId, modalItems);
-    await (supabase.from("mesas" as any) as any).update({ status: "ocupada" }).eq("id", mesa.id);
+    await supabase.from("mesas").update({ status: "ocupada" }).eq("id", mesa.id);
     toast.success("Itens adicionados à comanda");
     setShowAddItemMesa(null);
     setSelectedMesaId(mesa.id);
@@ -427,12 +428,12 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const fecharMesa = async (mesa: Mesa, formaPagamento: string) => {
     const open = (mesaPedidos[mesa.id] || []).filter((p) => OPEN_STATUSES.includes(p.status));
     if (!open.length) return toast.error("Nenhuma comanda aberta nesta mesa");
-    const { error } = await (supabase.from("pedidos" as any) as any)
+    const { error } = await supabase.from("pedidos")
       .update({ status: "entregue", status_pagamento: "pago", forma_pagamento: formaPagamento })
       .in("id", open.map((p) => p.id));
     if (error) return toast.error(`Erro ao fechar conta: ${error.message}`);
 
-    await (supabase.from("mesas" as any) as any).update({ status: "livre" }).eq("id", mesa.id);
+    await supabase.from("mesas").update({ status: "livre" }).eq("id", mesa.id);
     toast.success(`Conta da Mesa ${mesa.numero} fechada`);
     setShowFecharMesa(null);
     setSelectedMesaId(null);
@@ -443,11 +444,11 @@ export default function MesasView({ companyId }: { companyId: string }) {
     const open = (mesaPedidos[mesa.id] || []).filter((p) => OPEN_STATUSES.includes(p.status));
     if (!open.length) return;
     if (!confirm(`Cancelar a comanda da Mesa ${mesa.numero}?`)) return;
-    const { error } = await (supabase.from("pedidos" as any) as any)
+    const { error } = await supabase.from("pedidos")
       .update({ status: "cancelado", status_pagamento: "cancelado" })
       .in("id", open.map((p) => p.id));
     if (error) return toast.error(`Erro ao cancelar: ${error.message}`);
-    await (supabase.from("mesas" as any) as any).update({ status: "livre" }).eq("id", mesa.id);
+    await supabase.from("mesas").update({ status: "livre" }).eq("id", mesa.id);
     toast.success("Mesa cancelada");
     setSelectedMesaId(null);
     load();
@@ -457,13 +458,13 @@ export default function MesasView({ companyId }: { companyId: string }) {
     if (!destinoId) return toast.error("Selecione a mesa de destino");
     const open = (mesaPedidos[origem.id] || []).filter((p) => OPEN_STATUSES.includes(p.status));
     if (!open.length) return toast.error("Mesa sem comanda aberta");
-    const { error } = await (supabase.from("pedidos" as any) as any)
+    const { error } = await supabase.from("pedidos")
       .update({ mesa_id: destinoId })
       .in("id", open.map((p) => p.id));
     if (error) return toast.error(`Erro ao transferir: ${error.message}`);
     await Promise.all([
-      (supabase.from("mesas" as any) as any).update({ status: "livre" }).eq("id", origem.id),
-      (supabase.from("mesas" as any) as any).update({ status: "ocupada" }).eq("id", destinoId),
+      supabase.from("mesas").update({ status: "livre" }).eq("id", origem.id),
+      supabase.from("mesas").update({ status: "ocupada" }).eq("id", destinoId),
     ]);
     toast.success("Comanda transferida");
     setShowTransferMesa(null);
