@@ -26,11 +26,6 @@ const navigation = [{
   icon: LayoutDashboard,
   menuKey: "funil"
 }, {
-  name: "KDS",
-  href: "/kds",
-  icon: Store,
-  menuKey: "kds"
-}, {
   name: "Produtos",
   href: "/produtos",
   icon: Package,
