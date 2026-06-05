@@ -632,6 +632,18 @@ export default function KDS() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            {activeTab === "mesas" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 110, padding: "5px 14px", borderRadius: 8, background: "#131618", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: "#FF8C42", lineHeight: 1 }}>{totalAtivos}</span>
+                  <span style={{ fontSize: 9, color: "#5f6368", textTransform: "uppercase", letterSpacing: ".07em", marginTop: 2 }}>Pedidos abertos</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 110, padding: "5px 14px", borderRadius: 8, background: "#131618", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: "#2ECC8F", lineHeight: 1 }}>Tempo real</span>
+                  <span style={{ fontSize: 9, color: "#5f6368", textTransform: "uppercase", letterSpacing: ".07em", marginTop: 2 }}>Mesas sincronizadas</span>
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 6, height: 6, borderRadius: "50%",
@@ -643,7 +655,7 @@ export default function KDS() {
               </span>
             </div>
 
-            <div style={{
+            {activeTab === "delivery" && <div style={{
               background: "#111827",
               border: "0.5px solid #1F2937",
               borderRadius: 8,
@@ -658,7 +670,7 @@ export default function KDS() {
               }}>
                 {totalAtivos}
               </span>
-            </div>
+            </div>}
 
             <div style={{
               fontFamily: "'JetBrains Mono', monospace",
