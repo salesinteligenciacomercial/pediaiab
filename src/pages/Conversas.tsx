@@ -67,6 +67,7 @@ import { useAttendanceProtocol } from "@/hooks/useAttendanceProtocol";
 import * as evolutionAPI from "@/services/evolutionApi";
 import { ConversasAdvancedFilter, AdvancedFilters, defaultFilters } from "@/components/conversas/ConversasAdvancedFilter";
 import { ConversaTemplateSender } from "@/components/conversas/ConversaTemplateSender";
+import "@/styles/conversas-mockup.css";
 
 // Verificar se URL do WhatsApp (pps.whatsapp.net) expirou
 function isExpiredWhatsAppUrl(url: string): boolean {
@@ -8573,7 +8574,7 @@ function Conversas() {
       toast.error('Erro ao finalizar atendimento');
     }
   };
-  return <div className="flex w-full bg-background overflow-hidden" style={{ height: 'calc(100vh - 80px)', maxHeight: 'calc(100vh - 80px)' }}>
+  return <div data-conversas-mockup="true" className="conversas-mockup flex w-full overflow-hidden" style={{ height: 'calc(100vh - 80px)', maxHeight: 'calc(100vh - 80px)', background: 'var(--cmk-bg, hsl(var(--background)))' }}>
       {/* Sidebar esquerda - tema cinza claro */}
       {/* No mobile: esconder quando uma conversa está selecionada */}
       <div className={`${isMobile ? (selectedConv ? 'hidden' : 'w-full') : 'w-[380px]'} flex-shrink-0 bg-muted/30 border-r border-border flex flex-col overflow-hidden`}>

@@ -1,0 +1,186 @@
+/* ========================================================================
+   Rosh Pizzaria — Bate-Papo (mockup 100%)
+   Scoped to .conversas-mockup so the rest of the app keeps its theme.
+   ====================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+.conversas-mockup {
+  /* tokens do mockup */
+  --cmk-bg: #0C0C0E;
+  --cmk-s1: #111214;
+  --cmk-s2: #17181C;
+  --cmk-s3: #1D1F24;
+  --cmk-s4: #23262D;
+  --cmk-border: rgba(255,255,255,0.07);
+  --cmk-border2: rgba(255,255,255,0.13);
+  --cmk-text: #E8EAED;
+  --cmk-text2: #9AA0A8;
+  --cmk-text3: #5F6368;
+  --cmk-fire: #FF5C00;
+  --cmk-fire2: #FF8C42;
+  --cmk-fire3: #FFB470;
+  --cmk-green: #25D366;
+  --cmk-amber: #F5A623;
+  --cmk-blue: #4A9EFF;
+  --cmk-gold: #D4A853;
+  --cmk-red: #EF4444;
+  --cmk-msg-out: rgba(255,92,0,0.13);
+  --cmk-msg-in: rgba(255,255,255,0.05);
+  --cmk-mono: 'JetBrains Mono', monospace;
+  --cmk-font: 'Inter', sans-serif;
+
+  background: var(--cmk-bg);
+  color: var(--cmk-text);
+  font-family: var(--cmk-font);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.conversas-mockup * { font-family: var(--cmk-font); }
+.conversas-mockup .font-mono,
+.conversas-mockup .mono,
+.conversas-mockup [class*='tabular'] { font-family: var(--cmk-mono); }
+
+/* Scrollbar */
+.conversas-mockup ::-webkit-scrollbar { width: 3px; height: 3px; }
+.conversas-mockup ::-webkit-scrollbar-thumb { background: var(--cmk-s4); border-radius: 2px; }
+
+/* ===== Sidebar esquerda (lista de conversas) ===== */
+.conversas-mockup > div:first-child,
+.conversas-mockup .bg-muted\/30 {
+  background: var(--cmk-s1) !important;
+  border-right: 1px solid var(--cmk-border) !important;
+}
+
+/* Header da sidebar */
+.conversas-mockup .bg-background { background: var(--cmk-s1) !important; }
+.conversas-mockup .border-border,
+.conversas-mockup .border-b { border-color: var(--cmk-border) !important; }
+
+/* Chat area */
+.conversas-mockup [class*='flex-1'][class*='flex-col'] { background: var(--cmk-bg); }
+
+/* Input/Search rounded pill */
+.conversas-mockup input[type="text"],
+.conversas-mockup input[type="search"],
+.conversas-mockup .conversas-mockup textarea {
+  background: var(--cmk-s3) !important;
+  border: 1.5px solid var(--cmk-border) !important;
+  color: var(--cmk-text) !important;
+  border-radius: 30px !important;
+}
+.conversas-mockup input:focus,
+.conversas-mockup textarea:focus { border-color: var(--cmk-fire2) !important; outline: none !important; }
+
+/* Botões genéricos do header viram pílulas escuras */
+.conversas-mockup button[class*='border'] {
+  border-color: var(--cmk-border) !important;
+  color: var(--cmk-text2);
+}
+.conversas-mockup button[class*='border']:hover {
+  background: var(--cmk-s3) !important;
+  color: var(--cmk-text) !important;
+}
+
+/* Botão primário fire */
+.conversas-mockup .bg-primary,
+.conversas-mockup button[class*='bg-primary'] {
+  background: var(--cmk-fire) !important;
+  color: #fff !important;
+  border-color: rgba(255,92,0,.35) !important;
+}
+.conversas-mockup .bg-primary:hover { background: var(--cmk-fire2) !important; }
+.conversas-mockup .text-primary { color: var(--cmk-fire2) !important; }
+.conversas-mockup .border-primary { border-color: var(--cmk-fire) !important; }
+
+/* Badges/Tags coloridos do mockup */
+.conversas-mockup .badge,
+.conversas-mockup [class*='Badge'] { font-family: var(--cmk-font); }
+
+/* Tab ativo: barra fire embaixo */
+.conversas-mockup [role="tab"][data-state="active"] {
+  color: var(--cmk-text) !important;
+  position: relative;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.conversas-mockup [role="tab"][data-state="active"]::after {
+  content: '';
+  position: absolute;
+  left: 15%; right: 15%; bottom: -1px;
+  height: 2px;
+  background: var(--cmk-fire);
+  border-radius: 2px 2px 0 0;
+}
+.conversas-mockup [role="tab"] { color: var(--cmk-text3) !important; font-weight: 500; }
+.conversas-mockup [role="tablist"] { background: transparent !important; border-bottom: 1px solid var(--cmk-border); }
+
+/* Cards conversas */
+.conversas-mockup .hover\:bg-muted\/50:hover,
+.conversas-mockup .hover\:bg-accent:hover { background: var(--cmk-s2) !important; }
+.conversas-mockup .bg-muted\/50,
+.conversas-mockup .bg-muted { background: var(--cmk-s2) !important; }
+.conversas-mockup .bg-accent { background: var(--cmk-s2) !important; }
+
+/* Painel lateral direito */
+.conversas-mockup > div:last-child { background: var(--cmk-s1); border-left: 1px solid var(--cmk-border); }
+
+/* Mensagens bubbles */
+.conversas-mockup [data-message-sent="true"] .message-bubble,
+.conversas-mockup .message-out .bubble,
+.conversas-mockup .bg-primary\/10 { background: var(--cmk-msg-out) !important; border-color: rgba(255,92,0,.2) !important; }
+
+/* Send button arredondado e fire */
+.conversas-mockup button[aria-label*="nviar"],
+.conversas-mockup button[title*="nviar"],
+.conversas-mockup button[title="Enviar"] {
+  background: var(--cmk-fire) !important;
+  color: #fff !important;
+  border-radius: 50% !important;
+  box-shadow: 0 3px 12px rgba(255,92,0,.35);
+}
+.conversas-mockup button[aria-label*="nviar"]:hover { background: var(--cmk-fire2) !important; transform: scale(1.05); }
+
+/* Text helpers */
+.conversas-mockup .text-muted-foreground { color: var(--cmk-text2) !important; }
+.conversas-mockup .text-foreground { color: var(--cmk-text) !important; }
+
+/* Card / Border tokens */
+.conversas-mockup .border { border-color: var(--cmk-border) !important; }
+.conversas-mockup .border-input,
+.conversas-mockup .border-border { border-color: var(--cmk-border) !important; }
+.conversas-mockup .bg-card { background: var(--cmk-s2) !important; }
+.conversas-mockup .bg-card\/40 { background: rgba(23,24,28,0.7) !important; }
+
+/* Quick hints (PizzaQuickHints) — pill shape com hover fire */
+.conversas-mockup .rounded-full {
+  border-radius: 30px;
+}
+.conversas-mockup button.rounded-full:hover {
+  border-color: rgba(255,92,0,.3) !important;
+  color: var(--cmk-fire2) !important;
+  background: rgba(255,92,0,.08) !important;
+}
+
+/* Lead context bar — overlay fire suave */
+.conversas-mockup .bg-card\/40.border-b {
+  background: rgba(255,92,0,.06) !important;
+  border-bottom: 1px solid rgba(255,92,0,.12) !important;
+}
+
+/* Pedido card no chat e PedidoAtivoCard */
+.conversas-mockup .border-primary\/40 { border-color: rgba(255,92,0,.35) !important; }
+.conversas-mockup .bg-primary\/5 { background: rgba(255,92,0,.05) !important; }
+
+/* IA pill (status header) */
+.conversas-mockup .bg-primary\/10.text-primary {
+  background: rgba(255,92,0,.12) !important;
+  color: var(--cmk-fire2) !important;
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+/* Notificações verdes (unread badge) */
+.conversas-mockup .bg-green-500,
+.conversas-mockup .bg-emerald-500 { background: var(--cmk-green) !important; }
