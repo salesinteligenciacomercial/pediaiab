@@ -42,6 +42,7 @@ import { ProdutoSelectorDialog } from "@/components/conversas/ProdutoSelectorDia
 import { VendasLeadPanel } from "@/components/conversas/VendasLeadPanel";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { ClienteLTVFidelidadePanel } from "@/components/conversas/ClienteLTVFidelidadePanel";
+import { PainelPizzaria } from "@/components/conversas/PainelPizzaria";
 import { PropostasBancariasPanel } from "@/components/conversas/PropostasBancariasPanel";
 import { ProcessosJuridicosPanel } from "@/components/conversas/ProcessosJuridicosPanel";
 import { isSegmentoFinanceiro, isSegmentoJuridico } from "@/lib/segmentos";
