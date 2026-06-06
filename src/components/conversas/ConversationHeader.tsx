@@ -33,7 +33,8 @@ import { useEffect, useState } from "react";
    onCriarLead?: () => void;
   onFinalizeAtendimento?: (message: string) => void;
   onFinalizeAtendimentoSilent?: () => void;
-   onTransferAtendimento?: () => void;
+    onTransferAtendimento?: () => void;
+    onNovoPedido?: () => void;
     onChangeAIMode?: (mode: AIMode) => void;
     currentAIMode?: AIMode;
     onlineStatus?: OnlineStatus;
@@ -66,7 +67,8 @@ import { useEffect, useState } from "react";
    onCriarLead,
    onFinalizeAtendimento,
    onFinalizeAtendimentoSilent,
-   onTransferAtendimento,
+    onTransferAtendimento,
+    onNovoPedido,
     onChangeAIMode,
     currentAIMode = 'off',
     onlineStatus = 'unknown',
@@ -277,7 +279,23 @@ import { useEffect, useState } from "react";
                    </TooltipTrigger>
                    <TooltipContent>Transferir</TooltipContent>
                  </Tooltip>
-               )}
+                )}
+                {/* 🛒 Novo pedido via chat (mockup pizzaria) */}
+                {onNovoPedido && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onNovoPedido}
+                        className="h-8 w-8 border-primary/40 text-primary hover:bg-primary/10"
+                      >
+                        🛒
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Novo pedido</TooltipContent>
+                  </Tooltip>
+                )}
                {onFinalizeAtendimento && (
                 <Dialog open={finalizeOpen} onOpenChange={setFinalizeOpen}>
                   <Tooltip>
