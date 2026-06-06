@@ -9283,47 +9283,8 @@ function Conversas() {
                 }} className="flex-1 min-h-[40px] max-h-[200px] resize-none overflow-y-auto" rows={1} />
                     <AudioRecorder onSendAudio={handleSendAudio} />
                     
-                    {/* Botão de Correção Automática */}
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className={`${autoCorrectEnabled ? 'text-green-600 hover:text-green-700 hover:bg-green-50 border-green-300 bg-green-50/50' : 'text-muted-foreground hover:text-foreground border-border'}`}
-                      title={autoCorrectEnabled ? "Correção automática ativada (clique para desativar)" : "Correção automática desativada (clique para ativar)"}
-                      onClick={() => {
-                        const newValue = !autoCorrectEnabled;
-                        setAutoCorrectEnabled(newValue);
-                        localStorage.setItem(AUTO_CORRECT_KEY, JSON.stringify(newValue));
-                        toast.success(newValue ? "Correção automática ativada" : "Correção automática desativada");
-                      }}
-                    >
-                      {isCorrectingText ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <SpellCheck className="h-5 w-5" />
-                      )}
-                    </Button>
-                    
-                    {/* Botão de Assinatura na Mensagem */}
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className={`${includeSignature 
-                        ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-300 bg-blue-50/50' 
-                        : 'text-muted-foreground hover:text-foreground border-border'}`}
-                      title={includeSignature 
-                        ? `Assinatura ativada: "Atendente - ${userName}"` 
-                        : "Incluir assinatura na mensagem"}
-                      onClick={() => {
-                        const newValue = !includeSignature;
-                        setIncludeSignature(newValue);
-                        localStorage.setItem(INCLUDE_SIGNATURE_KEY, JSON.stringify(newValue));
-                        toast.success(newValue 
-                          ? `Assinatura ativada: "Atendente - ${userName}"` 
-                          : "Assinatura desativada");
-                      }}
-                    >
-                      <PenLine className="h-5 w-5" />
-                    </Button>
+                    {/* Botões SpellCheck (A) e Assinatura (Pencil) removidos a pedido */}
+
                     
                     {/* Botão de Respostas Rápidas */}
                     <Dialog open={showQuickRepliesPopup} onOpenChange={setShowQuickRepliesPopup}>
