@@ -8886,18 +8886,6 @@ function Conversas() {
               </Badge>
               <span className="text-xs flex items-center gap-0.5"><Instagram className="h-3 w-3" />Instagram</span>
             </Button>
-            <Button variant={filter === "responsible" ? "default" : "ghost"} size="sm" onClick={() => setFilter("responsible")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
-              <Badge variant="secondary" className="bg-green-500 hover:bg-green-600 text-white min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
-                {responsibleCount}
-              </Badge>
-              <span className="text-xs">Responsável</span>
-            </Button>
-            <Button variant={filter === "transferred" ? "default" : "ghost"} size="sm" onClick={() => setFilter("transferred")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
-              <Badge variant="secondary" className="bg-purple-500 hover:bg-purple-600 text-white min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
-                {conversations.filter(c => !c.isGroup && c.assignedUser?.id === currentUserId).length}
-              </Badge>
-              <span className="text-xs">Transferidos</span>
-            </Button>
             
             {/* 🆕 Botão Filtros Avançados */}
             <ConversasAdvancedFilter
