@@ -43,6 +43,9 @@ import { VendasLeadPanel } from "@/components/conversas/VendasLeadPanel";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { ClienteLTVFidelidadePanel } from "@/components/conversas/ClienteLTVFidelidadePanel";
 import { PainelPizzaria } from "@/components/conversas/PainelPizzaria";
+import { LeadContextBar } from "@/components/conversas/LeadContextBar";
+import { PizzaQuickHints } from "@/components/conversas/PizzaQuickHints";
+import { PedidoAtivoCard } from "@/components/conversas/PedidoAtivoCard";
 import { PropostasBancariasPanel } from "@/components/conversas/PropostasBancariasPanel";
 import { ProcessosJuridicosPanel } from "@/components/conversas/ProcessosJuridicosPanel";
 import { isSegmentoFinanceiro, isSegmentoJuridico } from "@/lib/segmentos";
@@ -9077,8 +9080,17 @@ function Conversas() {
         {selectedConv ? <>
             {/* Header - FIXO NO TOPO */}
             <div className="flex-shrink-0 bg-background border-b z-10">
-              <ConversationHeader contactName={selectedConv.contactName} channel={selectedConv.channel} avatarUrl={selectedConv.avatarUrl} produto={selectedConv.produto} valor={selectedConv.valor || (leadVinculado?.value && leadVinculado.value > 0 ? `R$ ${Number(leadVinculado.value).toLocaleString('pt-BR')}` : undefined)} responsavel={selectedConv.responsavel || leadExtraInfo.responsavelNome} tags={selectedConv.tags || leadVinculado?.tags} funnelStage={selectedConv.funnelStage || (leadExtraInfo.etapaNome ? (leadExtraInfo.funilNome ? `${leadExtraInfo.funilNome} → ${leadExtraInfo.etapaNome}` : leadExtraInfo.etapaNome) : undefined)} showInfoPanel={showInfoPanel} onToggleInfoPanel={() => setShowInfoPanel(!showInfoPanel)} syncStatus={syncStatus} leadVinculado={leadVinculado} mostrarBotaoCriarLead={mostrarBotaoCriarLead} onCriarLead={criarLeadManualmente} onFinalizeAtendimento={finalizarAtendimento} onFinalizeAtendimentoSilent={finalizarAtendimentoSilent} onTransferAtendimento={() => setTransferDialogOpen(true)} onChangeAIMode={(mode) => setConversationAIMode(selectedConv.id, mode)} currentAIMode={(aiMode[selectedConv.id] as any) || 'off'} onlineStatus={onlineStatus[selectedConv.id] || 'unknown'} isContactInactive={isContactInactive} onRestoreConversation={handleRestoreConversation} restoringConversation={restoringConversation} restoreProgress={restoreProgress} showBackButton={isMobile} onBack={() => setSelectedConv(null)} protocolNumber={activeProtocol?.protocol_number} protocolStatus={activeProtocol?.status} contactPhone={(selectedConv.phoneNumber || selectedConv.id).replace(/[^0-9]/g, '')} companyId={userCompanyId} />
-            </div>
+              <ConversationHeader onNovoPedido={() => setPedidoModalOpen(true)} contactName={selectedConv.contactName} channel={selectedConv.channel} avatarUrl={selectedConv.avatarUrl} produto={selectedConv.produto} valor={selectedConv.valor || (leadVinculado?.value && leadVinculado.value > 0 ? `R$ ${Number(leadVinculado.value).toLocaleString('pt-BR')}` : undefined)} responsavel={selectedConv.responsavel || leadExtraInfo.responsavelNome} tags={selectedConv.tags || leadVinculado?.tags} funnelStage={selectedConv.funnelStage || (leadExtraInfo.etapaNome ? (leadExtraInfo.funilNome ? `${leadExtraInfo.funilNome} → ${leadExtraInfo.etapaNome}` : leadExtraInfo.etapaNome) : undefined)} showInfoPanel={showInfoPanel} onToggleInfoPanel={() => setShowInfoPanel(!showInfoPanel)} syncStatus={syncStatus} leadVinculado={leadVinculado} mostrarBotaoCriarLead={mostrarBotaoCriarLead} onCriarLead={criarLeadManualmente} onFinalizeAtendimento={finalizarAtendimento} onFinalizeAtendimentoSilent={finalizarAtendimentoSilent} onTransferAtendimento={() => setTransferDialogOpen(true)} onChangeAIMode={(mode) => setConversationAIMode(selectedConv.id, mode)} currentAIMode={(aiMode[selectedConv.id] as any) || 'off'} onlineStatus={onlineStatus[selectedConv.id] || 'unknown'} isContactInactive={isContactInactive} onRestoreConversation={handleRestoreConversation} restoringConversation={restoringConversation} restoreProgress={restoreProgress} showBackButton={isMobile} onBack={() => setSelectedConv(null)} protocolNumber={activeProtocol?.protocol_number} protocolStatus={activeProtocol?.status} contactPhone={(selectedConv.phoneNumber || selectedConv.id).replace(/[^0-9]/g, '')} companyId={userCompanyId} />
+             </div>
+
+             {/* ─── Mockup: barra de contexto do lead + card de pedido ativo ─── */}
+             <LeadContextBar
+               leadId={leadVinculado?.id || null}
+               companyId={userCompanyId}
+               endereco={leadVinculado?.endereco || leadVinculado?.address || null}
+             />
+             <PedidoAtivoCard leadId={leadVinculado?.id || null} />
+             
             
             {/* Dialog de Transferir Atendimento */}
             <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
@@ -9215,8 +9227,16 @@ function Conversas() {
                 </div>
 
                 {/* Input Area - FIXO NO BOTTOM */}
-                <div className="bg-background border-t border-border p-2 flex-shrink-0" style={{ minHeight: '60px', maxHeight: '180px' }}>
-                  {replyingTo && <div className="mb-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                 <div className="bg-background border-t border-border p-2 flex-shrink-0" style={{ minHeight: '60px', maxHeight: '240px' }}>
+                   <PizzaQuickHints
+                     leadId={leadVinculado?.id || null}
+                     contactName={selectedConv.contactName}
+                     onInsert={(t) => {
+                       setMessageInput((prev) => (prev ? prev + " " + t : t));
+                       setTimeout(() => messageTextareaRef.current?.focus(), 0);
+                     }}
+                   />
+                   {replyingTo && <div className="mb-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center justify-between">
                         <div className="flex items-start gap-2 flex-1 min-w-0">
                           <Reply className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
