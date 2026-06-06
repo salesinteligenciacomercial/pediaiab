@@ -42,6 +42,7 @@ import { ProdutoSelectorDialog } from "@/components/conversas/ProdutoSelectorDia
 import { VendasLeadPanel } from "@/components/conversas/VendasLeadPanel";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { ClienteLTVFidelidadePanel } from "@/components/conversas/ClienteLTVFidelidadePanel";
+import { PainelPizzaria } from "@/components/conversas/PainelPizzaria";
 import { PropostasBancariasPanel } from "@/components/conversas/PropostasBancariasPanel";
 import { ProcessosJuridicosPanel } from "@/components/conversas/ProcessosJuridicosPanel";
 import { isSegmentoFinanceiro, isSegmentoJuridico } from "@/lib/segmentos";
@@ -9411,54 +9412,18 @@ function Conversas() {
 
               {/* Info Panel - COM SCROLL */}
               {showInfoPanel && <div className="w-[340px] bg-background border-l border-border flex flex-col flex-shrink-0 overflow-hidden">
-                  <div className="p-6 space-y-6 flex-1 overflow-y-auto pb-32">
-                    {/* Contact Info - Apenas informações básicas do contato */}
-                    <div className="text-center">
-                      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                        {selectedConv.avatarUrl ? (
-                          <img src={selectedConv.avatarUrl} alt={selectedConv.contactName} className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="h-10 w-10 text-muted-foreground" />
-                        )}
-                      </div>
-                      <h3 className="text-foreground font-medium text-lg">{selectedConv.contactName}</h3>
-                      <p className="text-muted-foreground text-sm capitalize">{selectedConv.channel}</p>
-                      {selectedConv.phoneNumber && (
-                        <p className="text-muted-foreground text-xs mt-2 flex items-center justify-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {selectedConv.phoneNumber}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Botão Editar Informações do Contato */}
-                    {leadVinculado && (
-                      <EditarLeadDialog
-                        lead={{
-                          id: leadVinculado.id,
-                          name: leadVinculado.name || selectedConv.contactName,
-                          email: leadVinculado.email || "",
-                          phone: leadVinculado.phone || leadVinculado.telefone || selectedConv.phoneNumber || "",
-                          status: leadVinculado.status || "novo",
-                          source: leadVinculado.source || leadVinculado.origem || "whatsapp",
-                          tags: leadVinculado.tags || [],
-                          value: leadVinculado.value || 0,
-                          notes: leadVinculado.notes || "",
-                        } as any}
-                        onLeadUpdated={async () => {
-                          if (selectedConv.phoneNumber || selectedConv.id) {
-                            const telefoneFormatado = safeFormatPhoneNumber(selectedConv.phoneNumber || selectedConv.id);
-                            const { data } = await supabase.from('leads').select('*').eq('telefone', telefoneFormatado).maybeSingle();
-                            if (data) setLeadVinculado(data);
-                          }
-                        }}
-                      />
-                    )}
-
-                    {/* LTV + Programa de Fidelidade */}
-                    <ClienteLTVFidelidadePanel
-                      leadId={leadVinculado?.id || null}
+                  <div className="flex-1 overflow-y-auto pb-24">
+                    <PainelPizzaria
+                      contactName={selectedConv.contactName}
+                      contactPhone={selectedConv.phoneNumber}
+                      avatarUrl={selectedConv.avatarUrl}
+                      channel={selectedConv.channel}
+                      leadVinculado={leadVinculado}
                       companyId={userCompanyId}
+                      mostrarBotaoCriarLead={mostrarBotaoCriarLead}
+                      onNovoPedido={() => setPedidoModalOpen(true)}
+                      onCriarLead={criarLeadManualmente}
+                      onEnviarMensagem={(msg) => handleSendMessage(msg, "text")}
                     />
                   </div>
                 </div>}
