@@ -7,7 +7,7 @@ interface Props {
 
 interface Pedido {
   id: string;
-  numero: number | null;
+  codigo_pedido: string | null;
   status: string | null;
   total: number | null;
   created_at: string;
@@ -40,7 +40,7 @@ export function PedidoAtivoCard({ leadId }: Props) {
     (async () => {
       const { data } = await supabase
         .from("pedidos")
-        .select("id,numero,status,total,created_at")
+        .select("id,codigo_pedido,status,total,created_at")
         .eq("lead_id", leadId)
         .not("status", "in", '("cancelado","concluido","entregue")')
         .order("created_at", { ascending: false })
@@ -63,7 +63,7 @@ export function PedidoAtivoCard({ leadId }: Props) {
           <span className="text-base">🛒</span>
           <div>
             <div className="text-xs font-semibold">
-              Pedido #{pedido.numero || pedido.id.slice(0, 6).toUpperCase()}
+              Pedido {pedido.codigo_pedido || `#${pedido.id.slice(0, 6).toUpperCase()}`}
             </div>
             <div className="text-[10px] text-muted-foreground">
               Status: <strong className="text-primary">{pedido.status || "novo"}</strong>
