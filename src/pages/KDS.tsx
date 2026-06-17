@@ -12,6 +12,7 @@ type Pedido = {
   company_id: string;
   codigo_pedido: string;
   cliente_nome: string;
+  cliente_telefone?: string | null;
   canal: string;
   tipo_atendimento: string;
   mesa_id: string | null;
