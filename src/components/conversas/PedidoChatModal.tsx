@@ -155,7 +155,6 @@ export function PedidoChatModal({
           .eq("company_id", companyId)
           .maybeSingle(),
         leadId
-        leadId
           ? (supabase.from("leads") as any)
               .select("endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, endereco_cep")
               .eq("id", leadId)
