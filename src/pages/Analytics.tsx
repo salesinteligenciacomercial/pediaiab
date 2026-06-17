@@ -14,6 +14,7 @@ import PropostasAnalytics from "@/components/analytics/PropostasAnalytics";
 import JuridicoAnalytics from "@/components/analytics/JuridicoAnalytics";
 import { PizzariaAnalytics } from "@/components/analytics/PizzariaAnalytics";
 import { isSegmentoFinanceiro, isSegmentoJuridico } from "@/lib/segmentos";
+import { APP_NAME } from "@/config/branding";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -1065,8 +1066,8 @@ export default function Analytics() {
   return <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">Relatórios da Pizzaria</h1>
-        <p className="text-muted-foreground text-lg">Acompanhe vendas, pedidos, clientes e o dia a dia da sua pizzaria</p>
+        <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">Relatórios do {APP_NAME}</h1>
+        <p className="text-muted-foreground text-lg">Acompanhe vendas, pedidos, clientes e o dia a dia do seu negócio</p>
         </div>
         
         {/* ✅ Indicador de Status de Conexão Realtime */}

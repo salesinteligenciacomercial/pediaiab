@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { APP_NAME } from "@/config/branding";
 
 type Mesa = {
   id: string;
@@ -506,7 +507,7 @@ export default function MesasView({ companyId }: { companyId: string }) {
     const html = `
       <html><head><title>Mesa ${info.mesa.numero}</title><style>
       body{font-family:Arial,sans-serif;padding:24px} h1{font-size:20px} table{width:100%;border-collapse:collapse}td{padding:6px;border-bottom:1px solid #ddd}.total{font-size:18px;font-weight:700;text-align:right;margin-top:16px}
-      </style></head><body><h1>Rosh Pizzaria — Mesa ${info.mesa.numero}</h1><p>${info.pessoas} pessoa(s) · ${fmtTempo(info.tempo)}</p><table>${info.items
+      </style></head><body><h1>${APP_NAME} — Mesa ${info.mesa.numero}</h1><p>${info.pessoas} pessoa(s) · ${fmtTempo(info.tempo)}</p><table>${info.items
         .map((item) => `<tr><td>${item.quantidade}x ${item.produto_nome}</td><td style="text-align:right">${brl(Number(item.valor_total || 0))}</td></tr>`)
         .join("")}</table><div class="total">Total: ${brl(info.finalTotal)}</div><script>window.print();window.close();</script></body></html>`;
     const printWindow = window.open("", "_blank", "width=420,height=640");

@@ -62,6 +62,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { APP_NAME } from "@/config/branding";
 
 interface Colaborador {
   id: string; // user_roles.id
@@ -1010,7 +1011,7 @@ export default function Configuracoes() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{currentCompany.name || "Rosh Pizzaria"}</span>
+                  <span className="text-sm text-muted-foreground">{currentCompany.name || APP_NAME}</span>
                   <Button
                     variant="ghost"
                     size="icon"

@@ -8,9 +8,9 @@ const corsHeaders = {
 };
 
 type MenuRequest = {
-  action: "menu" | "create" | "customer";
+  action: "menu" | "create" | "customer" | "marketplace";
   telefone?: string;
-  slug: string;
+  slug?: string;
   customer?: {
     nome: string;
     telefone: string;
@@ -47,6 +47,34 @@ serve(async (req) => {
     );
 
     const body = (await req.json()) as MenuRequest;
+
+    if (body.action === "marketplace") {
+      const storeFields = "slug, nome_loja, descricao_loja, logo_url, banner_url, pedido_minimo, taxa_entrega, aceita_entrega, aceita_retirada, endereco_loja, cor_primaria, categoria_marketplace, visivel_marketplace, tempo_preparo_min";
+      let { data: stores, error } = await supabase
+        .from("loja_configuracoes")
+        .select(storeFields)
+        .not("slug", "is", null)
+        .eq("aceita_pedidos", true)
+        .order("nome_loja");
+
+      if (error) {
+        const fallback = await supabase
+          .from("loja_configuracoes")
+          .select("slug, nome_loja, descricao_loja, logo_url, banner_url, pedido_minimo, taxa_entrega, aceita_entrega, aceita_retirada, endereco_loja, cor_primaria, tempo_preparo_min")
+          .not("slug", "is", null)
+          .order("nome_loja");
+        if (fallback.error) throw fallback.error;
+        stores = (fallback.data || []).map((s: any) => ({ ...s, categoria_marketplace: "restaurante", visivel_marketplace: true }));
+      }
+
+      const visible = (stores || []).filter((s: any) => s.visivel_marketplace !== false && s.slug);
+
+      return new Response(JSON.stringify({ success: true, stores: visible }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!body.slug) {
       return new Response(JSON.stringify({ success: false, error: "Slug da loja é obrigatório" }), {
         status: 400,

@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Session } from "@supabase/supabase-js";
 import { AlertCircle, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { APP_NAME, APP_TAGLINE } from "@/config/branding";
 export default function Auth() {
   const navigate = useNavigate();
   const {
@@ -270,8 +271,8 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <img src="/logo-waze.png" alt="Waze Platform" className="mx-auto mb-4 h-16 w-16 object-contain" />
-          <CardTitle className="text-2xl font-bold">Rosh Pizzaria</CardTitle>
-          <CardDescription>Sistema inteligente de gestão comercial</CardDescription>
+          <CardTitle className="text-2xl font-bold">{APP_NAME}</CardTitle>
+          <CardDescription>{APP_TAGLINE}</CardDescription>
         </CardHeader>
         <CardContent>
           {backendDown && <Alert variant="destructive" className="mb-4">

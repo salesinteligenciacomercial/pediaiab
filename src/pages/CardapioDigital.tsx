@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Copy, ExternalLink, Loader2, Store } from "lucide-react";
+import { MARKETPLACE_PATH, MARKETPLACE_TITLE } from "@/config/branding";
 
 type LojaConfig = {
   id?: string;
@@ -30,6 +31,8 @@ type LojaConfig = {
   mensagem_loja: string;
   impressao_automatica: boolean;
   print_bridge_url: string;
+  visivel_marketplace: boolean;
+  categoria_marketplace: string;
 };
 
 const EMPTY_CONFIG: LojaConfig = {
@@ -52,6 +55,8 @@ const EMPTY_CONFIG: LojaConfig = {
   mensagem_loja: "",
   impressao_automatica: false,
   print_bridge_url: "",
+  visivel_marketplace: true,
+  categoria_marketplace: "restaurante",
 };
 
 export default function CardapioDigital() {
@@ -78,6 +83,8 @@ export default function CardapioDigital() {
           pedido_minimo: String((data as any).pedido_minimo ?? 0),
           taxa_entrega: String((data as any).taxa_entrega ?? 0),
           horario_funcionamento: JSON.stringify((data as any).horario_funcionamento || {}, null, 2),
+          visivel_marketplace: (data as any).visivel_marketplace ?? true,
+          categoria_marketplace: (data as any).categoria_marketplace || "restaurante",
         });
       } else {
         const baseSlug = String(company?.name || "loja")
@@ -101,6 +108,7 @@ export default function CardapioDigital() {
   }, [loadConfig]);
 
   const publicUrl = `${window.location.origin}/cardapio/${config.slug || "loja"}`;
+  const marketplaceUrl = `${window.location.origin}${MARKETPLACE_PATH}`;
 
   const save = async () => {
     if (!companyId) return;
@@ -135,6 +143,8 @@ export default function CardapioDigital() {
         mensagem_loja: config.mensagem_loja.trim() || null,
         impressao_automatica: config.impressao_automatica,
         print_bridge_url: config.print_bridge_url.trim() || null,
+        visivel_marketplace: config.visivel_marketplace,
+        categoria_marketplace: config.categoria_marketplace,
       };
 
       const { data: existing } = await supabase.from("loja_configuracoes" as any).select("id").eq("company_id", companyId).maybeSingle();
@@ -186,6 +196,28 @@ export default function CardapioDigital() {
         </CardContent>
       </Card>
 
+      <Card className="border-orange-500/20 bg-orange-500/5">
+        <CardContent className="pt-6 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="font-semibold">Marketplace — {MARKETPLACE_TITLE}</div>
+            <div className="text-sm text-muted-foreground">
+              Todos os restaurantes conectados em um hub tipo iFood. Seu cardápio aparece aqui quando publicado.
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">{marketplaceUrl}</div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(marketplaceUrl); toast.success("Link do marketplace copiado"); }}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar marketplace
+            </Button>
+            <Button variant="outline" onClick={() => window.open(marketplaceUrl, "_blank")}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Ver marketplace
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -222,6 +254,21 @@ export default function CardapioDigital() {
             <div className="space-y-2"><Label>Horário de funcionamento (JSON)</Label><Textarea rows={8} value={config.horario_funcionamento} onChange={(e) => setConfig({ ...config, horario_funcionamento: e.target.value })} /></div>
             <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Aceita retirada</span><Switch checked={config.aceita_retirada} onCheckedChange={(v) => setConfig({ ...config, aceita_retirada: v })} /></div>
             <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Aceita entrega</span><Switch checked={config.aceita_entrega} onCheckedChange={(v) => setConfig({ ...config, aceita_entrega: v })} /></div>
+            <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Exibir no marketplace público</span><Switch checked={config.visivel_marketplace} onCheckedChange={(v) => setConfig({ ...config, visivel_marketplace: v })} /></div>
+            <div className="space-y-2">
+              <Label>Categoria no marketplace</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={config.categoria_marketplace}
+                onChange={(e) => setConfig({ ...config, categoria_marketplace: e.target.value })}
+              >
+                <option value="pizzaria">Pizzaria</option>
+                <option value="hamburguer">Hambúrguer</option>
+                <option value="lanches">Lanches</option>
+                <option value="doces">Doces</option>
+                <option value="restaurante">Restaurante</option>
+              </select>
+            </div>
             <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Impressão automática</span><Switch checked={config.impressao_automatica} onCheckedChange={(v) => setConfig({ ...config, impressao_automatica: v })} /></div>
             <div className="space-y-2"><Label>Print bridge URL</Label><Input value={config.print_bridge_url} onChange={(e) => setConfig({ ...config, print_bridge_url: e.target.value })} placeholder="http://127.0.0.1:8989/print" /></div>
           </CardContent>

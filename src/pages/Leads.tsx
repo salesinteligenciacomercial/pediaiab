@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { APP_NAME } from "@/config/branding";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, Upload, Search, Tag, MessageSquare, Phone, Mail, User, Building2, Download, CheckSquare, Square, Trash2, Edit, GitBranch, X, DollarSign, Trophy, XCircle, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -877,7 +878,7 @@ title: "Clientes excluídos",
       {/* Header responsivo */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Clientes da Rosh Pizzaria</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Clientes do {APP_NAME}</h1>
           <p className="text-sm md:text-base text-muted-foreground">
             Cadastro de clientes, pedidos e aniversariantes
           </p>

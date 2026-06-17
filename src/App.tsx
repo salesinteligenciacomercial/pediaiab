@@ -19,6 +19,7 @@ import CaixaPDV from "./pages/CaixaPDV";
 import Produtos from "./pages/Produtos";
 import CardapioDigital from "./pages/CardapioDigital";
 import CardapioPublico from "./pages/CardapioPublico";
+import MarketplacePublico from "./pages/MarketplacePublico";
 import OAuthCallback from "./pages/OAuthCallback";
 import GmailCallback from "./pages/GmailCallback";
 import { MainLayout } from "./components/layout/MainLayout";
@@ -71,6 +72,8 @@ const App = () => (
             <Route path="/agenda/:slug" element={<AgendaPublica />} />
             <Route path="/meeting/:meetingId" element={<PublicMeeting />} />
             <Route path="/captura/:companyId" element={<CapturaPublica />} />
+            <Route path="/marketplace" element={<MarketplacePublico />} />
+            <Route path="/pede" element={<MarketplacePublico />} />
             <Route path="/cardapio/:slug" element={<CardapioPublico />} />
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Navigate to="/analytics" replace />} />

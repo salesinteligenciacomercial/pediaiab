@@ -3884,6 +3884,7 @@ export type Database = {
           aceita_pedidos: boolean
           aceita_retirada: boolean | null
           banner_url: string | null
+          categoria_marketplace: string | null
           company_id: string
           cor_primaria: string | null
           cor_secundaria: string | null
@@ -3905,6 +3906,7 @@ export type Database = {
           telefone_loja: string | null
           tempo_preparo_min: number | null
           updated_at: string
+          visivel_marketplace: boolean
           whatsapp_loja: string | null
         }
         Insert: {
@@ -3912,6 +3914,7 @@ export type Database = {
           aceita_pedidos?: boolean
           aceita_retirada?: boolean | null
           banner_url?: string | null
+          categoria_marketplace?: string
           company_id: string
           cor_primaria?: string | null
           cor_secundaria?: string | null
@@ -3933,6 +3936,7 @@ export type Database = {
           telefone_loja?: string | null
           tempo_preparo_min?: number | null
           updated_at?: string
+          visivel_marketplace?: boolean
           whatsapp_loja?: string | null
         }
         Update: {
@@ -3940,6 +3944,7 @@ export type Database = {
           aceita_pedidos?: boolean
           aceita_retirada?: boolean | null
           banner_url?: string | null
+          categoria_marketplace?: string
           company_id?: string
           cor_primaria?: string | null
           cor_secundaria?: string | null
@@ -3961,6 +3966,7 @@ export type Database = {
           telefone_loja?: string | null
           tempo_preparo_min?: number | null
           updated_at?: string
+          visivel_marketplace?: boolean
           whatsapp_loja?: string | null
         }
         Relationships: [

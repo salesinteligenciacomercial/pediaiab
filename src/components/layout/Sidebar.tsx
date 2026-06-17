@@ -9,6 +9,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useModuleAccess } from "@/hooks/useModuleAccess";
 import { useConversasNotifications } from "@/hooks/useConversasNotifications";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { APP_NAME, APP_TAGLINE } from "@/config/branding";
 
 const navigation = [{
   name: "Relatórios",
@@ -114,8 +115,8 @@ export function Sidebar({
             <div className="flex items-center gap-3">
               <img src="/logo-waze.png" alt="Waze Platform" className="h-10 w-10 object-contain" />
               <div>
-                <span className="text-sidebar-foreground font-bold text-lg block leading-tight">Rosh Pizzaria</span>
-                <span className="text-sidebar-foreground/60 text-xs">Sistema inteligente de gestão de pedidos</span>
+                <span className="text-sidebar-foreground font-bold text-lg block leading-tight">{APP_NAME}</span>
+                <span className="text-sidebar-foreground/60 text-xs">{APP_TAGLINE}</span>
               </div>
             </div>
             {/* Botão fechar apenas em mobile */}

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, User, Star, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { APP_NAME, MARKETPLACE_PATH, MARKETPLACE_TITLE } from "@/config/branding";
 
 // ───────────────────────────────────────────────────────────────
 // CSS extracted from the approved mockup (dark theme, mobile-first)
@@ -690,7 +691,7 @@ export default function CardapioPublico() {
     );
   }
 
-  const nomeLoja = config.nome_loja || "Rosh Pizzaria";
+  const nomeLoja = config.nome_loja || APP_NAME;
   const telWa = (config.telefone_loja || "").replace(/\D/g, "");
   const aberto = config.aberto !== false;
   const minimo = Number(config.pedido_minimo || 0);
@@ -737,6 +738,9 @@ export default function CardapioPublico() {
           <span className="c-logo-text">{nomeLoja}</span>
         </div>
         <div className="c-header-actions">
+          <Link className="c-icon-btn" to={MARKETPLACE_PATH} title={MARKETPLACE_TITLE} style={{ width: "auto", padding: "0 12px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>
+            🏪 Marketplace
+          </Link>
           <a className="c-icon-btn" href="https://instagram.com/roshpizzaria" target="_blank" rel="noopener noreferrer" title="Instagram">📸</a>
           <a className="c-icon-btn" href="https://maps.app.goo.gl/c1MTAgZpNjRQSVKCA" target="_blank" rel="noopener noreferrer" title="Localização">📍</a>
           <button className="c-icon-btn" onClick={() => { setSearchOpen((v) => !v); setTimeout(() => searchRef.current?.focus(), 60); }} title="Buscar">🔍</button>
