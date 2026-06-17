@@ -1180,10 +1180,7 @@ function ProductConfigDialog({
     </div>
   );
 }
-      )}
-    </ModalShell>
-  );
-}
+
 
 function FecharContaModal({ info, onClose, onConfirm }: { info?: MesaComputed; onClose: () => void; onConfirm: (forma: string) => void }) {
   const [forma, setForma] = useState("pix");
