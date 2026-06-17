@@ -56,12 +56,19 @@ type Produto = {
   nome: string;
   categoria: string | null;
   preco_sugerido: number | null;
+  descricao?: string | null;
+  imagem_url?: string | null;
+  permite_meio_a_meio?: boolean | null;
 };
+
+type PizzaSize = { id: string; nome: string; slug: string; multiplicador: number; max_sabores: number; fatias: number; descricao?: string | null };
+type PizzaBorda = { id: string; nome: string; descricao?: string | null };
+type PizzaBordaPreco = { borda_id: string; tamanho_id: string; preco: number };
 
 type DerivedStatus = "livre" | "ocupada" | "pronto" | "alerta";
 type FiltroMesa = "todos" | DerivedStatus;
 type ViewMode = "mapa" | "lista";
-type ModalItem = Produto & { quantidade: number };
+type ModalItem = { id: string; nome: string; categoria: string | null; preco_sugerido: number | null; quantidade: number; observacoes?: string; baseProductId?: string };
 type ItemComStatus = PedidoItem & { pedidoStatus: PedidoStatus };
 
 const OPEN_STATUSES: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto"];
@@ -150,6 +157,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<PedidoItem[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
+  const [pizzaBordas, setPizzaBordas] = useState<PizzaBorda[]>([]);
+  const [pizzaBordaPrecos, setPizzaBordaPrecos] = useState<PizzaBordaPreco[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FiltroMesa>("todos");
   const [viewMode, setViewMode] = useState<ViewMode>("mapa");
@@ -218,9 +228,10 @@ export default function MesasView({ companyId }: { companyId: string }) {
     const all: Produto[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data, error } = await supabase.from("produtos_servicos")
-        .select("id,nome,categoria,preco_sugerido")
+        .select("id,nome,categoria,preco_sugerido,descricao,imagem_url,permite_meio_a_meio")
         .eq("company_id", companyId)
         .eq("ativo", true)
+        .neq("tipo_produto", "insumo")
         .order("nome")
         .range(from, from + PAGE_SIZE - 1);
       if (error) throw error;
@@ -230,21 +241,40 @@ export default function MesasView({ companyId }: { companyId: string }) {
     return all;
   }, [companyId]);
 
+  const fetchPizzaData = useCallback(async () => {
+    const [sizesRes, bordasRes] = await Promise.all([
+      supabase.from("pizza_tamanhos").select("id,nome,slug,multiplicador,max_sabores,fatias,descricao,ordem").eq("company_id", companyId).eq("ativo", true).order("ordem"),
+      supabase.from("pizza_bordas").select("id,nome,descricao,ordem").eq("company_id", companyId).eq("ativo", true).order("ordem"),
+    ]);
+    const sizes = (sizesRes.data || []) as PizzaSize[];
+    const bordas = (bordasRes.data || []) as PizzaBorda[];
+    const bordaIds = bordas.map((b) => b.id);
+    let precos: PizzaBordaPreco[] = [];
+    if (bordaIds.length) {
+      const { data } = await supabase.from("pizza_borda_precos").select("borda_id,tamanho_id,preco").in("borda_id", bordaIds);
+      precos = (data || []) as PizzaBordaPreco[];
+    }
+    return { sizes, bordas, precos };
+  }, [companyId]);
+
   const load = useCallback(async () => {
     try {
-      const [mesasData, pedidosData, produtosData] = await Promise.all([fetchMesas(), fetchPedidos(), fetchProdutos()]);
+      const [mesasData, pedidosData, produtosData, pizzaData] = await Promise.all([fetchMesas(), fetchPedidos(), fetchProdutos(), fetchPizzaData()]);
       const itensData = await fetchItens(pedidosData.map((p) => p.id));
       setMesas(mesasData);
       setPedidos(pedidosData);
       setItens(itensData);
       setProdutos(produtosData);
+      setPizzaSizes(pizzaData.sizes);
+      setPizzaBordas(pizzaData.bordas);
+      setPizzaBordaPrecos(pizzaData.precos);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "tente novamente";
       toast.error(`Erro ao carregar mesas: ${message}`);
     } finally {
       setLoading(false);
     }
-  }, [fetchItens, fetchMesas, fetchPedidos, fetchProdutos]);
+  }, [fetchItens, fetchMesas, fetchPedidos, fetchProdutos, fetchPizzaData]);
 
   useEffect(() => {
     load();
@@ -340,12 +370,12 @@ export default function MesasView({ companyId }: { companyId: string }) {
     modalItems.map((item) => ({
       pedido_id: pedidoId,
       company_id: companyId,
-      produto_id: item.id,
+      produto_id: item.baseProductId || item.id,
       produto_nome: item.nome,
       quantidade: item.quantidade,
       valor_unitario: Number(item.preco_sugerido || 0),
       valor_total: Number(item.preco_sugerido || 0) * item.quantidade,
-      observacoes: null,
+      observacoes: item.observacoes || null,
     }));
 
   const atualizarTotalPedido = async (pedidoId: string, extraItems: ModalItem[] = []) => {
@@ -587,6 +617,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
           title={`Nova Comanda — Mesa ${showComandaMesa.numero}`}
           mesa={showComandaMesa}
           produtos={produtos}
+          pizzaSizes={pizzaSizes}
+          pizzaBordas={pizzaBordas}
+          pizzaBordaPrecos={pizzaBordaPrecos}
           showMesaFields
           confirmLabel="✓ Abrir Comanda"
           onClose={() => setShowComandaMesa(null)}
@@ -598,6 +631,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
           title={`Adicionar itens — Mesa ${showAddItemMesa.numero}`}
           mesa={showAddItemMesa}
           produtos={produtos}
+          pizzaSizes={pizzaSizes}
+          pizzaBordas={pizzaBordas}
+          pizzaBordaPrecos={pizzaBordaPrecos}
           confirmLabel="✓ Adicionar itens"
           onClose={() => setShowAddItemMesa(null)}
           onConfirm={(items) => adicionarItens(showAddItemMesa, items)}
@@ -795,31 +831,67 @@ function NovaMesaModal({ onClose, onConfirm }: { onClose: () => void; onConfirm:
   );
 }
 
-function ComandaItemsModal({ title, mesa, produtos, showMesaFields = false, confirmLabel, onClose, onConfirm }: { title: string; mesa: Mesa; produtos: Produto[]; showMesaFields?: boolean; confirmLabel: string; onClose: () => void; onConfirm: (items: ModalItem[], pessoas: number, nome: string) => void }) {
+function ComandaItemsModal({
+  title, mesa, produtos, pizzaSizes, pizzaBordas, pizzaBordaPrecos,
+  showMesaFields = false, confirmLabel, onClose, onConfirm,
+}: {
+  title: string; mesa: Mesa; produtos: Produto[];
+  pizzaSizes: PizzaSize[]; pizzaBordas: PizzaBorda[]; pizzaBordaPrecos: PizzaBordaPreco[];
+  showMesaFields?: boolean; confirmLabel: string; onClose: () => void;
+  onConfirm: (items: ModalItem[], pessoas: number, nome: string) => void;
+}) {
   const [pessoas, setPessoas] = useState(mesa.capacidade || 2);
   const [nome, setNome] = useState("");
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<ModalItem[]>([]);
+  const [configProduto, setConfigProduto] = useState<Produto | null>(null);
+
+  const isPizza = (p?: Produto | null) => {
+    if (!p) return false;
+    const n = (p.nome || "").toLowerCase();
+    const c = (p.categoria || "").toLowerCase();
+    return !!p.permite_meio_a_meio || n.includes("pizza") || c.includes("pizza");
+  };
+
+  const categorias = useMemo(() => {
+    const map = new Map<string, Produto[]>();
+    produtos.forEach((p) => {
+      const cat = p.categoria || "Outros";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(p);
+    });
+    return Array.from(map.entries());
+  }, [produtos]);
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    if (!s) return [];
-    return produtos.filter((produto) => produto.nome.toLowerCase().includes(s) || (produto.categoria || "").toLowerCase().includes(s)).slice(0, 12);
+    if (!s) return [] as Produto[];
+    return produtos.filter((p) => p.nome.toLowerCase().includes(s) || (p.categoria || "").toLowerCase().includes(s)).slice(0, 20);
   }, [produtos, search]);
 
-  const addProduct = (produto: Produto) => {
-    setItems((current) => {
-      const existing = current.find((item) => item.id === produto.id);
-      if (existing) return current.map((item) => item.id === produto.id ? { ...item, quantidade: item.quantidade + 1 } : item);
-      return [...current, { ...produto, quantidade: 1 }];
+  const addModalItem = (item: ModalItem) => {
+    setItems((cur) => {
+      const existing = cur.find((it) => it.id === item.id && (it.observacoes || "") === (item.observacoes || ""));
+      if (existing) return cur.map((it) => it === existing ? { ...it, quantidade: it.quantidade + item.quantidade } : it);
+      return [...cur, item];
     });
+  };
+
+  const handleProductClick = (produto: Produto) => {
+    if (isPizza(produto) || produto.descricao) {
+      setConfigProduto(produto);
+      setSearch("");
+      return;
+    }
+    addModalItem({ id: produto.id, nome: produto.nome, categoria: produto.categoria, preco_sugerido: produto.preco_sugerido, quantidade: 1 });
     setSearch("");
   };
 
-  const changeQty = (id: string, delta: number) => {
-    setItems((current) => current.flatMap((item) => {
-      if (item.id !== id) return [item];
-      const next = item.quantidade + delta;
-      return next <= 0 ? [] : [{ ...item, quantidade: next }];
+  const changeQty = (key: string, delta: number) => {
+    setItems((cur) => cur.flatMap((it) => {
+      if ((it.id + "::" + (it.observacoes || "")) !== key) return [it];
+      const next = it.quantidade + delta;
+      return next <= 0 ? [] : [{ ...it, quantidade: next }];
     }));
   };
 
@@ -849,7 +921,7 @@ function ComandaItemsModal({ title, mesa, produtos, showMesaFields = false, conf
         {!!filtered.length && (
           <div className="prod-results">
             {filtered.map((produto) => (
-              <button className="prod-result-item" key={produto.id} onClick={() => addProduct(produto)}>
+              <button className="prod-result-item" key={produto.id} onClick={() => handleProductClick(produto)}>
                 <span><strong>{produto.nome}</strong><small>{produto.categoria || "Produto"}</small></span>
                 <b>{brl(Number(produto.preco_sugerido || 0))}</b>
               </button>
@@ -858,24 +930,257 @@ function ComandaItemsModal({ title, mesa, produtos, showMesaFields = false, conf
         )}
       </FormField>
 
+      {!search && (
+        <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 8 }}>
+          {categorias.map(([cat, prods]) => (
+            <div key={cat} style={{ marginBottom: 12 }}>
+              <div className="dp-section-label" style={{ marginBottom: 6 }}>{cat}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 6 }}>
+                {prods.map((produto) => (
+                  <button
+                    key={produto.id}
+                    className="prod-result-item"
+                    onClick={() => handleProductClick(produto)}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, padding: 8 }}
+                  >
+                    <strong style={{ fontSize: 12, lineHeight: 1.2, textAlign: "left" }}>{produto.nome}</strong>
+                    <b style={{ color: "var(--fire2, #ff8c1a)", fontSize: 12 }}>{brl(Number(produto.preco_sugerido || 0))}</b>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!!items.length && (
         <div>
           <div className="dp-section-label">Itens da comanda</div>
           <div className="modal-items">
-            {items.map((item) => (
-              <div className="modal-item" key={item.id}>
-                <div className="mi-qty-ctrl"><button className="mi-btn" onClick={() => changeQty(item.id, -1)}>−</button><span className="mi-qty">{item.quantidade}</span><button className="mi-btn" onClick={() => changeQty(item.id, 1)}>+</button></div>
-                <span className="mi-name">{item.nome}</span>
-                <span className="mi-price">{brl(Number(item.preco_sugerido || 0) * item.quantidade)}</span>
-                <button className="mi-del" onClick={() => changeQty(item.id, -999)}>×</button>
-              </div>
-            ))}
+            {items.map((item) => {
+              const key = item.id + "::" + (item.observacoes || "");
+              return (
+                <div className="modal-item" key={key} style={{ flexWrap: "wrap" }}>
+                  <div className="mi-qty-ctrl"><button className="mi-btn" onClick={() => changeQty(key, -1)}>−</button><span className="mi-qty">{item.quantidade}</span><button className="mi-btn" onClick={() => changeQty(key, 1)}>+</button></div>
+                  <span className="mi-name">{item.nome}</span>
+                  <span className="mi-price">{brl(Number(item.preco_sugerido || 0) * item.quantidade)}</span>
+                  <button className="mi-del" onClick={() => changeQty(key, -999)}>×</button>
+                  {item.observacoes && <div style={{ width: "100%", fontSize: 11, color: "var(--text3, #888)", paddingLeft: 4 }}>📝 {item.observacoes}</div>}
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {configProduto && (
+        <ProductConfigDialog
+          produto={configProduto}
+          produtos={produtos}
+          pizzaSizes={pizzaSizes}
+          pizzaBordas={pizzaBordas}
+          pizzaBordaPrecos={pizzaBordaPrecos}
+          isPizza={isPizza(configProduto)}
+          onClose={() => setConfigProduto(null)}
+          onAdd={(item) => { addModalItem(item); setConfigProduto(null); }}
+        />
       )}
     </ModalShell>
   );
 }
+
+function ProductConfigDialog({
+  produto, produtos, pizzaSizes, pizzaBordas, pizzaBordaPrecos, isPizza,
+  onClose, onAdd,
+}: {
+  produto: Produto; produtos: Produto[];
+  pizzaSizes: PizzaSize[]; pizzaBordas: PizzaBorda[]; pizzaBordaPrecos: PizzaBordaPreco[];
+  isPizza: boolean;
+  onClose: () => void;
+  onAdd: (item: ModalItem) => void;
+}) {
+  const [qty, setQty] = useState(1);
+  const [obs, setObs] = useState("");
+  const [sizeId, setSizeId] = useState<string>("");
+  const [extraFlavors, setExtraFlavors] = useState<string[]>([]);
+  const [bordaId, setBordaId] = useState<string>("");
+  const [flavorSearch, setFlavorSearch] = useState("");
+
+  const SIZE_OPTIONS = useMemo(() => pizzaSizes.map((s) => ({
+    id: s.slug || s.id, tamanhoId: s.id, label: s.nome,
+    multiplier: Number(s.multiplicador) || 1,
+    maxFlavors: s.max_sabores || 1, slices: s.fatias || 1,
+    descricao: s.descricao || "",
+  })), [pizzaSizes]);
+
+  const selectedSize = sizeId ? SIZE_OPTIONS.find((s) => s.id === sizeId) : undefined;
+  const maxExtras = selectedSize ? Math.max(0, selectedSize.maxFlavors - 1) : 0;
+  const selectedExtraIds = extraFlavors.filter(Boolean).slice(0, maxExtras);
+
+  const flavorCandidates = useMemo(() => produtos.filter((p) => {
+    if (p.id === produto.id) return false;
+    const n = (p.nome || "").toLowerCase();
+    const c = (p.categoria || "").toLowerCase();
+    return !!p.permite_meio_a_meio || n.includes("pizza") || c.includes("pizza");
+  }), [produtos, produto.id]);
+
+  const visibleFlavors = useMemo(() => {
+    const q = flavorSearch.trim().toLowerCase();
+    if (!q) return flavorCandidates.slice(0, 30);
+    return flavorCandidates.filter((p) => p.nome.toLowerCase().includes(q)).slice(0, 30);
+  }, [flavorCandidates, flavorSearch]);
+
+  const getBordaPrice = (bid: string, tid: string) => Number(pizzaBordaPrecos.find((x) => x.borda_id === bid && x.tamanho_id === tid)?.preco || 0);
+  const selectedBorda = pizzaBordas.find((b) => b.id === bordaId);
+
+  const computePizzaPrice = () => {
+    if (!selectedSize) return Number(produto.preco_sugerido || 0);
+    const prices = [Number(produto.preco_sugerido || 0)];
+    selectedExtraIds.forEach((id) => {
+      const f = produtos.find((p) => p.id === id);
+      if (f) prices.push(Number(f.preco_sugerido || 0));
+    });
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const base = avg * selectedSize.multiplier;
+    const bp = selectedBorda && selectedSize.tamanhoId ? getBordaPrice(selectedBorda.id, selectedSize.tamanhoId) : 0;
+    return Math.round((base + bp) * 100) / 100;
+  };
+
+  const finalPrice = isPizza ? computePizzaPrice() : Number(produto.preco_sugerido || 0);
+
+  const toggleFlavor = (id: string) => {
+    setExtraFlavors((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= maxExtras) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const handleAdd = () => {
+    if (isPizza && !selectedSize) { toast.error("Selecione o tamanho da pizza"); return; }
+    let composedName = produto.nome;
+    let composedObs = obs;
+    let composedId = produto.id;
+
+    if (isPizza && selectedSize) {
+      const flavorObjs = selectedExtraIds.map((id) => produtos.find((p) => p.id === id)).filter((p): p is Produto => !!p);
+      const allNames = [produto.nome, ...flavorObjs.map((f) => f.nome)];
+      const total = allNames.length;
+      const fraction = total === 2 ? "½" : total === 3 ? "⅓" : total === 4 ? "¼" : "";
+      const baseName = total === 1
+        ? `${produto.nome} (${selectedSize.label})`
+        : `${allNames.map((n) => `${fraction} ${n}`).join(" / ")} (${selectedSize.label})`;
+      composedName = selectedBorda ? `${baseName} • Borda ${selectedBorda.nome}` : baseName;
+      composedId = `${produto.id}__${selectedSize.id}__${selectedExtraIds.join("_")}__${selectedBorda?.id || "noborda"}`;
+      const parts: string[] = [];
+      if (total > 1) parts.push(`${total} sabores`);
+      if (selectedBorda) parts.push(`Borda ${selectedBorda.nome}`);
+      if (obs) parts.push(obs);
+      composedObs = parts.join(". ");
+    }
+
+    onAdd({
+      id: composedId,
+      baseProductId: produto.id,
+      nome: composedName,
+      categoria: produto.categoria,
+      preco_sugerido: finalPrice,
+      quantidade: qty,
+      observacoes: composedObs || undefined,
+    });
+  };
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+    >
+      <div style={{ background: "var(--card, #1a1a1a)", borderRadius: 12, maxWidth: 560, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", border: "1px solid var(--border, #333)" }}>
+        <div style={{ padding: 16, borderBottom: "1px solid var(--border, #333)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <strong style={{ fontSize: 16 }}>{produto.nome}</strong>
+          <button onClick={onClose} style={{ background: "transparent", border: 0, color: "inherit", fontSize: 20, cursor: "pointer" }}>✕</button>
+        </div>
+        <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
+          {produto.descricao && <div style={{ fontSize: 12, color: "var(--text3, #999)", marginBottom: 12 }}>{produto.descricao}</div>}
+          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--fire2, #ff8c1a)", marginBottom: 12 }}>{brl(finalPrice)}</div>
+
+          {isPizza && (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>📏 Escolha o tamanho</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(110px,1fr))", gap: 6, marginBottom: 14 }}>
+                {SIZE_OPTIONS.map((s) => (
+                  <button key={s.id} onClick={() => { setSizeId(s.id); setExtraFlavors((prev) => prev.slice(0, s.maxFlavors - 1)); }}
+                    style={{ padding: 8, borderRadius: 8, border: sizeId === s.id ? "2px solid var(--fire, #ff6b1a)" : "1.5px solid var(--border, #333)", background: sizeId === s.id ? "rgba(255,69,0,.1)" : "transparent", cursor: "pointer", color: "inherit" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{s.label}</div>
+                    <div style={{ fontSize: 10, color: "var(--text3, #999)" }}>{s.maxFlavors} sab · {s.slices} fat</div>
+                  </button>
+                ))}
+              </div>
+
+              {selectedSize && selectedSize.maxFlavors > 1 && (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                    🍕 Sabores adicionais <span style={{ fontSize: 11, color: "var(--text3, #999)" }}>(até {maxExtras} · {selectedExtraIds.length} selecionado{selectedExtraIds.length !== 1 ? "s" : ""})</span>
+                  </div>
+                  <input className="form-input" placeholder="Pesquisar sabor..." value={flavorSearch} onChange={(e) => setFlavorSearch(e.target.value)} style={{ marginBottom: 6 }} />
+                  <div style={{ maxHeight: 180, overflowY: "auto", marginBottom: 14, border: "1px solid var(--border, #333)", borderRadius: 8 }}>
+                    {visibleFlavors.map((f) => {
+                      const sel = selectedExtraIds.includes(f.id);
+                      return (
+                        <button key={f.id} onClick={() => toggleFlavor(f.id)}
+                          style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, padding: 8, background: sel ? "rgba(255,69,0,.1)" : "transparent", border: 0, borderBottom: "1px solid var(--border, #333)", cursor: "pointer", color: "inherit", textAlign: "left" }}>
+                          <span style={{ width: 18, height: 18, border: "1.5px solid var(--fire, #ff6b1a)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>{sel ? "✓" : ""}</span>
+                          <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{f.nome}</span>
+                          <small style={{ fontSize: 11, color: "var(--text3, #999)" }}>{brl(Number(f.preco_sugerido || 0))}</small>
+                        </button>
+                      );
+                    })}
+                    {!visibleFlavors.length && <div style={{ padding: 12, textAlign: "center", fontSize: 12, color: "var(--text3, #999)" }}>Nenhum sabor disponível.</div>}
+                  </div>
+                </>
+              )}
+
+              {selectedSize && pizzaBordas.length > 0 && (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>🥯 Borda recheada <span style={{ fontSize: 11, color: "var(--text3, #999)" }}>(opcional)</span></div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 6, marginBottom: 14 }}>
+                    <button onClick={() => setBordaId("")} style={{ padding: 8, borderRadius: 8, border: !bordaId ? "2px solid var(--fire, #ff6b1a)" : "1.5px solid var(--border, #333)", background: !bordaId ? "rgba(255,69,0,.1)" : "transparent", cursor: "pointer", color: "inherit" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>Sem borda</div>
+                      <div style={{ fontSize: 10, color: "var(--fire2, #ff8c1a)" }}>Grátis</div>
+                    </button>
+                    {pizzaBordas.map((b) => {
+                      const price = selectedSize.tamanhoId ? getBordaPrice(b.id, selectedSize.tamanhoId) : 0;
+                      return (
+                        <button key={b.id} onClick={() => setBordaId(b.id)} style={{ padding: 8, borderRadius: 8, border: bordaId === b.id ? "2px solid var(--fire, #ff6b1a)" : "1.5px solid var(--border, #333)", background: bordaId === b.id ? "rgba(255,69,0,.1)" : "transparent", cursor: "pointer", color: "inherit" }}>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{b.nome}</div>
+                          <div style={{ fontSize: 10, color: "var(--fire2, #ff8c1a)" }}>+ {brl(price)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>📝 Observações <span style={{ fontSize: 11, color: "var(--text3, #999)" }}>(opcional)</span></div>
+          <textarea className="form-input" rows={2} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex: sem cebola, bem assada..." />
+        </div>
+        <div style={{ padding: 12, borderTop: "1px solid var(--border, #333)", display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid var(--border, #333)", borderRadius: 8, padding: "4px 8px" }}>
+            <button onClick={() => setQty((q) => Math.max(1, q - 1))} style={{ background: "transparent", border: 0, color: "inherit", fontSize: 16, cursor: "pointer" }}>−</button>
+            <span style={{ minWidth: 20, textAlign: "center" }}>{qty}</span>
+            <button onClick={() => setQty((q) => q + 1)} style={{ background: "transparent", border: 0, color: "inherit", fontSize: 16, cursor: "pointer" }}>+</button>
+          </div>
+          <button className="mf-btn primary" style={{ flex: 1 }} onClick={handleAdd} disabled={isPizza && !selectedSize}>
+            🛒 Adicionar {brl(finalPrice * qty)}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function FecharContaModal({ info, onClose, onConfirm }: { info?: MesaComputed; onClose: () => void; onConfirm: (forma: string) => void }) {
   const [forma, setForma] = useState("pix");
