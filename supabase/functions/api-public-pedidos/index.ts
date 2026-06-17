@@ -277,7 +277,13 @@ serve(async (req) => {
           telefone_contato: telefone || body.customer.telefone,
           logradouro: body.customer.endereco,
         });
+        if (leadId) {
+          await supabase.from("leads")
+            .update({ endereco_logradouro: body.customer.endereco })
+            .eq("id", leadId);
+        }
       }
+
 
       await supabase.from("pedido_eventos").insert({
         pedido_id: pedido.id,
