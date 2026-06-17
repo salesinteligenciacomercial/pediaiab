@@ -525,7 +525,7 @@ export function PedidoChatModal({
 
           await supabase.functions.invoke("enviar-whatsapp", {
             body: {
-              companyId,
+              company_id: companyId,
               numero: telefoneEnvio,
               mensagem,
               origem: "chat-pedido",
