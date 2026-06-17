@@ -155,6 +155,7 @@ export function PedidoChatModal({
           .eq("company_id", companyId)
           .maybeSingle(),
         leadId
+        leadId
           ? (supabase.from("leads") as any)
               .select("endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, endereco_cep")
               .eq("id", leadId)
@@ -188,7 +189,49 @@ export function PedidoChatModal({
         setPizzaBordaPrecos([]);
       }
 
-      const leadEnd = leadRes?.data;
+      // 1) Endereço salvo direto no lead
+      let leadEnd: any = leadRes?.data;
+
+      // 2) Fallback: buscar lead pelo telefone (mesmo sem leadId vinculado)
+      if ((!leadEnd || !leadEnd.endereco_logradouro) && clienteTelefone) {
+        const telLimpo = String(clienteTelefone).replace(/\D/g, "");
+        if (telLimpo.length >= 10) {
+          const { data: leadByPhone } = await (supabase.from("leads") as any)
+            .select("endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, endereco_cep")
+            .eq("company_id", companyId)
+            .or(`telefone.eq.${telLimpo},phone.eq.${telLimpo}`)
+            .not("endereco_logradouro", "is", null)
+            .limit(1)
+            .maybeSingle();
+          if (leadByPhone?.endereco_logradouro) leadEnd = leadByPhone;
+        }
+      }
+
+      // 3) Fallback final: último pedido_enderecos do telefone
+      if ((!leadEnd || !leadEnd.endereco_logradouro) && clienteTelefone) {
+        const telLimpo = String(clienteTelefone).replace(/\D/g, "");
+        if (telLimpo.length >= 10) {
+          const { data: lastEnd } = await (supabase.from("pedido_enderecos" as any) as any)
+            .select("logradouro, numero, complemento, bairro, cidade, estado, cep")
+            .eq("company_id", companyId)
+            .eq("telefone_contato", telLimpo)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (lastEnd?.logradouro) {
+            leadEnd = {
+              endereco_logradouro: lastEnd.logradouro,
+              endereco_numero: lastEnd.numero,
+              endereco_complemento: lastEnd.complemento,
+              endereco_bairro: lastEnd.bairro,
+              endereco_cidade: lastEnd.cidade,
+              endereco_estado: lastEnd.estado,
+              endereco_cep: lastEnd.cep,
+            };
+          }
+        }
+      }
+
       if (leadEnd && leadEnd.endereco_logradouro) {
         setCustomer((prev) => ({
           ...prev,
