@@ -401,6 +401,47 @@ export default function CardapioPublico() {
   const [accountData, setAccountData] = useState<{ pedidos: number; total: number; pontos: number } | null>(null);
   const isLogged = !!(customer.nome && customer.telefone);
 
+  // 🔐 "Login" automático por telefone: ao informar telefone válido, busca dados salvos
+  const lastFetchedPhone = useRef<string>("");
+  useEffect(() => {
+    const tel = String(customer.telefone || "").replace(/\D/g, "");
+    if (tel.length < 10 || tel === lastFetchedPhone.current) return;
+    lastFetchedPhone.current = tel;
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase.functions.invoke("api-public-pedidos", {
+          body: { action: "customer", slug, telefone: tel },
+        });
+        if (data?.success) {
+          setCustomer((prev) => {
+            const next = { ...prev };
+            if (!prev.nome && data.nome) next.nome = data.nome;
+            if (!prev.endereco && data.endereco?.logradouro) {
+              const e = data.endereco;
+              next.endereco = [e.logradouro, e.numero, e.bairro, e.cidade]
+                .filter(Boolean).join(", ");
+            }
+            // Persistir no localStorage para próximas visitas
+            try {
+              localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
+                nome: next.nome, telefone: next.telefone,
+                tipo_atendimento: next.tipo_atendimento,
+                forma_pagamento: next.forma_pagamento,
+                endereco: next.endereco,
+              }));
+            } catch {/* ignore */}
+            return next;
+          });
+          if (data.nome || data.endereco?.logradouro) {
+            toast.success("Bem-vindo de volta! Seus dados foram preenchidos.");
+          }
+        }
+      } catch (e) { console.error("auto-login customer:", e); }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [customer.telefone, slug]);
+
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
