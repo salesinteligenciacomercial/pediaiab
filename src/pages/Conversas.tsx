@@ -1168,38 +1168,6 @@ function Conversas() {
         if (conv.isGroup === true) return false;
         return conv.status === 'resolved';
       });
-    } else if (filter === "responsible") {
-      // ✅ Filtro "Responsável" ATUALIZADO
-      // 🆕 Agora inclui: atendimentos ativos do usuário atual + responsáveis legados
-      console.log('🔍 [RESPONSIBLE] Verificando filtro responsável, activeAttendances:', activeAttendances.size, 'currentUserId:', currentUserId);
-      filtered = filtered.filter(conv => {
-        if (conv.isGroup === true) return false;
-        
-        const telefone = (conv.phoneNumber || conv.id).replace(/[^0-9]/g, '');
-        
-        // 🆕 NOVO: Verificar se o usuário atual está atendendo ativamente este contato
-        const isAttending = isCurrentUserAttending(telefone);
-        if (isAttending) {
-          console.log(`✅ [RESPONSIBLE] ${conv.contactName} (${telefone}) está em atendimento pelo usuário atual`);
-          return true;
-        }
-        
-        // Manter lógica legada: responsável ou transferido para mim
-        const isLegacyResponsible = conv.responsavel === currentUserId || conv.assignedUser?.id === currentUserId;
-        if (isLegacyResponsible) {
-          console.log(`✅ [RESPONSIBLE] ${conv.contactName} é responsável legado`);
-        }
-        return isLegacyResponsible;
-      });
-    } else if (filter === "transferred") {
-      // ✅ Filtro "Transferência"
-      filtered = filtered.filter(conv => {
-        if (conv.isGroup === true) return false;
-        return conv.assignedUser?.id === currentUserId;
-      });
-    } else if (filter === "instagram") {
-      // ✅ Filtro "Instagram": Mostrar APENAS conversas do Instagram Direct
-      filtered = filtered.filter(conv => conv.channel === 'instagram');
     }
     console.log('📊 [DEBUG] Após filtro de status:', filtered.length);
 
