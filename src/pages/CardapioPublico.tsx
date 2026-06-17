@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
+import { registerSW } from "virtual:pwa-register";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, User, Star, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { APP_NAME, MARKETPLACE_PATH, MARKETPLACE_TITLE } from "@/config/branding";
+import { useCardapioPwa } from "@/hooks/useCardapioPwa";
+import { CardapioInstallBanner } from "@/components/cardapio/CardapioInstallBanner";
 
 // ───────────────────────────────────────────────────────────────
 // CSS extracted from the approved mockup (dark theme, mobile-first)
@@ -301,6 +304,31 @@ const CARDAPIO_CSS = `
   .c-hero-emoji{opacity:.85}
   .c-hero-content{padding-right:140px}
 }
+
+.c-install-banner{position:fixed;left:12px;right:12px;bottom:72px;z-index:97;animation:c-fadeUp .35s ease both}
+.c-install-banner-inner{display:flex;align-items:center;gap:10px;background:rgba(26,20,16,.97);
+  border:1px solid var(--border2);border-radius:14px;padding:10px 12px;backdrop-filter:blur(12px);
+  box-shadow:0 8px 32px rgba(0,0,0,.45)}
+.c-install-banner-icon{font-size:22px;flex-shrink:0}
+.c-install-banner-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.c-install-banner-text strong{font-size:12.5px;font-weight:700;color:var(--text)}
+.c-install-banner-text span{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-install-banner-btn{flex-shrink:0;border:none;border-radius:100px;padding:8px 14px;font-family:var(--font);
+  font-size:12px;font-weight:700;background:linear-gradient(135deg,var(--fire2),var(--fire));color:#fff;cursor:pointer}
+.c-install-banner-close{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.06);
+  color:var(--text3);cursor:pointer;font-size:13px;line-height:1}
+
+.c-install-ios-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
+  display:flex;align-items:flex-end;justify-content:center;animation:c-fade .25s ease}
+.c-install-ios-sheet{background:var(--dark2);border:1px solid var(--border2);border-radius:20px 20px 0 0;
+  width:100%;max-width:480px;padding:22px 20px 28px;color:var(--text);font-family:var(--font)}
+.c-install-ios-title{font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:14px}
+.c-install-ios-steps{margin:0 0 18px 18px;display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--text2);line-height:1.5}
+.c-install-ios-steps strong{color:var(--text)}
+.c-ios-share{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;
+  background:rgba(255,255,255,.08);font-size:14px;vertical-align:middle}
+.c-install-ios-ok{width:100%;height:44px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--fire2),var(--fire));
+  color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer}
 `;
 
 type Product = {
@@ -401,6 +429,10 @@ export default function CardapioPublico() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountData, setAccountData] = useState<{ pedidos: number; total: number; pontos: number } | null>(null);
   const isLogged = !!(customer.nome && customer.telefone);
+
+  useEffect(() => {
+    registerSW({ immediate: true });
+  }, []);
 
   // 🔐 "Login" automático por telefone: ao informar telefone válido, busca dados salvos
   const lastFetchedPhone = useRef<string>("");
@@ -670,6 +702,15 @@ export default function CardapioPublico() {
     document.getElementById(`c-sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const nomeLoja = config.nome_loja || APP_NAME;
+  const pwa = useCardapioPwa({
+    slug,
+    storeName: nomeLoja,
+    logoUrl: config.logo_url,
+    themeColor: config.cor_primaria || "#FF4500",
+    enabled: !loading && !notFound,
+  });
+
   if (loading) {
     return (
       <div className="cardapio-root" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -691,7 +732,6 @@ export default function CardapioPublico() {
     );
   }
 
-  const nomeLoja = config.nome_loja || APP_NAME;
   const telWa = (config.telefone_loja || "").replace(/\D/g, "");
   const aberto = config.aberto !== false;
   const minimo = Number(config.pedido_minimo || 0);
@@ -744,6 +784,9 @@ export default function CardapioPublico() {
           <a className="c-icon-btn" href="https://instagram.com/roshpizzaria" target="_blank" rel="noopener noreferrer" title="Instagram">📸</a>
           <a className="c-icon-btn" href="https://maps.app.goo.gl/c1MTAgZpNjRQSVKCA" target="_blank" rel="noopener noreferrer" title="Localização">📍</a>
           <button className="c-icon-btn" onClick={() => { setSearchOpen((v) => !v); setTimeout(() => searchRef.current?.focus(), 60); }} title="Buscar">🔍</button>
+          {(pwa.isMobile && !pwa.isInstalled) && (
+            <button className="c-icon-btn" onClick={() => void pwa.promptInstall()} title="Instalar app">📲</button>
+          )}
           <button className="c-icon-btn" onClick={openAccount} title="Minha conta" aria-label="Minha conta">
             <User size={16} />
           </button>
@@ -919,6 +962,17 @@ export default function CardapioPublico() {
         <a className="c-wa-btn" href={`https://api.whatsapp.com/send/?phone=${telWa}`} target="_blank" rel="noopener noreferrer" title="WhatsApp">
           💬
         </a>
+      )}
+
+      {pwa.showBanner && (
+        <CardapioInstallBanner
+          storeName={nomeLoja}
+          isIos={pwa.isIos}
+          iosHintOpen={pwa.iosHintOpen}
+          onInstall={() => void pwa.promptInstall()}
+          onDismiss={pwa.dismissBanner}
+          onCloseIosHint={() => pwa.setIosHintOpen(false)}
+        />
       )}
 
       {/* PRODUCT MODAL */}
