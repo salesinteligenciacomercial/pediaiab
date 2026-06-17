@@ -157,6 +157,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itens, setItens] = useState<PedidoItem[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
+  const [pizzaBordas, setPizzaBordas] = useState<PizzaBorda[]>([]);
+  const [pizzaBordaPrecos, setPizzaBordaPrecos] = useState<PizzaBordaPreco[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FiltroMesa>("todos");
   const [viewMode, setViewMode] = useState<ViewMode>("mapa");
