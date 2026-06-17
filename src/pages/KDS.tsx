@@ -92,10 +92,11 @@ function PedidoCard({
   }, [pedido.created_at]);
 
   const nextLabel: Record<PedidoStatus, string> = {
+    novo:        "✓ Aceitar Pedido",
     aceito:      "▶ Iniciar Produção",
     em_producao: "✓ Pronto",
     pronto:      "✓ Entregue",
-    novo: "", saiu_entrega: "", entregue: "", cancelado: "",
+    saiu_entrega: "", entregue: "", cancelado: "",
   };
 
   return (
