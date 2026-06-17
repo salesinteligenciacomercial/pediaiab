@@ -65,7 +65,7 @@ import { useConversationSearch, loadAllUniqueConversations } from "@/hooks/useCo
 import { useActiveAttendance, TEMPO_ATENDIMENTO_ATIVO } from "@/hooks/useActiveAttendance";
 import { useAttendanceProtocol } from "@/hooks/useAttendanceProtocol";
 import * as evolutionAPI from "@/services/evolutionApi";
-import { ConversasAdvancedFilter, AdvancedFilters, defaultFilters } from "@/components/conversas/ConversasAdvancedFilter";
+
 import { ConversaTemplateSender } from "@/components/conversas/ConversaTemplateSender";
 import "@/styles/conversas-mockup.css";
 
@@ -432,8 +432,7 @@ function Conversas() {
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [filter, setFilter] = useState<"all" | "waiting" | "answered" | "resolved" | "group" | "responsible" | "transferred" | "instagram">("all");
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(defaultFilters);
+  const [filter, setFilter] = useState<"all" | "waiting" | "answered" | "resolved">("all");
   const [searchTerm, setSearchTerm] = useState("");
   // MELHORIA: Estado para busca debounced (otimização de performance)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -1129,10 +1128,6 @@ function Conversas() {
         }
         return true;
       });
-    } else if (filter === "group") {
-      // ✅ Filtro "Grupos": Mostrar APENAS grupos (bloqueados e não bloqueados aparecem aqui)
-      // 🔐 APENAS SUPER ADMIN pode ver este filtro
-      filtered = isSuperAdmin ? filtered.filter(conv => conv.isGroup === true) : [];
     } else if (filter === "waiting") {
       // ✅ Filtro "Aguardando": Contatos que enviaram mensagem E NÃO tem atendimento ativo
       filtered = filtered.filter(conv => {
@@ -1173,109 +1168,9 @@ function Conversas() {
         if (conv.isGroup === true) return false;
         return conv.status === 'resolved';
       });
-    } else if (filter === "responsible") {
-      // ✅ Filtro "Responsável" ATUALIZADO
-      // 🆕 Agora inclui: atendimentos ativos do usuário atual + responsáveis legados
-      console.log('🔍 [RESPONSIBLE] Verificando filtro responsável, activeAttendances:', activeAttendances.size, 'currentUserId:', currentUserId);
-      filtered = filtered.filter(conv => {
-        if (conv.isGroup === true) return false;
-        
-        const telefone = (conv.phoneNumber || conv.id).replace(/[^0-9]/g, '');
-        
-        // 🆕 NOVO: Verificar se o usuário atual está atendendo ativamente este contato
-        const isAttending = isCurrentUserAttending(telefone);
-        if (isAttending) {
-          console.log(`✅ [RESPONSIBLE] ${conv.contactName} (${telefone}) está em atendimento pelo usuário atual`);
-          return true;
-        }
-        
-        // Manter lógica legada: responsável ou transferido para mim
-        const isLegacyResponsible = conv.responsavel === currentUserId || conv.assignedUser?.id === currentUserId;
-        if (isLegacyResponsible) {
-          console.log(`✅ [RESPONSIBLE] ${conv.contactName} é responsável legado`);
-        }
-        return isLegacyResponsible;
-      });
-    } else if (filter === "transferred") {
-      // ✅ Filtro "Transferência"
-      filtered = filtered.filter(conv => {
-        if (conv.isGroup === true) return false;
-        return conv.assignedUser?.id === currentUserId;
-      });
-    } else if (filter === "instagram") {
-      // ✅ Filtro "Instagram": Mostrar APENAS conversas do Instagram Direct
-      filtered = filtered.filter(conv => conv.channel === 'instagram');
     }
     console.log('📊 [DEBUG] Após filtro de status:', filtered.length);
 
-    // 🆕 FILTROS AVANÇADOS
-    // Filtrar por tags
-    if (advancedFilters.tags.length > 0) {
-      filtered = filtered.filter(conv => {
-        if (!conv.tags || conv.tags.length === 0) return false;
-        return advancedFilters.tags.some(tag => conv.tags.includes(tag));
-      });
-    }
-
-    // Filtrar por responsáveis
-    if (advancedFilters.responsaveis.length > 0) {
-      filtered = filtered.filter(conv => {
-        const respId = conv.responsavel || conv.assignedUser?.id;
-        return respId && advancedFilters.responsaveis.includes(respId);
-      });
-    }
-
-    // Filtrar por valor
-    if (advancedFilters.comValor !== null) {
-      filtered = filtered.filter(conv => {
-        const temValor = conv.valor && parseFloat(conv.valor.replace(/[^0-9.,]/g, '').replace(',', '.')) > 0;
-        return advancedFilters.comValor ? temValor : !temValor;
-      });
-    }
-
-    // Filtrar por funil/etapa (requer leadId para buscar no banco - filtro básico por funnelStage)
-    if (advancedFilters.funilId || advancedFilters.etapaId) {
-      filtered = filtered.filter(conv => {
-        // Por enquanto, filtrar pelo funnelStage da conversa
-        // TODO: Fazer join com leads para filtro mais preciso
-        if (advancedFilters.etapaId) {
-          return conv.funnelStage === advancedFilters.etapaId;
-        }
-        return conv.funnelStage ? true : false;
-      });
-    }
-
-    // Filtrar por temperatura (baseado nas tags)
-    if (advancedFilters.temperatura) {
-      filtered = filtered.filter(conv => {
-        const tagsLower = conv.tags?.map(t => t.toLowerCase()) || [];
-        if (advancedFilters.temperatura === 'quente') {
-          return tagsLower.some(t => t.includes('quente') || t.includes('hot'));
-        } else if (advancedFilters.temperatura === 'morno') {
-          return tagsLower.some(t => t.includes('morno') || t.includes('warm'));
-        } else if (advancedFilters.temperatura === 'frio') {
-          return tagsLower.some(t => t.includes('frio') || t.includes('cold'));
-        }
-        return true;
-      });
-    }
-
-    // Filtrar por status da venda
-    if (advancedFilters.statusVenda) {
-      filtered = filtered.filter(conv => {
-        const tagsLower = conv.tags?.map(t => t.toLowerCase()) || [];
-        if (advancedFilters.statusVenda === 'ganho') {
-          return tagsLower.some(t => t.includes('ganho') || t.includes('fechado') || t.includes('won'));
-        } else if (advancedFilters.statusVenda === 'perdido') {
-          return tagsLower.some(t => t.includes('perdido') || t.includes('lost'));
-        } else if (advancedFilters.statusVenda === 'em_negociacao') {
-          return !tagsLower.some(t => t.includes('ganho') || t.includes('perdido') || t.includes('won') || t.includes('lost'));
-        }
-        return true;
-      });
-    }
-
-    console.log('📊 [DEBUG] Após filtros avançados:', filtered.length);
 
     // Aplicar busca local (para buscas curtas < 2 caracteres)
     if (debouncedSearchTerm.trim() && debouncedSearchTerm.trim().length < 2) {
@@ -1303,7 +1198,7 @@ function Conversas() {
       return bTime - aTime;
     });
     return filtered;
-  }, [conversations, filter, debouncedSearchTerm, currentUserId, blockedGroups, hasSearched, searchResults, pinnedConversations, hasActiveAttendance, isCurrentUserAttending, activeAttendances, isSuperAdmin, advancedFilters]);
+  }, [conversations, filter, debouncedSearchTerm, currentUserId, blockedGroups, hasSearched, searchResults, pinnedConversations, hasActiveAttendance, isCurrentUserAttending, activeAttendances, isSuperAdmin]);
 
   // Mensagens exibidas: sempre refletir state atual da conversa selecionada (evitar cache obsoleto)
   // ⚡ CORREÇÃO: Não limitar mensagens exibidas - mostrar todas para preservar histórico
@@ -8871,29 +8766,6 @@ function Conversas() {
               </Badge>
               <span className="text-xs">Pedidos Entregues</span>
             </Button>
-            {/* 🔐 Filtro de Grupos - APENAS SUPER ADMIN */}
-            {isSuperAdmin && (
-              <Button variant={filter === "group" ? "default" : "ghost"} size="sm" onClick={() => setFilter("group")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
-                <Badge variant="secondary" className="min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
-                  {conversations.filter(c => c.isGroup === true).length}
-                </Badge>
-                <span className="text-xs">Grupos</span>
-              </Button>
-            )}
-            <Button variant={filter === "instagram" ? "default" : "ghost"} size="sm" onClick={() => setFilter("instagram")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
-              <Badge variant="secondary" className="bg-pink-500 hover:bg-pink-600 text-white min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
-                {conversations.filter(c => c.channel === 'instagram').length}
-              </Badge>
-              <span className="text-xs flex items-center gap-0.5"><Instagram className="h-3 w-3" />Instagram</span>
-            </Button>
-            
-            {/* 🆕 Botão Filtros Avançados */}
-            <ConversasAdvancedFilter
-              companyId={userCompanyId}
-              filters={advancedFilters}
-              onFiltersChange={setAdvancedFilters}
-              allTags={allTags}
-            />
           </div>
         </div>
 
