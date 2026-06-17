@@ -347,12 +347,12 @@ export default function MesasView({ companyId }: { companyId: string }) {
     modalItems.map((item) => ({
       pedido_id: pedidoId,
       company_id: companyId,
-      produto_id: item.id,
+      produto_id: item.baseProductId || item.id,
       produto_nome: item.nome,
       quantidade: item.quantidade,
       valor_unitario: Number(item.preco_sugerido || 0),
       valor_total: Number(item.preco_sugerido || 0) * item.quantidade,
-      observacoes: null,
+      observacoes: item.observacoes || null,
     }));
 
   const atualizarTotalPedido = async (pedidoId: string, extraItems: ModalItem[] = []) => {
