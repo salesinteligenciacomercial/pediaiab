@@ -125,20 +125,58 @@ serve(async (req) => {
       }
       const { data: pedidos } = await supabase
         .from("pedidos")
-        .select("total, status")
+        .select("total, status, cliente_nome")
         .eq("company_id", store.company_id)
         .eq("cliente_telefone", tel);
       const validos = (pedidos || []).filter((p: any) => p.status !== "cancelado");
       const total = validos.reduce((s: number, p: any) => s + Number(p.total || 0), 0);
+
+      // Buscar lead com endereço
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("name, endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, endereco_cep")
+        .eq("company_id", store.company_id)
+        .or(`phone.eq.${tel},telefone.eq.${tel}`)
+        .maybeSingle();
+
+      // Fallback: último pedido_enderecos
+      let enderecoSalvo: any = null;
+      if (lead?.endereco_logradouro) {
+        enderecoSalvo = {
+          logradouro: lead.endereco_logradouro,
+          numero: lead.endereco_numero,
+          complemento: lead.endereco_complemento,
+          bairro: lead.endereco_bairro,
+          cidade: lead.endereco_cidade,
+          estado: lead.endereco_estado,
+          cep: lead.endereco_cep,
+        };
+      } else {
+        const { data: lastEnd } = await supabase
+          .from("pedido_enderecos")
+          .select("logradouro, numero, complemento, bairro, cidade, estado, cep")
+          .eq("company_id", store.company_id)
+          .eq("telefone_contato", tel)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastEnd?.logradouro) enderecoSalvo = lastEnd;
+      }
+
+      const nomeCliente = lead?.name || (validos[0] as any)?.cliente_nome || "";
+
       return new Response(JSON.stringify({
         success: true,
         pedidos: validos.length,
         total,
+        nome: nomeCliente,
+        endereco: enderecoSalvo,
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     if (body.action === "create") {
       if (!body.customer?.nome || !body.customer?.telefone || !body.items?.length) {
