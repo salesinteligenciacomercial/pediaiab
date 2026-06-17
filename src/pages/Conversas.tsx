@@ -8834,29 +8834,6 @@ function Conversas() {
               </Badge>
               <span className="text-xs">Pedidos Entregues</span>
             </Button>
-            {/* 🔐 Filtro de Grupos - APENAS SUPER ADMIN */}
-            {isSuperAdmin && (
-              <Button variant={filter === "group" ? "default" : "ghost"} size="sm" onClick={() => setFilter("group")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
-                <Badge variant="secondary" className="min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
-                  {conversations.filter(c => c.isGroup === true).length}
-                </Badge>
-                <span className="text-xs">Grupos</span>
-              </Button>
-            )}
-            <Button variant={filter === "instagram" ? "default" : "ghost"} size="sm" onClick={() => setFilter("instagram")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
-              <Badge variant="secondary" className="bg-pink-500 hover:bg-pink-600 text-white min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
-                {conversations.filter(c => c.channel === 'instagram').length}
-              </Badge>
-              <span className="text-xs flex items-center gap-0.5"><Instagram className="h-3 w-3" />Instagram</span>
-            </Button>
-            
-            {/* 🆕 Botão Filtros Avançados */}
-            <ConversasAdvancedFilter
-              companyId={userCompanyId}
-              filters={advancedFilters}
-              onFiltersChange={setAdvancedFilters}
-              allTags={allTags}
-            />
           </div>
         </div>
 
