@@ -617,6 +617,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
           title={`Nova Comanda — Mesa ${showComandaMesa.numero}`}
           mesa={showComandaMesa}
           produtos={produtos}
+          pizzaSizes={pizzaSizes}
+          pizzaBordas={pizzaBordas}
+          pizzaBordaPrecos={pizzaBordaPrecos}
           showMesaFields
           confirmLabel="✓ Abrir Comanda"
           onClose={() => setShowComandaMesa(null)}
@@ -628,6 +631,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
           title={`Adicionar itens — Mesa ${showAddItemMesa.numero}`}
           mesa={showAddItemMesa}
           produtos={produtos}
+          pizzaSizes={pizzaSizes}
+          pizzaBordas={pizzaBordas}
+          pizzaBordaPrecos={pizzaBordaPrecos}
           confirmLabel="✓ Adicionar itens"
           onClose={() => setShowAddItemMesa(null)}
           onConfirm={(items) => adicionarItens(showAddItemMesa, items)}
