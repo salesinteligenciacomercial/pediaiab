@@ -56,12 +56,19 @@ type Produto = {
   nome: string;
   categoria: string | null;
   preco_sugerido: number | null;
+  descricao?: string | null;
+  imagem_url?: string | null;
+  permite_meio_a_meio?: boolean | null;
 };
+
+type PizzaSize = { id: string; nome: string; slug: string; multiplicador: number; max_sabores: number; fatias: number; descricao?: string | null };
+type PizzaBorda = { id: string; nome: string; descricao?: string | null };
+type PizzaBordaPreco = { borda_id: string; tamanho_id: string; preco: number };
 
 type DerivedStatus = "livre" | "ocupada" | "pronto" | "alerta";
 type FiltroMesa = "todos" | DerivedStatus;
 type ViewMode = "mapa" | "lista";
-type ModalItem = Produto & { quantidade: number };
+type ModalItem = { id: string; nome: string; categoria: string | null; preco_sugerido: number | null; quantidade: number; observacoes?: string; baseProductId?: string };
 type ItemComStatus = PedidoItem & { pedidoStatus: PedidoStatus };
 
 const OPEN_STATUSES: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto"];
