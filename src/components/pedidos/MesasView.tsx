@@ -259,19 +259,22 @@ export default function MesasView({ companyId }: { companyId: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [mesasData, pedidosData, produtosData] = await Promise.all([fetchMesas(), fetchPedidos(), fetchProdutos()]);
+      const [mesasData, pedidosData, produtosData, pizzaData] = await Promise.all([fetchMesas(), fetchPedidos(), fetchProdutos(), fetchPizzaData()]);
       const itensData = await fetchItens(pedidosData.map((p) => p.id));
       setMesas(mesasData);
       setPedidos(pedidosData);
       setItens(itensData);
       setProdutos(produtosData);
+      setPizzaSizes(pizzaData.sizes);
+      setPizzaBordas(pizzaData.bordas);
+      setPizzaBordaPrecos(pizzaData.precos);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "tente novamente";
       toast.error(`Erro ao carregar mesas: ${message}`);
     } finally {
       setLoading(false);
     }
-  }, [fetchItens, fetchMesas, fetchPedidos, fetchProdutos]);
+  }, [fetchItens, fetchMesas, fetchPedidos, fetchProdutos, fetchPizzaData]);
 
   useEffect(() => {
     load();
