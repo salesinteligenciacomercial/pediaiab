@@ -505,13 +505,26 @@ export default function KDS() {
 
   // Advance status
   const handleAdvance = useCallback(async (pedido: Pedido) => {
-    const flow: PedidoStatus[] = ["aceito", "em_producao", "pronto", "entregue"];
+    const flow: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto", "entregue"];
     const idx = flow.indexOf(pedido.status);
     if (idx < 0 || idx >= flow.length - 1) return;
     const nextStatus = flow[idx + 1];
-    await (supabase.from("pedidos" as any) as any)
+
+    // Optimistic update
+    setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, status: nextStatus } : p)));
+
+    const { error } = await (supabase.from("pedidos" as any) as any)
       .update({ status: nextStatus })
       .eq("id", pedido.id);
+
+    if (error) {
+      console.error("[KDS] erro ao avançar pedido", error);
+      toast.error(`Erro ao avançar: ${error.message}`);
+      // Revert
+      setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, status: pedido.status } : p)));
+      return;
+    }
+
     await (supabase.from("pedido_eventos" as any) as any).insert({
       pedido_id: pedido.id,
       company_id: pedido.company_id,
