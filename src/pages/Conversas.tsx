@@ -8851,25 +8851,25 @@ function Conversas() {
               <Badge variant="secondary" className="min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
                 {conversations.filter(c => !c.isGroup || !blockedGroups.has(c.phoneNumber || c.id)).length}
               </Badge>
-              <span className="text-xs">Todos</span>
+              <span className="text-xs">Conversas</span>
             </Button>
             <Button variant={filter === "waiting" ? "default" : "ghost"} size="sm" onClick={() => setFilter("waiting")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
               <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-white min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
                 {waitingCount}
               </Badge>
-              <span className="text-xs">Esperando</span>
+              <span className="text-xs">Pedidos Esperando</span>
             </Button>
             <Button variant={filter === "answered" ? "default" : "ghost"} size="sm" onClick={() => setFilter("answered")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
               <Badge variant="default" className="bg-blue-500 hover:bg-blue-600 text-white min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
                 {answeredCount}
               </Badge>
-              <span className="text-xs">Em Atend.</span>
+              <span className="text-xs">Pedidos Feitos</span>
             </Button>
             <Button variant={filter === "resolved" ? "default" : "ghost"} size="sm" onClick={() => setFilter("resolved")} className="relative flex flex-col items-center gap-0.5 h-auto py-1 px-2">
               <Badge variant="secondary" className="min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs">
                 {conversations.filter(c => !c.isGroup && c.status === 'resolved').length}
               </Badge>
-              <span className="text-xs">Finalizados</span>
+              <span className="text-xs">Pedidos Entregues</span>
             </Button>
             {/* 🔐 Filtro de Grupos - APENAS SUPER ADMIN */}
             {isSuperAdmin && (
