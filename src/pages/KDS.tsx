@@ -533,6 +533,37 @@ export default function KDS() {
       tipo: "status_changed",
       descricao: `KDS: status alterado para ${nextStatus}`,
     });
+
+    // 📲 Notificar cliente via WhatsApp sobre avanço de status
+    try {
+      const telLimpo = String(pedido.cliente_telefone || "").replace(/\D/g, "");
+      if (telLimpo.length >= 10) {
+        const statusMsg: Record<PedidoStatus, string> = {
+          novo: "",
+          aceito: `✅ *Pedido aceito!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* foi aceito e entrará na fila de produção em breve. 🍕`,
+          em_producao: `👨‍🍳 *Pedido em produção!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* já está sendo preparado com carinho. 🔥`,
+          pronto: pedido.tipo_atendimento === "entrega"
+            ? `📦 *Pedido pronto!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* está pronto e logo sairá para entrega. 🛵`
+            : `📦 *Pedido pronto!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* está pronto para retirada. 🏠`,
+          saiu_entrega: `🛵 *Saiu para entrega!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* saiu para entrega e logo chegará até você. 🚀`,
+          entregue: `🎉 *Pedido entregue!*\n\nOlá ${pedido.cliente_nome}, esperamos que aproveite seu pedido *${pedido.codigo_pedido}*. Obrigado pela preferência! 🧡`,
+          cancelado: "",
+        };
+        const mensagem = statusMsg[nextStatus];
+        if (mensagem) {
+          await supabase.functions.invoke("enviar-whatsapp", {
+            body: {
+              company_id: pedido.company_id,
+              numero: telLimpo,
+              mensagem,
+              origem: "kds-status",
+            },
+          });
+        }
+      }
+    } catch (msgErr) {
+      console.error("[KDS] erro ao notificar cliente:", msgErr);
+    }
   }, []);
 
   const pedidosByStatus = KDS_STATUSES.reduce((acc, s) => {
