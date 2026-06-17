@@ -225,9 +225,10 @@ export default function MesasView({ companyId }: { companyId: string }) {
     const all: Produto[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data, error } = await supabase.from("produtos_servicos")
-        .select("id,nome,categoria,preco_sugerido")
+        .select("id,nome,categoria,preco_sugerido,descricao,imagem_url,permite_meio_a_meio")
         .eq("company_id", companyId)
         .eq("ativo", true)
+        .neq("tipo_produto", "insumo")
         .order("nome")
         .range(from, from + PAGE_SIZE - 1);
       if (error) throw error;
@@ -235,6 +236,22 @@ export default function MesasView({ companyId }: { companyId: string }) {
       if (!data || data.length < PAGE_SIZE) break;
     }
     return all;
+  }, [companyId]);
+
+  const fetchPizzaData = useCallback(async () => {
+    const [sizesRes, bordasRes] = await Promise.all([
+      supabase.from("pizza_tamanhos").select("id,nome,slug,multiplicador,max_sabores,fatias,descricao,ordem").eq("company_id", companyId).eq("ativo", true).order("ordem"),
+      supabase.from("pizza_bordas").select("id,nome,descricao,ordem").eq("company_id", companyId).eq("ativo", true).order("ordem"),
+    ]);
+    const sizes = (sizesRes.data || []) as PizzaSize[];
+    const bordas = (bordasRes.data || []) as PizzaBorda[];
+    const bordaIds = bordas.map((b) => b.id);
+    let precos: PizzaBordaPreco[] = [];
+    if (bordaIds.length) {
+      const { data } = await supabase.from("pizza_borda_precos").select("borda_id,tamanho_id,preco").in("borda_id", bordaIds);
+      precos = (data || []) as PizzaBordaPreco[];
+    }
+    return { sizes, bordas, precos };
   }, [companyId]);
 
   const load = useCallback(async () => {
