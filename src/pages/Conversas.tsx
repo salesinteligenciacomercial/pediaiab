@@ -65,7 +65,7 @@ import { useConversationSearch, loadAllUniqueConversations } from "@/hooks/useCo
 import { useActiveAttendance, TEMPO_ATENDIMENTO_ATIVO } from "@/hooks/useActiveAttendance";
 import { useAttendanceProtocol } from "@/hooks/useAttendanceProtocol";
 import * as evolutionAPI from "@/services/evolutionApi";
-import { ConversasAdvancedFilter, AdvancedFilters, defaultFilters } from "@/components/conversas/ConversasAdvancedFilter";
+
 import { ConversaTemplateSender } from "@/components/conversas/ConversaTemplateSender";
 import "@/styles/conversas-mockup.css";
 
@@ -432,8 +432,7 @@ function Conversas() {
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [filter, setFilter] = useState<"all" | "waiting" | "answered" | "resolved" | "group" | "responsible" | "transferred" | "instagram">("all");
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(defaultFilters);
+  const [filter, setFilter] = useState<"all" | "waiting" | "answered" | "resolved">("all");
   const [searchTerm, setSearchTerm] = useState("");
   // MELHORIA: Estado para busca debounced (otimização de performance)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -1129,10 +1128,6 @@ function Conversas() {
         }
         return true;
       });
-    } else if (filter === "group") {
-      // ✅ Filtro "Grupos": Mostrar APENAS grupos (bloqueados e não bloqueados aparecem aqui)
-      // 🔐 APENAS SUPER ADMIN pode ver este filtro
-      filtered = isSuperAdmin ? filtered.filter(conv => conv.isGroup === true) : [];
     } else if (filter === "waiting") {
       // ✅ Filtro "Aguardando": Contatos que enviaram mensagem E NÃO tem atendimento ativo
       filtered = filtered.filter(conv => {
