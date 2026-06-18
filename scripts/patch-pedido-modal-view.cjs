@@ -1,644 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { CARDAPIO_CSS, CARDAPIO_CHAT_CSS, categoryEmoji } from "@/styles/cardapioTheme";
+const fs = require("fs");
+const path = require("path");
 
-type Product = {
-  id: string;
-  nome: string;
-  descricao_curta?: string | null;
-  descricao_completa?: string | null;
-  descricao?: string | null;
-  preco_sugerido: number;
-  categoria?: string | null;
-  imagem_url?: string | null;
-  destaque_cardapio?: boolean;
-  permite_meio_a_meio?: boolean;
-};
+const filePath = path.join(__dirname, "../src/components/conversas/PedidoChatModal.tsx");
+const src = fs.readFileSync(filePath, "utf8");
+const marker = "  return (";
+const idx = src.lastIndexOf(marker);
+if (idx === -1) throw new Error("return marker not found");
 
-type CartItem = {
-  product: Product;
-  quantity: number;
-  observations: string;
-};
+const head = src.slice(0, idx);
 
-type PizzaSize = {
-  id: string;
-  nome: string;
-  slug: string;
-  multiplicador: number;
-  max_sabores: number;
-  fatias: number;
-  descricao?: string | null;
-};
-
-type PizzaBorda = { id: string; nome: string; descricao?: string | null; ordem?: number };
-type PizzaBordaPreco = { borda_id: string; tamanho_id: string; preco: number };
-
-interface PedidoChatModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  companyId: string;
-  leadId?: string | null;
-  clienteNome: string;
-  clienteTelefone: string;
-}
-
-const formatBRL = (v: number) =>
-  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const DEFAULT_SIZES: Array<{ id: string; tamanhoId: string; label: string; multiplier: number; maxFlavors: number; slices: number; descricao: string }> = [
-  { id: "brotinho", tamanhoId: "", label: "Brotinho", multiplier: 0.625, maxFlavors: 1, slices: 1, descricao: "Pizza com 1 sabor" },
-  { id: "pequena", tamanhoId: "", label: "Pequena", multiplier: 1, maxFlavors: 2, slices: 4, descricao: "Pizza com até 2 sabores" },
-  { id: "media", tamanhoId: "", label: "Média", multiplier: 1.343, maxFlavors: 2, slices: 6, descricao: "Pizza com até 2 sabores" },
-  { id: "grande", tamanhoId: "", label: "Grande", multiplier: 1.5, maxFlavors: 3, slices: 8, descricao: "Pizza com até 3 sabores" },
-  { id: "gigante", tamanhoId: "", label: "Gigante", multiplier: 1.875, maxFlavors: 3, slices: 12, descricao: "Pizza com até 3 sabores" },
-];
-
-export function PedidoChatModal({
-  open,
-  onOpenChange,
-  companyId,
-  leadId,
-  clienteNome,
-  clienteTelefone,
-}: PedidoChatModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [storeConfig, setStoreConfig] = useState<any>(null);
-  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
-  const [pizzaBordas, setPizzaBordas] = useState<PizzaBorda[]>([]);
-  const [pizzaBordaPrecos, setPizzaBordaPrecos] = useState<PizzaBordaPreco[]>([]);
-
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [activePill, setActivePill] = useState<string>("destaques");
-  const [flavorSearch, setFlavorSearch] = useState("");
-  const [step, setStep] = useState<"cardapio" | "checkout">("cardapio");
-  const menuScrollRef = useRef<HTMLDivElement>(null);
-
-  // Pizza configurator
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedObs, setSelectedObs] = useState("");
-  const [selectedQty, setSelectedQty] = useState(1);
-  const [selectedSize, setSelectedSize] = useState<string>("");
-  const [extraFlavors, setExtraFlavors] = useState<string[]>([]);
-  const [selectedBordaId, setSelectedBordaId] = useState<string>("");
-
-  const [customer, setCustomer] = useState({
-    nome: clienteNome || "",
-    telefone: clienteTelefone || "",
-    tipo_atendimento: "entrega",
-    forma_pagamento: "pix",
-    observacoes: "",
-    endereco: "",
-    endereco_numero: "",
-    endereco_complemento: "",
-    endereco_bairro: "",
-    endereco_cidade: "",
-    endereco_estado: "",
-    endereco_cep: "",
-    troco_para: "",
-  });
-  const [enderecoSalvo, setEnderecoSalvo] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setCustomer((prev) => ({
-        ...prev,
-        nome: clienteNome || prev.nome,
-        telefone: clienteTelefone || prev.telefone,
-      }));
-      loadData();
-    } else {
-      setCart([]);
-      setStep("cardapio");
-      setSearch("");
-      setActivePill("destaques");
-      resetSelection();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const resetSelection = () => {
-    setSelectedProduct(null);
-    setSelectedObs("");
-    setSelectedQty(1);
-    setSelectedSize("");
-    setExtraFlavors([]);
-    setSelectedBordaId("");
-  };
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [prodRes, cfgRes, leadRes, sizesRes, bordasRes] = await Promise.all([
-        (supabase.from("produtos_servicos") as any)
-          .select("id, nome, descricao, preco_sugerido, categoria, imagem_url, destaque_cardapio, permite_meio_a_meio")
-          .eq("company_id", companyId)
-          .eq("ativo", true)
-          .order("categoria")
-          .order("nome"),
-        (supabase.from("loja_configuracoes" as any) as any)
-          .select("*")
-          .eq("company_id", companyId)
-          .maybeSingle(),
-        leadId
-          ? (supabase.from("leads") as any)
-              .select("endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, endereco_cep")
-              .eq("id", leadId)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-        (supabase.from("pizza_tamanhos" as any) as any)
-          .select("id, nome, slug, multiplicador, max_sabores, fatias, descricao, ordem")
-          .eq("company_id", companyId)
-          .eq("ativo", true)
-          .order("ordem"),
-        (supabase.from("pizza_bordas" as any) as any)
-          .select("id, nome, descricao, ordem")
-          .eq("company_id", companyId)
-          .eq("ativo", true)
-          .order("ordem"),
-      ]);
-
-      if (prodRes.error) throw prodRes.error;
-      setProducts((prodRes.data || []) as Product[]);
-      setStoreConfig(cfgRes.data || {});
-      setPizzaSizes((sizesRes?.data || []) as PizzaSize[]);
-      const bordas = (bordasRes?.data || []) as PizzaBorda[];
-      setPizzaBordas(bordas);
-
-      if (bordas.length) {
-        const { data: precos } = await (supabase.from("pizza_borda_precos" as any) as any)
-          .select("borda_id, tamanho_id, preco")
-          .in("borda_id", bordas.map((b) => b.id));
-        setPizzaBordaPrecos((precos || []) as PizzaBordaPreco[]);
-      } else {
-        setPizzaBordaPrecos([]);
-      }
-
-      // 1) Endereço salvo direto no lead
-      let leadEnd: any = leadRes?.data;
-
-      // 2) Fallback: buscar lead pelo telefone (mesmo sem leadId vinculado)
-      if ((!leadEnd || !leadEnd.endereco_logradouro) && clienteTelefone) {
-        const telLimpo = String(clienteTelefone).replace(/\D/g, "");
-        if (telLimpo.length >= 10) {
-          const { data: leadByPhone } = await (supabase.from("leads") as any)
-            .select("endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, endereco_cep")
-            .eq("company_id", companyId)
-            .or(`telefone.eq.${telLimpo},phone.eq.${telLimpo}`)
-            .not("endereco_logradouro", "is", null)
-            .limit(1)
-            .maybeSingle();
-          if (leadByPhone?.endereco_logradouro) leadEnd = leadByPhone;
-        }
-      }
-
-      // 3) Fallback final: último pedido_enderecos do telefone
-      if ((!leadEnd || !leadEnd.endereco_logradouro) && clienteTelefone) {
-        const telLimpo = String(clienteTelefone).replace(/\D/g, "");
-        if (telLimpo.length >= 10) {
-          const { data: lastEnd } = await (supabase.from("pedido_enderecos" as any) as any)
-            .select("logradouro, numero, complemento, bairro, cidade, estado, cep")
-            .eq("company_id", companyId)
-            .eq("telefone_contato", telLimpo)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (lastEnd?.logradouro) {
-            leadEnd = {
-              endereco_logradouro: lastEnd.logradouro,
-              endereco_numero: lastEnd.numero,
-              endereco_complemento: lastEnd.complemento,
-              endereco_bairro: lastEnd.bairro,
-              endereco_cidade: lastEnd.cidade,
-              endereco_estado: lastEnd.estado,
-              endereco_cep: lastEnd.cep,
-            };
-          }
-        }
-      }
-
-      if (leadEnd && leadEnd.endereco_logradouro) {
-        setCustomer((prev) => ({
-          ...prev,
-          endereco: leadEnd.endereco_logradouro || "",
-          endereco_numero: leadEnd.endereco_numero || "",
-          endereco_complemento: leadEnd.endereco_complemento || "",
-          endereco_bairro: leadEnd.endereco_bairro || "",
-          endereco_cidade: leadEnd.endereco_cidade || "",
-          endereco_estado: leadEnd.endereco_estado || "",
-          endereco_cep: leadEnd.endereco_cep || "",
-        }));
-        setEnderecoSalvo(true);
-      } else {
-        setEnderecoSalvo(false);
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast.error("Erro ao carregar cardápio");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const SIZE_OPTIONS = useMemo(() => {
-    if (pizzaSizes.length > 0) {
-      return pizzaSizes.map((s) => ({
-        id: s.slug,
-        tamanhoId: s.id,
-        label: s.nome,
-        multiplier: Number(s.multiplicador) || 1,
-        maxFlavors: s.max_sabores || 1,
-        slices: s.fatias || 1,
-        descricao: s.descricao || "",
-      }));
-    }
-    return DEFAULT_SIZES;
-  }, [pizzaSizes]);
-
-  const isPizzaProduct = (product?: Product | null) => {
-    if (!product) return false;
-    const nome = (product.nome || "").toLowerCase();
-    const categoria = (product.categoria || "").toLowerCase();
-    return !!product.permite_meio_a_meio || nome.includes("pizza") || categoria.includes("pizza");
-  };
-
-  const selectedPizzaSize = selectedSize
-    ? SIZE_OPTIONS.find((s) => s.id === selectedSize)
-    : undefined;
-
-  const getBordaPriceForSize = (bordaId: string, tamanhoId: string) => {
-    const p = pizzaBordaPrecos.find((x) => x.borda_id === bordaId && x.tamanho_id === tamanhoId);
-    return Number(p?.preco || 0);
-  };
-
-  const selectedBorda = pizzaBordas.find((b) => b.id === selectedBordaId);
-
-  const computePizzaPrice = (mainProduct: Product, extraIds: string[], sizeMultiplier: number) => {
-    const basePrices = [Number(mainProduct.preco_sugerido || 0)];
-    extraIds.forEach((id) => {
-      const flavor = products.find((p) => p.id === id);
-      if (flavor) basePrices.push(Number(flavor.preco_sugerido || 0));
-    });
-    const avg = basePrices.reduce((a, b) => a + b, 0) / basePrices.length;
-    return Math.round(avg * sizeMultiplier * 100) / 100;
-  };
-
-  const filteredProducts = useMemo(() => {
-    if (!search.trim()) return products;
-    const term = search.trim().toLowerCase();
-    return products.filter(
-      (p) =>
-        p.nome.toLowerCase().includes(term) ||
-        (p.descricao_curta || "").toLowerCase().includes(term) ||
-        (p.descricao || "").toLowerCase().includes(term) ||
-        (p.categoria || "").toLowerCase().includes(term)
-    );
-  }, [products, search]);
-
-  const categories = useMemo(
-    () => Array.from(new Set(filteredProducts.map((p) => p.categoria || "Outros"))),
-    [filteredProducts]
-  );
-
-  const destaques = useMemo(
-    () => products.filter((p) => p.destaque_cardapio).slice(0, 10),
-    [products]
-  );
-  const topShown = destaques.length > 0 ? destaques : products.slice(0, 8);
-
-  const subtotal = useMemo(
-    () => cart.reduce((s, i) => s + Number(i.product.preco_sugerido || 0) * i.quantity, 0),
-    [cart]
-  );
-  const deliveryFee = customer.tipo_atendimento === "entrega" ? Number(storeConfig?.taxa_entrega || 0) : 0;
-  const total = subtotal + deliveryFee;
-
-  const openProduct = (product: Product) => {
-    if (isPizzaProduct(product)) {
-      setSelectedProduct(product);
-      setSelectedObs("");
-      setSelectedQty(1);
-      setSelectedSize("");
-      setExtraFlavors([]);
-      setSelectedBordaId("");
-      return;
-    }
-    // Não-pizza: adiciona direto
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id && !i.observations);
-      if (existing) {
-        return prev.map((i) => (i === existing ? { ...i, quantity: i.quantity + 1 } : i));
-      }
-      return [...prev, { product, quantity: 1, observations: "" }];
-    });
-    toast.success(`${product.nome} adicionado`);
-  };
-
-  const addPizzaToCart = () => {
-    if (!selectedProduct) return;
-    const isPizza = isPizzaProduct(selectedProduct);
-    if (isPizza && !selectedPizzaSize) {
-      toast.error("Selecione o tamanho da pizza");
-      return;
-    }
-
-    let productToAdd: Product = selectedProduct;
-    let obs = selectedObs;
-
-    if (isPizza && selectedPizzaSize) {
-      const validExtras = extraFlavors.filter(Boolean).slice(0, selectedPizzaSize.maxFlavors - 1);
-      const flavorObjs = validExtras
-        .map((id) => products.find((p) => p.id === id))
-        .filter((p): p is Product => !!p);
-      const basePrice = computePizzaPrice(selectedProduct, validExtras, selectedPizzaSize.multiplier);
-      const bordaPrice =
-        selectedBorda && selectedPizzaSize.tamanhoId
-          ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId)
-          : 0;
-      const finalPrice = Math.round((basePrice + bordaPrice) * 100) / 100;
-      const allNames = [selectedProduct.nome, ...flavorObjs.map((f) => f.nome)];
-      const totalFlavors = allNames.length;
-      const fraction = totalFlavors === 2 ? "½" : totalFlavors === 3 ? "⅓" : "";
-      const baseName =
-        totalFlavors === 1
-          ? `${selectedProduct.nome} (${selectedPizzaSize.label})`
-          : `${allNames.map((n) => `${fraction} ${n}`).join(" / ")} (${selectedPizzaSize.label})`;
-      const composedName = selectedBorda ? `${baseName} • Borda ${selectedBorda.nome}` : baseName;
-
-      productToAdd = {
-        ...selectedProduct,
-        id: `${selectedProduct.id}__${selectedPizzaSize.id}__${validExtras.join("_")}__${selectedBorda?.id || "noborda"}`,
-        nome: composedName,
-        preco_sugerido: finalPrice,
-      };
-      if (totalFlavors > 1) {
-        obs = obs ? `${totalFlavors} sabores. ${obs}` : `${totalFlavors} sabores`;
-      }
-      if (selectedBorda) {
-        obs = obs ? `Borda ${selectedBorda.nome}. ${obs}` : `Borda ${selectedBorda.nome}`;
-      }
-    }
-
-    setCart((prev) => {
-      const existing = prev.find(
-        (item) => item.product.id === productToAdd.id && item.observations === obs
-      );
-      if (existing) {
-        return prev.map((item) =>
-          item === existing ? { ...item, quantity: item.quantity + selectedQty } : item
-        );
-      }
-      return [...prev, { product: productToAdd, quantity: selectedQty, observations: obs.trim() }];
-    });
-    toast.success("Pizza adicionada ao carrinho");
-    resetSelection();
-  };
-
-  const updateQty = (idx: number, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((i, k) => (k === idx ? { ...i, quantity: i.quantity + delta } : i))
-        .filter((i) => i.quantity > 0)
-    );
-  };
-
-  const updateObs = (idx: number, obs: string) => {
-    setCart((prev) => prev.map((i, k) => (k === idx ? { ...i, observations: obs } : i)));
-  };
-
-  const removeItem = (idx: number) => setCart((prev) => prev.filter((_, k) => k !== idx));
-
-  const cartCount = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart]);
-  const nomeLoja = storeConfig?.nome_loja || "Cardápio";
-  const taxa = Number(storeConfig?.taxa_entrega || 0);
-  const minimo = Number(storeConfig?.pedido_minimo || 0);
-
-  const scrollToSection = (id: string) => {
-    setActivePill(id);
-    menuScrollRef.current?.querySelector(`#c-sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const availableFlavorsBase = products.filter((p) => isPizzaProduct(p) && p.id !== selectedProduct?.id);
-  const visibleFlavors = flavorSearch.trim()
-    ? availableFlavorsBase.filter((p) => p.nome.toLowerCase().includes(flavorSearch.toLowerCase()))
-    : availableFlavorsBase;
-  const selectedExtraIds = extraFlavors.filter(Boolean);
-  const maxExtras = (selectedPizzaSize?.maxFlavors || 1) - 1;
-
-  const toggleFlavor = (id: string) => {
-    setExtraFlavors((prev) => {
-      const cleaned = prev.filter(Boolean);
-      if (cleaned.includes(id)) return cleaned.filter((x) => x !== id);
-      if (cleaned.length >= maxExtras) {
-        toast.error(`Você pode escolher até ${maxExtras} sabor(es) adicional(is)`);
-        return cleaned;
-      }
-      return [...cleaned, id];
-    });
-  };
-
-  const finalModalPrice = (() => {
-    if (!selectedProduct) return 0;
-    if (isPizzaProduct(selectedProduct) && selectedPizzaSize) {
-      const base = computePizzaPrice(selectedProduct, selectedExtraIds, selectedPizzaSize.multiplier);
-      const bordaPrice =
-        selectedBorda && selectedPizzaSize.tamanhoId
-          ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId)
-          : 0;
-      return Math.round((base + bordaPrice) * 100) / 100;
-    }
-    return Number(selectedProduct.preco_sugerido || 0);
-  })();
-
-  useEffect(() => {
-    if (!selectedProduct) return;
-    setFlavorSearch("");
-    if (isPizzaProduct(selectedProduct)) {
-      setSelectedSize("");
-      setExtraFlavors([]);
-      setSelectedBordaId("");
-    }
-  }, [selectedProduct]);
-
-  const submitOrder = async () => {
-    if (!cart.length) return toast.error("Adicione itens ao pedido");
-    if (!customer.nome.trim() || !customer.telefone.trim()) return toast.error("Informe nome e telefone");
-    if (customer.tipo_atendimento === "entrega" && !customer.endereco.trim())
-      return toast.error("Informe o endereço de entrega");
-
-    const minimo = Number(storeConfig?.pedido_minimo || 0);
-    if (total < minimo)
-      return toast.error(`Pedido abaixo do mínimo (${formatBRL(minimo)})`);
-
-    setSubmitting(true);
-    try {
-      const obsCompleta = [
-        customer.observacoes,
-        customer.forma_pagamento === "dinheiro" && customer.troco_para
-          ? `Troco para ${formatBRL(Number(customer.troco_para))}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
-      const { data: pedido, error: pErr } = await supabase
-        .from("pedidos" as any)
-        .insert({
-          company_id: companyId,
-          lead_id: leadId || null,
-          cliente_nome: customer.nome.trim(),
-          cliente_telefone: customer.telefone.trim(),
-          canal: "atendimento",
-          tipo_atendimento: customer.tipo_atendimento,
-          forma_pagamento: customer.forma_pagamento,
-          status: "aceito",
-          subtotal,
-          taxa_entrega: deliveryFee,
-          total,
-          observacoes: obsCompleta || null,
-          origem_publica: { origem: "chat-conversa", endereco: customer.endereco || null },
-        })
-        .select("*")
-        .single();
-
-      if (pErr) throw pErr;
-      const pedidoData = pedido as any;
-
-      const itensPayload = cart.map((i) => ({
-        pedido_id: pedidoData.id,
-        company_id: companyId,
-        produto_id: String(i.product.id).split("__")[0], // extrai UUID base de pizzas compostas
-        produto_nome: i.product.nome,
-        quantidade: i.quantity,
-        valor_unitario: Number(i.product.preco_sugerido || 0),
-        valor_total: Number(i.product.preco_sugerido || 0) * i.quantity,
-        observacoes: i.observations || null,
-      }));
-
-      const { error: iErr } = await supabase.from("pedido_itens" as any).insert(itensPayload);
-      if (iErr) throw iErr;
-
-      if (customer.endereco && customer.tipo_atendimento === "entrega") {
-        await supabase.from("pedido_enderecos" as any).insert({
-          pedido_id: pedidoData.id,
-          company_id: companyId,
-          nome_contato: customer.nome.trim(),
-          telefone_contato: customer.telefone.trim(),
-          logradouro: customer.endereco,
-          numero: customer.endereco_numero || null,
-          complemento: customer.endereco_complemento || null,
-          bairro: customer.endereco_bairro || null,
-          cidade: customer.endereco_cidade || null,
-          estado: customer.endereco_estado || null,
-          cep: customer.endereco_cep || null,
-        });
-
-        if (leadId) {
-          await (supabase.from("leads") as any)
-            .update({
-              endereco_logradouro: customer.endereco,
-              endereco_numero: customer.endereco_numero || null,
-              endereco_complemento: customer.endereco_complemento || null,
-              endereco_bairro: customer.endereco_bairro || null,
-              endereco_cidade: customer.endereco_cidade || null,
-              endereco_estado: customer.endereco_estado || null,
-              endereco_cep: customer.endereco_cep || null,
-            })
-            .eq("id", leadId);
-        }
-      }
-
-      await supabase.from("pedido_eventos" as any).insert({
-        pedido_id: pedidoData.id,
-        company_id: companyId,
-        status: "aceito",
-        descricao: "Pedido criado pelo atendente via chat",
-      });
-
-      // 🍕 Acumular selos no cartão fidelidade (1 selo por pizza)
-      try {
-        const pizzasQty = cart.reduce((acc, i) => {
-          const isPz =
-            !!i.product.permite_meio_a_meio ||
-            (i.product.nome || "").toLowerCase().includes("pizza") ||
-            (i.product.categoria || "").toLowerCase().includes("pizza");
-          return acc + (isPz ? i.quantity : 0);
-        }, 0);
-
-        if (pizzasQty > 0 && leadId) {
-          const { data: existingCard } = await (supabase.from("loyalty_cards" as any) as any)
-            .select("selos_atuais, total_premios_resgatados")
-            .eq("company_id", companyId)
-            .eq("lead_id", leadId)
-            .maybeSingle();
-
-          const currentStamps = (existingCard as any)?.selos_atuais || 0;
-          const totalRedeemed = (existingCard as any)?.total_premios_resgatados || 0;
-
-          await (supabase.from("loyalty_cards" as any) as any).upsert(
-            {
-              company_id: companyId,
-              lead_id: leadId,
-              selos_atuais: currentStamps + pizzasQty,
-              total_premios_resgatados: totalRedeemed,
-              ultimo_selo_em: new Date().toISOString(),
-            },
-            { onConflict: "company_id,lead_id" }
-          );
-        }
-      } catch (loyaltyErr) {
-        console.error("Erro ao acumular selos fidelidade:", loyaltyErr);
-      }
-
-      // 📲 Enviar mensagem de confirmação via WhatsApp
-      try {
-        const telefoneEnvio = String(customer.telefone || "").replace(/\D/g, "");
-        if (telefoneEnvio.length >= 10) {
-          const itensTexto = cart
-            .map(
-              (it) =>
-                `• ${it.quantity}x ${it.product.nome} - ${formatBRL(
-                  Number(it.product.preco_sugerido || 0) * it.quantity
-                )}`
-            )
-            .join("\n");
-          const tipoAtend = customer.tipo_atendimento === "entrega" ? "🛵 Entrega" : "🏠 Retirada";
-          const enderecoLinha = customer.endereco ? `\n📍 *Endereço:* ${customer.endereco}` : "";
-          const taxaLinha = deliveryFee > 0 ? `\nTaxa de entrega: ${formatBRL(deliveryFee)}` : "";
-          const nomeLoja = storeConfig?.nome_loja || "nossa loja";
-          const mensagem = `🍕 *Pedido confirmado!*\n\nOlá ${customer.nome}, recebemos seu pedido *${pedidoData.codigo_pedido}* na ${nomeLoja}.\n\n*Itens:*\n${itensTexto}\n\nSubtotal: ${formatBRL(subtotal)}${taxaLinha}\n*Total: ${formatBRL(total)}*\n\n${tipoAtend}\n💳 *Pagamento:* ${customer.forma_pagamento}${enderecoLinha}\n\nObrigado pela preferência! 🧡`;
-
-          await supabase.functions.invoke("enviar-whatsapp", {
-            body: {
-              company_id: companyId,
-              numero: telefoneEnvio,
-              mensagem,
-              origem: "chat-pedido",
-            },
-          });
-        }
-      } catch (msgErr) {
-        console.error("Erro ao enviar confirmação WhatsApp:", msgErr);
-      }
-
-      toast.success(`Pedido ${pedidoData.codigo_pedido || ""} criado e enviado para Gestão de Pedidos!`);
-      onOpenChange(false);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Erro ao criar pedido");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
+const tail = `  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] h-[92vh] p-0 gap-0 border-0 bg-transparent shadow-none overflow-hidden [&>button]:hidden">
         <VisuallyHidden>
@@ -695,7 +66,7 @@ export function PedidoChatModal({
                     {topShown.length > 0 && (
                       <button
                         type="button"
-                        className={`c-pill ${activePill === "destaques" ? "active" : ""}`}
+                        className={\`c-pill \${activePill === "destaques" ? "active" : ""}\`}
                         onClick={() => scrollToSection("destaques")}
                       >
                         ⭐ Mais pedidos
@@ -703,12 +74,12 @@ export function PedidoChatModal({
                     )}
                     {categories.map((cat) => {
                       const count = filteredProducts.filter((p) => (p.categoria || "Outros") === cat).length;
-                      const id = cat.replace(/\s+/g, "-");
+                      const id = cat.replace(/\\s+/g, "-");
                       return (
                         <button
                           key={cat}
                           type="button"
-                          className={`c-pill ${activePill === id ? "active" : ""}`}
+                          className={\`c-pill \${activePill === id ? "active" : ""}\`}
                           onClick={() => scrollToSection(id)}
                         >
                           {categoryEmoji(cat)} {cat} <span className="c-pill-count">{count}</span>
@@ -746,9 +117,9 @@ export function PedidoChatModal({
                     {categories.map((cat) => {
                       const items = filteredProducts.filter((p) => (p.categoria || "Outros") === cat);
                       if (!items.length) return null;
-                      const id = cat.replace(/\s+/g, "-");
+                      const id = cat.replace(/\\s+/g, "-");
                       return (
-                        <section key={cat} id={`c-sec-${id}`} className="c-category-section c-fade-up">
+                        <section key={cat} id={\`c-sec-\${id}\`} className="c-category-section c-fade-up">
                           <div className="c-cat-label">
                             {categoryEmoji(cat)} {cat}{" "}
                             <small>({items.length} {items.length === 1 ? "item" : "itens"})</small>
@@ -804,7 +175,7 @@ export function PedidoChatModal({
                       </div>
                     ) : (
                       cart.map((item, idx) => (
-                        <div key={`${item.product.id}-${idx}`} className="c-cart-item">
+                        <div key={\`\${item.product.id}-\${idx}\`} className="c-cart-item">
                           <div className="c-cart-item-info">
                             <div className="c-cart-item-name">{item.product.nome}</div>
                             {item.observations && <div className="c-cart-item-obs">{item.observations}</div>}
@@ -837,7 +208,7 @@ export function PedidoChatModal({
                       ))
                     )}
                   </div>
-                  <div className="c-cart-foot">
+                  <div className="cardapio-chat-cart c-cart-foot">
                     <div className="c-total-box" style={{ marginBottom: 12 }}>
                       <div className="c-total-row">
                         <span>Subtotal</span>
@@ -1022,7 +393,7 @@ export function PedidoChatModal({
                   ← Voltar ao cardápio
                 </button>
                 <button type="button" className="c-submit-btn" style={{ flex: 1 }} disabled={submitting} onClick={submitOrder}>
-                  {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : `Confirmar pedido · ${formatBRL(total)}`}
+                  {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : \`Confirmar pedido · \${formatBRL(total)}\`}
                 </button>
               </div>
             </>
@@ -1067,7 +438,7 @@ export function PedidoChatModal({
                             <button
                               key={s.id}
                               type="button"
-                              className={`c-size-btn ${active ? "active" : ""}`}
+                              className={\`c-size-btn \${active ? "active" : ""}\`}
                               onClick={() => {
                                 setSelectedSize(s.id);
                                 setExtraFlavors((prev) => prev.slice(0, s.maxFlavors - 1));
@@ -1107,7 +478,7 @@ export function PedidoChatModal({
                                 <button
                                   key={f.id}
                                   type="button"
-                                  className={`c-flavor-item ${sel ? "selected" : ""}`}
+                                  className={\`c-flavor-item \${sel ? "selected" : ""}\`}
                                   onClick={() => toggleFlavor(f.id)}
                                 >
                                   <div className="c-flavor-check">{sel ? "✓" : ""}</div>
@@ -1136,7 +507,7 @@ export function PedidoChatModal({
                           <div className="c-bordas-grid">
                             <button
                               type="button"
-                              className={`c-borda-btn ${!selectedBordaId ? "active" : ""}`}
+                              className={\`c-borda-btn \${!selectedBordaId ? "active" : ""}\`}
                               onClick={() => setSelectedBordaId("")}
                             >
                               <div className="c-borda-name">Sem borda</div>
@@ -1150,7 +521,7 @@ export function PedidoChatModal({
                                 <button
                                   key={b.id}
                                   type="button"
-                                  className={`c-borda-btn ${selectedBordaId === b.id ? "active" : ""}`}
+                                  className={\`c-borda-btn \${selectedBordaId === b.id ? "active" : ""}\`}
                                   onClick={() => setSelectedBordaId(b.id)}
                                 >
                                   <div className="c-borda-name">{b.nome}</div>
@@ -1204,3 +575,7 @@ export function PedidoChatModal({
     </Dialog>
   );
 }
+`;
+
+fs.writeFileSync(filePath, head + tail);
+console.log("Patched", filePath);

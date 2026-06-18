@@ -1,13 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Phone, Video, Info, User, MessageSquare, Instagram, Facebook, FileText, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Loader2, Check, Plus, RotateCcw, ArrowRightLeft, Bot, ArrowLeft, Tag, TrendingUp, UserCog } from "lucide-react";
-import { AIModeSelectorDropdown, type AIMode } from "./AIModeSelectorDropdown";
+import { Badge } from "@/components/ui/badge";import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info, MessageSquare, Instagram, Facebook, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Check, Plus, ArrowLeft, Tag, TrendingUp, UserCog } from "lucide-react";
 import { ProtocolBadge } from "./ProtocolBadge";
-import { ProtocolWelcomeSettings } from "./ProtocolWelcomeSettings";
+import type { AIMode } from "./AIModeSelectorDropdown";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader as UIDialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -221,65 +218,6 @@ import { useEffect, useState } from "react";
             {/* Ações - Versão Desktop (apenas ícones com tooltip) */}
               <TooltipProvider delayDuration={0}>
               <div className="hidden md:flex items-center gap-1">
-               {/* Botão Restaurar Histórico do WhatsApp */}
-               {onRestoreConversation && (
-                 <Tooltip>
-                   <TooltipTrigger asChild>
-                     <Button
-                       variant="outline"
-                       size="icon"
-                       onClick={onRestoreConversation}
-                       disabled={restoringConversation}
-                       className="h-8 w-8"
-                     >
-                       {restoringConversation ? (
-                         <Loader2 className="h-4 w-4 animate-spin" />
-                       ) : (
-                         <RotateCcw className="h-4 w-4" />
-                       )}
-                     </Button>
-                   </TooltipTrigger>
-                    <TooltipContent>Puxar Histórico</TooltipContent>
-                  </Tooltip>
-                )}
-                {/* Botão Enviar Protocolo */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <ProtocolWelcomeSettings 
-                        protocolNumber={protocolNumber}
-                        contactPhone={contactPhone}
-                        contactName={contactName}
-                        companyId={companyId}
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>Enviar Protocolo</TooltipContent>
-                </Tooltip>
-               {/* Botão IA - Dropdown */}
-               {onChangeAIMode && (
-                 <AIModeSelectorDropdown
-                   currentMode={currentAIMode}
-                   onModeChange={onChangeAIMode}
-                   compact
-                 />
-               )}
-               {/* Botão Transferir Atendimento */}
-               {onTransferAtendimento && (
-                 <Tooltip>
-                   <TooltipTrigger asChild>
-                     <Button
-                       variant="outline"
-                       size="icon"
-                       onClick={onTransferAtendimento}
-                       className="h-8 w-8"
-                     >
-                       <ArrowRightLeft className="h-4 w-4" />
-                     </Button>
-                   </TooltipTrigger>
-                   <TooltipContent>Transferir</TooltipContent>
-                 </Tooltip>
-                )}
                 {/* 🛒 Novo pedido via chat (mockup pizzaria) */}
                 {onNovoPedido && (
                   <Tooltip>
@@ -379,43 +317,6 @@ import { useEffect, useState } from "react";
 
             {/* Ações - Versão Mobile (apenas ícones) */}
             <div className="flex md:hidden items-center gap-0.5">
-              {/* Botão Puxar Histórico do WhatsApp - Mobile */}
-              {onRestoreConversation && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onRestoreConversation}
-                  disabled={restoringConversation}
-                  className="h-8 w-8"
-                  title="Puxar histórico do WhatsApp"
-                >
-                  {restoringConversation ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RotateCcw className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
-              {/* Botão IA - Dropdown Mobile */}
-              {onChangeAIMode && (
-                <AIModeSelectorDropdown
-                  currentMode={currentAIMode}
-                  onModeChange={onChangeAIMode}
-                  compact
-                />
-              )}
-              {/* Botão Transferir Atendimento */}
-              {onTransferAtendimento && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onTransferAtendimento}
-                  className="h-8 w-8"
-                  title="Transferir atendimento"
-                >
-                  <ArrowRightLeft className="h-4 w-4" />
-                </Button>
-              )}
               {/* Botão Finalizar */}
               {onFinalizeAtendimento && (
                 <Dialog open={finalizeOpen} onOpenChange={setFinalizeOpen}>
@@ -544,16 +445,6 @@ import { useEffect, useState } from "react";
          </div>
        )}
 
-       {/* Barra de progresso - aparece durante o Puxar Histórico */}
-       {restoreProgress && (
-         <div className="px-3 pb-2 pt-0.5 space-y-1">
-           <div className="flex items-center justify-between">
-             <span className="text-xs text-muted-foreground">{restoreProgress.label}</span>
-             <span className="text-xs font-medium text-primary">{restoreProgress.step}%</span>
-           </div>
-           <Progress value={restoreProgress.step} className="h-1.5" />
-         </div>
-       )}
       {/* Avatar Preview Dialog */}
       {avatarUrl && avatarUrl.trim() !== '' && (
         <Dialog open={showAvatarPreview} onOpenChange={setShowAvatarPreview}>
