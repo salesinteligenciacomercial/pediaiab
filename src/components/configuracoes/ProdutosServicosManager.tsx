@@ -12,15 +12,78 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Package, DollarSign, Loader2, Search } from "lucide-react";
 
+type TipoProduto = 'produto' | 'insumo' | 'combo' | 'adicional';
+
 interface ProdutoServico {
   id: string;
   nome: string;
   descricao: string | null;
   preco_sugerido: number;
   categoria: string | null;
+  tipo_produto: TipoProduto;
   ativo: boolean;
+  ativo_cardapio: boolean;
+  destaque_cardapio: boolean;
+  permite_observacao: boolean;
+  estoque_atual: number | null;
+  estoque_minimo: number | null;
+  unidade_medida: string | null;
+  combo_min_selecoes: number | null;
+  combo_max_selecoes: number | null;
+  promocao_ativa: boolean;
+  promocao_preco: number | null;
+  promocao_inicio: string | null;
+  promocao_fim: string | null;
+  promocao_flash: boolean;
+  promocao_nota: string | null;
   created_at: string;
 }
+
+interface ProdutoServicoForm {
+  nome: string;
+  descricao: string;
+  preco_sugerido: string;
+  categoria: string;
+  tipo_produto: TipoProduto;
+  ativo: boolean;
+  ativo_cardapio: boolean;
+  destaque_cardapio: boolean;
+  permite_observacao: boolean;
+  estoque_atual: string;
+  estoque_minimo: string;
+  unidade_medida: string;
+  combo_min_selecoes: string;
+  combo_max_selecoes: string;
+  promocao_ativa: boolean;
+  promocao_preco: string;
+  promocao_inicio: string;
+  promocao_fim: string;
+  promocao_flash: boolean;
+  promocao_nota: string;
+}
+
+const EMPTY_FORM: ProdutoServicoForm = {
+  nome: "",
+  descricao: "",
+  preco_sugerido: "",
+  categoria: "",
+  tipo_produto: 'produto',
+  ativo: true,
+  ativo_cardapio: true,
+  destaque_cardapio: false,
+  permite_observacao: true,
+  estoque_atual: "",
+  estoque_minimo: "",
+  unidade_medida: "",
+  combo_min_selecoes: "",
+  combo_max_selecoes: "",
+  promocao_ativa: false,
+  promocao_preco: "",
+  promocao_inicio: "",
+  promocao_fim: "",
+  promocao_flash: false,
+  promocao_nota: "",
+};
 
 export function ProdutosServicosManager() {
   const [produtos, setProdutos] = useState<ProdutoServico[]>([]);
@@ -32,13 +95,7 @@ export function ProdutosServicosManager() {
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Form state
-  const [formData, setFormData] = useState({
-    nome: "",
-    descricao: "",
-    preco_sugerido: "",
-    categoria: "",
-    ativo: true
-  });
+  const [formData, setFormData] = useState<ProdutoServicoForm>({ ...EMPTY_FORM });
 
   useEffect(() => {
     loadCompanyAndProdutos();
@@ -85,13 +142,7 @@ export function ProdutosServicosManager() {
   };
 
   const resetForm = () => {
-    setFormData({
-      nome: "",
-      descricao: "",
-      preco_sugerido: "",
-      categoria: "",
-      ativo: true
-    });
+    setFormData({ ...EMPTY_FORM });
     setEditingProduto(null);
   };
 
@@ -107,7 +158,22 @@ export function ProdutosServicosManager() {
       descricao: produto.descricao || "",
       preco_sugerido: produto.preco_sugerido?.toString() || "",
       categoria: produto.categoria || "",
-      ativo: produto.ativo
+      tipo_produto: produto.tipo_produto || 'produto',
+      ativo: produto.ativo,
+      ativo_cardapio: produto.ativo_cardapio,
+      destaque_cardapio: produto.destaque_cardapio,
+      permite_observacao: produto.permite_observacao,
+      estoque_atual: produto.estoque_atual?.toString() || "",
+      estoque_minimo: produto.estoque_minimo?.toString() || "",
+      unidade_medida: produto.unidade_medida || "",
+      combo_min_selecoes: produto.combo_min_selecoes?.toString() || "",
+      combo_max_selecoes: produto.combo_max_selecoes?.toString() || "",
+      promocao_ativa: produto.promocao_ativa,
+      promocao_preco: produto.promocao_preco?.toString() || "",
+      promocao_inicio: produto.promocao_inicio || "",
+      promocao_fim: produto.promocao_fim || "",
+      promocao_flash: produto.promocao_flash,
+      promocao_nota: produto.promocao_nota || "",
     });
     setDialogOpen(true);
   };
@@ -128,9 +194,24 @@ export function ProdutosServicosManager() {
     const produtoData = {
       nome: formData.nome.trim(),
       descricao: formData.descricao.trim() || null,
+      tipo_produto: formData.tipo_produto,
       preco_sugerido: formData.preco_sugerido ? parseFloat(formData.preco_sugerido) : 0,
       categoria: formData.categoria.trim() || null,
       ativo: formData.ativo,
+      ativo_cardapio: formData.ativo_cardapio,
+      destaque_cardapio: formData.destaque_cardapio,
+      permite_observacao: formData.permite_observacao,
+      estoque_atual: formData.estoque_atual.trim() ? parseFloat(formData.estoque_atual) : null,
+      estoque_minimo: formData.estoque_minimo.trim() ? parseFloat(formData.estoque_minimo) : null,
+      unidade_medida: formData.unidade_medida.trim() || null,
+      combo_min_selecoes: formData.combo_min_selecoes.trim() ? parseInt(formData.combo_min_selecoes, 10) : null,
+      combo_max_selecoes: formData.combo_max_selecoes.trim() ? parseInt(formData.combo_max_selecoes, 10) : null,
+      promocao_ativa: formData.promocao_ativa,
+      promocao_preco: formData.promocao_preco.trim() ? parseFloat(formData.promocao_preco) : null,
+      promocao_inicio: formData.promocao_inicio.trim() || null,
+      promocao_fim: formData.promocao_fim.trim() || null,
+      promocao_flash: formData.promocao_flash,
+      promocao_nota: formData.promocao_nota.trim() || null,
       company_id: companyId
     };
 
@@ -264,7 +345,169 @@ export function ProdutosServicosManager() {
                     rows={3}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo_produto">Tipo</Label>
+                    <select
+                      id="tipo_produto"
+                      value={formData.tipo_produto}
+                      onChange={(e) => setFormData({ ...formData, tipo_produto: e.target.value as TipoProduto })}
+                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-2"
+                    >
+                      <option value="produto">Produto</option>
+                      <option value="insumo">Insumo</option>
+                      <option value="combo">Combo</option>
+                      <option value="adicional">Adicional</option>
+                    </select>
+                  </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="ativo_cardapio">Ativo no cardápio</Label>
+                    <Switch
+                      id="ativo_cardapio"
+                      checked={formData.ativo_cardapio}
+                      onCheckedChange={(checked) => setFormData({ ...formData, ativo_cardapio: checked })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="destaque_cardapio">Destaque no cardápio</Label>
+                    <Switch
+                      id="destaque_cardapio"
+                      checked={formData.destaque_cardapio}
+                      onCheckedChange={(checked) => setFormData({ ...formData, destaque_cardapio: checked })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="permite_observacao">Permite observação</Label>
+                    <Switch
+                      id="permite_observacao"
+                      checked={formData.permite_observacao}
+                      onCheckedChange={(checked) => setFormData({ ...formData, permite_observacao: checked })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="estoque_atual">Estoque atual</Label>
+                    <Input
+                      id="estoque_atual"
+                      value={formData.estoque_atual}
+                      onChange={(e) => setFormData({ ...formData, estoque_atual: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="estoque_minimo">Estoque mínimo</Label>
+                    <Input
+                      id="estoque_minimo"
+                      value={formData.estoque_minimo}
+                      onChange={(e) => setFormData({ ...formData, estoque_minimo: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unidade_medida">Unidade</Label>
+                    <Input
+                      id="unidade_medida"
+                      value={formData.unidade_medida}
+                      onChange={(e) => setFormData({ ...formData, unidade_medida: e.target.value })}
+                      placeholder="un, kg, g"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="combo_min_selecoes">Mínimo combo</Label>
+                    <Input
+                      id="combo_min_selecoes"
+                      type="number"
+                      min="0"
+                      value={formData.combo_min_selecoes}
+                      onChange={(e) => setFormData({ ...formData, combo_min_selecoes: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="combo_max_selecoes">Máximo combo</Label>
+                    <Input
+                      id="combo_max_selecoes"
+                      type="number"
+                      min="0"
+                      value={formData.combo_max_selecoes}
+                      onChange={(e) => setFormData({ ...formData, combo_max_selecoes: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-muted/50 pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label htmlFor="promocao_ativa">Promoção ativa</Label>
+                      <p className="text-xs text-muted-foreground">Habilita preço e datas promocionais.</p>
+                    </div>
+                    <Switch
+                      id="promocao_ativa"
+                      checked={formData.promocao_ativa}
+                      onCheckedChange={(checked) => setFormData({ ...formData, promocao_ativa: checked })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="promocao_preco">Preço promocional</Label>
+                      <Input
+                        id="promocao_preco"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.promocao_preco}
+                        onChange={(e) => setFormData({ ...formData, promocao_preco: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="promocao_inicio">Início</Label>
+                      <Input
+                        id="promocao_inicio"
+                        type="date"
+                        value={formData.promocao_inicio}
+                        onChange={(e) => setFormData({ ...formData, promocao_inicio: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="promocao_fim">Fim</Label>
+                      <Input
+                        id="promocao_fim"
+                        type="date"
+                        value={formData.promocao_fim}
+                        onChange={(e) => setFormData({ ...formData, promocao_fim: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="promocao_flash">Flash sale</Label>
+                      <Switch
+                        id="promocao_flash"
+                        checked={formData.promocao_flash}
+                        onCheckedChange={(checked) => setFormData({ ...formData, promocao_flash: checked })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="promocao_nota">Nota de promoção</Label>
+                      <Input
+                        id="promocao_nota"
+                        value={formData.promocao_nota}
+                        onChange={(e) => setFormData({ ...formData, promocao_nota: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="preco">Preço Sugerido</Label>

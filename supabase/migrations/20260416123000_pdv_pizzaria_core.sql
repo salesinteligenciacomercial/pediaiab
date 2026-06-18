@@ -19,7 +19,15 @@ ADD COLUMN IF NOT EXISTS controla_estoque BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN IF NOT EXISTS estoque_atual NUMERIC(12,3),
 ADD COLUMN IF NOT EXISTS estoque_minimo NUMERIC(12,3),
 ADD COLUMN IF NOT EXISTS unidade_medida TEXT,
-ADD COLUMN IF NOT EXISTS destaque_cardapio BOOLEAN NOT NULL DEFAULT false;
+ADD COLUMN IF NOT EXISTS destaque_cardapio BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS combo_min_selecoes INTEGER,
+ADD COLUMN IF NOT EXISTS combo_max_selecoes INTEGER,
+ADD COLUMN IF NOT EXISTS promocao_ativa BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS promocao_preco NUMERIC(12,2),
+ADD COLUMN IF NOT EXISTS promocao_inicio DATE,
+ADD COLUMN IF NOT EXISTS promocao_fim DATE,
+ADD COLUMN IF NOT EXISTS promocao_flash BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS promocao_nota TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_produtos_servicos_tipo ON public.produtos_servicos(tipo_produto);
 CREATE INDEX IF NOT EXISTS idx_produtos_servicos_cardapio ON public.produtos_servicos(company_id, ativo_cardapio, ativo, ordem_exibicao);

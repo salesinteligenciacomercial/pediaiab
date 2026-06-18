@@ -8,13 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Key,
-  Webhook,
   Users,
   Upload,
-  Bot,
+  Printer,
   MessageSquare,
-  Mic,
   UserPlus,
   Trash2,
   Building2,
@@ -39,11 +36,12 @@ import { WhatsAppQRCode } from "@/components/configuracoes/WhatsAppQRCode";
 import { MetaApiConfig } from "@/components/configuracoes/MetaApiConfig";
 import { MetaIntegrationsConfig } from "@/components/configuracoes/MetaIntegrationsConfig";
 import { SubcontasManager } from "@/components/configuracoes/SubcontasManager";
+import ImpressorasConfig from "@/components/configuracoes/ImpressorasConfig";
 import { LeadAdsFormsConfig } from "@/components/configuracoes/LeadAdsFormsConfig";
 import { GmailConfig } from "@/components/configuracoes/GmailConfig";
 import { ProdutosServicosManager } from "@/components/configuracoes/ProdutosServicosManager";
 import { cleanAllConversationsHistory } from "@/utils/cleanConversationsHistory";
-import { WebhooksConfig } from "@/components/configuracoes/WebhooksConfig";
+// Webhooks tab removed
 import { StorageCleanup } from "@/components/configuracoes/StorageCleanup";
 import { DatabaseHealth } from "@/components/configuracoes/DatabaseHealth";
 import { UsuariosSubcontaDialog } from "@/components/configuracoes/UsuariosSubcontaDialog";
@@ -83,9 +81,7 @@ export default function Configuracoes() {
   const [isCleaningHistory, setIsCleaningHistory] = useState(false);
   const [cleaningProgress, setCleaningProgress] = useState(0);
   const [cleaningStats, setCleaningStats] = useState({ deleted: 0, total: 0 });
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [audimaToken, setAudimaToken] = useState("");
-  const [elevenlabsKey, setElevenlabsKey] = useState("");
+  // IA integrations removed: openai/audima/elevenlabs
   const [isMasterAccount, setIsMasterAccount] = useState(false);
   const [isSubAccount, setIsSubAccount] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
@@ -307,12 +303,7 @@ export default function Configuracoes() {
     }
   };
 
-  const handleSaveToken = (integration: string) => {
-    toast({
-      title: "Token salvo",
-      description: `Token de ${integration} salvo com sucesso`,
-    });
-  };
+  
 
   const elevateSuperAdmin = async () => {
     try {
@@ -1095,8 +1086,10 @@ export default function Configuracoes() {
           <TabsTrigger value="team">Equipe</TabsTrigger>
           
           <TabsTrigger value="channels">Canais</TabsTrigger>
-          <TabsTrigger value="ia">IA</TabsTrigger>
-          <TabsTrigger value="webhooks_api">Webhooks</TabsTrigger>
+          <TabsTrigger value="impressoras">
+            <Printer className="mr-2 h-4 w-4" />
+            Impressoras
+          </TabsTrigger>
           <TabsTrigger value="avancado" className="text-destructive">Avançado</TabsTrigger>
         </TabsList>
 
@@ -1161,94 +1154,13 @@ export default function Configuracoes() {
           </div>
         </TabsContent>
 
+        <TabsContent value="impressoras">
+          <ImpressorasConfig />
+        </TabsContent>
+
         {/* WhatsApp Meta API movido para página de Fluxos e Automação */}
 
-        <TabsContent value="ia" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                OpenAI (GPT)
-              </CardTitle>
-              <CardDescription>
-                Configure sua chave da API OpenAI para usar GPT-4 e GPT-5
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Chave da API</Label>
-                <Input
-                  type="password"
-                  placeholder="sk-..."
-                  value={openaiKey}
-                  onChange={(e) => setOpenaiKey(e.target.value)}
-                />
-              </div>
-              <Button onClick={() => handleSaveToken("OpenAI")}>
-                <Key className="mr-2 h-4 w-4" />
-                Salvar Token
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mic className="h-5 w-5 text-primary" />
-                Audima (Text-to-Speech)
-              </CardTitle>
-              <CardDescription>
-                Configure sua conta Audima para conversão de texto em áudio
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Token de Acesso</Label>
-                <Input
-                  type="password"
-                  placeholder="Cole seu token Audima"
-                  value={audimaToken}
-                  onChange={(e) => setAudimaToken(e.target.value)}
-                />
-              </div>
-              <Button onClick={() => handleSaveToken("Audima")}>
-                <Key className="mr-2 h-4 w-4" />
-                Salvar Token
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mic className="h-5 w-5 text-primary" />
-                ElevenLabs (Voz Neural)
-              </CardTitle>
-              <CardDescription>
-                Configure ElevenLabs para geração de áudio com IA
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Chave da API</Label>
-                <Input
-                  type="password"
-                  placeholder="Cole sua chave ElevenLabs"
-                  value={elevenlabsKey}
-                  onChange={(e) => setElevenlabsKey(e.target.value)}
-                />
-              </div>
-              <Button onClick={() => handleSaveToken("ElevenLabs")}>
-                <Key className="mr-2 h-4 w-4" />
-                Salvar Token
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="webhooks_api" className="space-y-4">
-          <WebhooksConfig />
-        </TabsContent>
+        {/* Webhooks tab removed */}
 
         <TabsContent value="avancado" className="space-y-4">
           <DatabaseHealth />

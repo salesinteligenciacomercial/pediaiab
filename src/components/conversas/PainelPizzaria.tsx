@@ -84,7 +84,40 @@ export function PainelPizzaria({
 }: PainelPizzariaProps) {
   const [ltv, setLtv] = useState<LTV | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [cardapioSlug, setCardapioSlug] = useState<string | null>(null);
+  const [cardapioLoading, setCardapioLoading] = useState(true);
   const leadId = leadVinculado?.id || null;
+
+  useEffect(() => {
+    if (!companyId) {
+      setCardapioSlug("loja");
+      setCardapioLoading(false);
+      return;
+    }
+
+    const loadCardapioSlug = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("loja_configuracoes" as any)
+          .select("slug")
+          .eq("company_id", companyId)
+          .maybeSingle();
+
+        if (!error && data?.slug) {
+          setCardapioSlug(String(data.slug));
+        } else {
+          setCardapioSlug("loja");
+        }
+      } catch (err) {
+        console.error("Erro ao carregar slug do cardápio:", err);
+        setCardapioSlug("loja");
+      } finally {
+        setCardapioLoading(false);
+      }
+    };
+
+    loadCardapioSlug();
+  }, [companyId]);
 
   const load = useCallback(async () => {
     if (!leadId) {
@@ -304,11 +337,16 @@ export function PainelPizzaria({
           </Button>
           <Button
             variant="outline"
-            onClick={() =>
+            disabled={cardapioLoading}
+            onClick={() => {
+              if (cardapioLoading) {
+                toast.error("Aguarde o link do cardápio digital");
+                return;
+              }
               onEnviarMensagem?.(
-                "Olá! Aqui está nosso cardápio do dia 🍕 Confira nossas pizzas, bordas e combos!"
-              )
-            }
+                `Olá! Aqui está nosso cardápio digital 🍕 Confira nosso menu completo: ${window.location.origin}/cardapio/${cardapioSlug || "loja"}`
+              );
+            }}
             className="h-auto flex-col py-3 gap-1"
           >
             <FileText className="h-4 w-4" />

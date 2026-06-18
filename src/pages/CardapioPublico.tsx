@@ -68,8 +68,10 @@ export default function CardapioPublico() {
   const [flavorSearch, setFlavorSearch] = useState("");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [activePill, setActivePill] = useState<string>("destaques");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const CUSTOMER_STORAGE_KEY = `cardapio_customer_${slug || "default"}`;
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -100,6 +102,15 @@ export default function CardapioPublico() {
   useEffect(() => {
     registerSW({ immediate: true });
   }, []);
+
+  // load collapsed categories from localStorage
+  useEffect(() => {
+    try {
+      const key = `cardapio_collapsed_${slug || 'default'}`;
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      if (raw) setCollapsed(JSON.parse(raw));
+    } catch {};
+  }, [slug]);
 
   // 🔐 "Login" automático por telefone: ao informar telefone válido, busca dados salvos
   const lastFetchedPhone = useRef<string>("");
@@ -189,6 +200,12 @@ export default function CardapioPublico() {
     () => Array.from(new Set(filteredProducts.map((p) => p.categoria || "Outros"))),
     [filteredProducts]
   );
+
+  // debounce search input to avoid filtering on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const destaques = useMemo(
     () => products.filter((p) => p.destaque_cardapio).slice(0, 10),
@@ -503,20 +520,18 @@ export default function CardapioPublico() {
       </div>
 
       {/* SEARCH */}
-      {searchOpen && (
-        <div className="c-search-wrap c-fade-up">
-          <div className="c-search-inner">
-            <span className="c-search-icon">🔍</span>
-            <input
-              ref={searchRef}
-              className="c-search-input"
-              placeholder="Buscar pizza, bebida, combo..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+      <div className="c-search-wrap c-fade-up">
+        <div className="c-search-inner">
+          <span className="c-search-icon">🔍</span>
+          <input
+            ref={searchRef}
+            className="c-search-input"
+            placeholder="Buscar pizza, bebida, combo..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
         </div>
-      )}
+      </div>
 
       {/* NAV PILLS */}
       <div className="c-nav-pills">
@@ -572,34 +587,42 @@ export default function CardapioPublico() {
           const items = filteredProducts.filter((p) => (p.categoria || "Outros") === cat);
           if (!items.length) return null;
           const id = cat.replace(/\s+/g, "-");
+          const isCollapsed = !!collapsed[id];
           return (
             <section key={cat} id={`c-sec-${id}`} className="c-category-section c-fade-up">
-              <div className="c-cat-label">
+              <div className="c-cat-label" style={{ cursor: 'pointer' }} onClick={() => {
+                const next = { ...collapsed, [id]: !isCollapsed };
+                setCollapsed(next);
+                try { localStorage.setItem(`cardapio_collapsed_${slug || 'default'}`, JSON.stringify(next)); } catch {}
+              }}>
+                <span style={{ marginRight: 8 }}>{isCollapsed ? '▸' : '▾'}</span>
                 {categoryEmoji(cat)} {cat} <small>({items.length} {items.length === 1 ? "item" : "itens"})</small>
               </div>
-              <div className="c-prod-list">
-                {items.map((p) => (
-                  <button key={p.id} className="c-prod-item" onClick={() => setSelectedProduct(p)}>
-                    <div className="c-prod-info">
-                      <div className="c-prod-name">{p.nome}</div>
-                      <div className="c-prod-desc">{p.descricao || p.descricao_curta || p.descricao_completa || "—"}</div>
-                      <div className="c-prod-footer">
-                        <div>
-                          <div className="c-prod-price-from">A partir de</div>
-                          <div className="c-prod-price">{formatBRL(p.preco_sugerido)}</div>
+              {!isCollapsed && (
+                <div className="c-prod-list">
+                  {items.map((p) => (
+                    <button key={p.id} className="c-prod-item" onClick={() => setSelectedProduct(p)}>
+                      <div className="c-prod-info">
+                        <div className="c-prod-name">{p.nome}</div>
+                        <div className="c-prod-desc">{p.descricao || p.descricao_curta || p.descricao_completa || "—"}</div>
+                        <div className="c-prod-footer">
+                          <div>
+                            <div className="c-prod-price-from">A partir de</div>
+                            <div className="c-prod-price">{formatBRL(p.preco_sugerido)}</div>
+                          </div>
+                          {isPizzaProduct(p) && <span className="c-half-badge">½ + ½</span>}
                         </div>
-                        {isPizzaProduct(p) && <span className="c-half-badge">½ + ½</span>}
                       </div>
-                    </div>
-                    <div className="c-prod-img-wrap">
-                      {p.imagem_url
-                        ? <img src={p.imagem_url} alt={p.nome} className="c-prod-img" loading="lazy" />
-                        : <div className="c-prod-img-ph">{categoryEmoji(cat)}</div>}
-                      <div className="c-add-circle">+</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                      <div className="c-prod-img-wrap">
+                        {p.imagem_url
+                          ? <img src={p.imagem_url} alt={p.nome} className="c-prod-img" loading="lazy" />
+                          : <div className="c-prod-img-ph">{categoryEmoji(cat)}</div>}
+                        <div className="c-add-circle">+</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </section>
           );
         })}

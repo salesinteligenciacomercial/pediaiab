@@ -29,6 +29,15 @@ type Produto = {
   estoque_minimo: number | null;
   unidade_medida: string | null;
   grupos: number;
+  combo_items: ComboItem[];
+  combo_min_selecoes: number | null;
+  combo_max_selecoes: number | null;
+  promocao_ativa: boolean;
+  promocao_preco: number | null;
+  promocao_inicio: string | null;
+  promocao_fim: string | null;
+  promocao_flash: boolean;
+  promocao_nota: string | null;
 };
 
 type ProdutoForm = {
@@ -46,6 +55,15 @@ type ProdutoForm = {
   estoque_minimo: string;
   unidade_medida: string;
   grupos: string;
+  combo_items: ComboItem[];
+  combo_min_selecoes: string;
+  combo_max_selecoes: string;
+  promocao_ativa: boolean;
+  promocao_preco: string;
+  promocao_inicio: string;
+  promocao_fim: string;
+  promocao_flash: boolean;
+  promocao_nota: string;
 };
 
 type Opcao = {
@@ -53,6 +71,19 @@ type Opcao = {
   nome: string;
   preco_adicional: number;
   ativo: boolean;
+};
+
+type ComboItem = {
+  id: number;
+  produtoId: number;
+  nome: string;
+  quantidade: number;
+  obrigatorio: boolean;
+};
+
+type CategoryItem = {
+  nome: string;
+  subcategorias: string[];
 };
 
 const PRODUCT_TABS = [
@@ -118,10 +149,13 @@ body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,Arial,He
 `; 
 
 const mockProducts: Produto[] = [
-  { id: 1, nome: 'Pizza Calabresa', categoria: 'Pizzas Tradicionais', subcategoria: 'Salgadas', descricao: 'Molho, mussarela e calabresa', preco_sugerido: 49.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 12, estoque_minimo: 2, unidade_medida: 'un', grupos: 2 },
-  { id: 2, nome: 'Pizza 4 Queijos', categoria: 'Pizzas Especiais', subcategoria: 'Salgadas', descricao: 'Mussarela, parmesão, catupiry e gorgonzola', preco_sugerido: 62.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 8, estoque_minimo: 1, unidade_medida: 'un', grupos: 2 },
-  { id: 5, nome: 'Combo Família', categoria: 'Combos', subcategoria: null, descricao: '2 pizzas grandes + 2 refrigerantes 2L', preco_sugerido: 119.9, tipo_produto: 'combo', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: null, estoque_minimo: null, unidade_medida: null, grupos: 0 },
-  { id: 8, nome: 'Farinha de Trigo 5kg', categoria: 'Insumos', subcategoria: null, descricao: 'Farinha tipo 1', preco_sugerido: 0, tipo_produto: 'insumo', ativo: true, ativo_cardapio: false, imagem_url: null, destaque_cardapio: false, permite_observacao: false, estoque_atual: 34, estoque_minimo: 5, unidade_medida: 'kg', grupos: 0 },
+  { id: 1, nome: 'Pizza Calabresa', categoria: 'Pizzas Tradicionais', subcategoria: 'Salgadas', descricao: 'Molho, mussarela e calabresa', preco_sugerido: 49.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 12, estoque_minimo: 2, unidade_medida: 'un', grupos: 2, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
+  { id: 2, nome: 'Pizza 4 Queijos', categoria: 'Pizzas Especiais', subcategoria: 'Salgadas', descricao: 'Mussarela, parmesão, catupiry e gorgonzola', preco_sugerido: 62.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 8, estoque_minimo: 1, unidade_medida: 'un', grupos: 2, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
+  { id: 5, nome: 'Combo Família', categoria: 'Combos', subcategoria: null, descricao: '2 pizzas grandes + 2 refrigerantes 2L', preco_sugerido: 119.9, tipo_produto: 'combo', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: null, estoque_minimo: null, unidade_medida: null, grupos: 0, combo_items: [
+      { id: 1, produtoId: 1, nome: 'Pizza Calabresa', quantidade: 1, obrigatorio: true },
+      { id: 2, produtoId: 2, nome: 'Pizza 4 Queijos', quantidade: 1, obrigatorio: true }
+    ], combo_min_selecoes: 2, combo_max_selecoes: 4, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
+  { id: 8, nome: 'Farinha de Trigo 5kg', categoria: 'Insumos', subcategoria: null, descricao: 'Farinha tipo 1', preco_sugerido: 0, tipo_produto: 'insumo', ativo: true, ativo_cardapio: false, imagem_url: null, destaque_cardapio: false, permite_observacao: false, estoque_atual: 34, estoque_minimo: 5, unidade_medida: 'kg', grupos: 0, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
 ];
 
 const mockOptions: Opcao[] = [
@@ -144,6 +178,15 @@ const EMPTY_FORM: ProdutoForm = {
   estoque_minimo: '',
   unidade_medida: '',
   grupos: '0',
+  combo_items: [],
+  combo_min_selecoes: '0',
+  combo_max_selecoes: '0',
+  promocao_ativa: false,
+  promocao_preco: '0',
+  promocao_inicio: '',
+  promocao_fim: '',
+  promocao_flash: false,
+  promocao_nota: '',
 };
 
 export default function Produtos() {
@@ -162,6 +205,20 @@ export default function Produtos() {
   const [editingOption, setEditingOption] = useState<Opcao | null>(null);
   const [optionForm, setOptionForm] = useState({ nome: '', preco_adicional: '0', ativo: true });
 
+  const [comboProductId, setComboProductId] = useState<number>(0);
+  const [comboProductQty, setComboProductQty] = useState('1');
+  const [comboProductObrigatorio, setComboProductObrigatorio] = useState(true);
+
+  const [categoryItems, setCategoryItems] = useState<CategoryItem[]>([]);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState('');
+  const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
+  const [subcategoryParent, setSubcategoryParent] = useState('');
+  const [editingSubcategory, setEditingSubcategory] = useState<string | null>(null);
+  const [subcategoryName, setSubcategoryName] = useState('');
+
   const filteredProdutos = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
     const specialTabs = ['opcoes', 'tamanhos', 'bordas'];
@@ -172,6 +229,26 @@ export default function Produtos() {
       return byType && bySearch;
     });
   }, [produtos, deferredSearch, tipoTab]);
+
+  const categoryOptions = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    produtos.forEach((p) => {
+      const cat = p.categoria?.trim();
+      if (!cat) return;
+      if (!map.has(cat)) map.set(cat, new Set());
+      const sub = p.subcategoria?.trim();
+      if (sub) map.get(cat)?.add(sub);
+    });
+    categoryItems.forEach((item) => {
+      if (!map.has(item.nome)) map.set(item.nome, new Set());
+      item.subcategorias.forEach((sub) => {
+        if (sub) map.get(item.nome)?.add(sub);
+      });
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([nome, subSet]) => ({ nome, subcategorias: Array.from(subSet).sort((a, b) => a.localeCompare(b)) }));
+  }, [produtos, categoryItems]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -190,6 +267,9 @@ export default function Produtos() {
   const handleOpenCreate = useCallback((tipo: TipoProduto) => {
     setEditing(null);
     setFormData({ ...EMPTY_FORM, tipo_produto: tipo });
+    setComboProductId(0);
+    setComboProductQty('1');
+    setComboProductObrigatorio(true);
     setImageFile(null);
     setImagePreview('');
     setDialogOpen(true);
@@ -212,6 +292,15 @@ export default function Produtos() {
       estoque_minimo: produto.estoque_minimo?.toString() ?? '',
       unidade_medida: produto.unidade_medida ?? '',
       grupos: produto.grupos.toString(),
+      combo_items: produto.combo_items ?? [],
+      combo_min_selecoes: produto.combo_min_selecoes?.toString() ?? '0',
+      combo_max_selecoes: produto.combo_max_selecoes?.toString() ?? '0',
+      promocao_ativa: produto.promocao_ativa,
+      promocao_preco: produto.promocao_preco?.toString() ?? '0',
+      promocao_inicio: produto.promocao_inicio ?? '',
+      promocao_fim: produto.promocao_fim ?? '',
+      promocao_flash: produto.promocao_flash,
+      promocao_nota: produto.promocao_nota ?? '',
     });
     setImageFile(null);
     setImagePreview(produto.imagem_url ?? '');
@@ -228,6 +317,40 @@ export default function Produtos() {
     setEditingOption(option);
     setOptionForm({ nome: option.nome, preco_adicional: option.preco_adicional.toString(), ativo: option.ativo });
     setOptionDialogOpen(true);
+  }, []);
+
+  const handleAddComboItem = useCallback(() => {
+    const selected = produtos.find((p) => p.id === comboProductId && p.tipo_produto !== 'combo');
+    if (!selected) {
+      toast.error('Selecione um produto válido para o combo');
+      return;
+    }
+    if (formData.combo_items.some((item) => item.produtoId === selected.id)) {
+      toast.error('Produto já adicionado ao combo');
+      return;
+    }
+    const quantidade = Number(comboProductQty) || 1;
+    const item: ComboItem = {
+      id: Date.now(),
+      produtoId: selected.id,
+      nome: selected.nome,
+      quantidade,
+      obrigatorio: comboProductObrigatorio,
+    };
+    setFormData((prev) => ({
+      ...prev,
+      combo_items: [...prev.combo_items, item],
+    }));
+    setComboProductId(0);
+    setComboProductQty('1');
+    setComboProductObrigatorio(true);
+  }, [comboProductId, comboProductQty, comboProductObrigatorio, formData.combo_items, produtos]);
+
+  const handleRemoveComboItem = useCallback((itemId: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      combo_items: prev.combo_items.filter((item) => item.id !== itemId),
+    }));
   }, []);
 
   const handleSaveOption = useCallback(() => {
@@ -323,6 +446,15 @@ export default function Produtos() {
       estoque_minimo: formData.estoque_minimo.trim() ? Number(formData.estoque_minimo) : null,
       unidade_medida: formData.unidade_medida.trim() || null,
       grupos: Number(formData.grupos) || 0,
+      combo_items: formData.tipo_produto === 'combo' ? formData.combo_items : [],
+      combo_min_selecoes: formData.tipo_produto === 'combo' ? (Number(formData.combo_min_selecoes) || null) : null,
+      combo_max_selecoes: formData.tipo_produto === 'combo' ? (Number(formData.combo_max_selecoes) || null) : null,
+      promocao_ativa: formData.promocao_ativa,
+      promocao_preco: formData.promocao_preco.trim() ? Number(formData.promocao_preco) : null,
+      promocao_inicio: formData.promocao_inicio.trim() || null,
+      promocao_fim: formData.promocao_fim.trim() || null,
+      promocao_flash: formData.promocao_flash,
+      promocao_nota: formData.promocao_nota.trim() || null,
     };
 
     setProdutos((prev) => {
@@ -359,7 +491,10 @@ export default function Produtos() {
           <div className="page-sub">Cadastre pizzas, bebidas, combos, adicionais e insumos com visual moderno e controles fechados.</div>
         </div>
         <div className="header-actions">
+          <Button variant="outline" onClick={() => setCategoryManagerOpen(true)}>📂 Categorias</Button>
           <Button variant="secondary" onClick={() => handleOpenCreate('insumo')}>🍳 Novo Insumo</Button>
+          <Button variant="outline" onClick={() => handleOpenCreate('combo')}>🎁 Novo Combo</Button>
+          <Button variant="secondary" onClick={() => handleOpenCreate('adicional')}>＋ Novo Adicional</Button>
           <Button onClick={() => handleOpenCreate('produto')}>＋ Novo Produto</Button>
         </div>
       </div>
@@ -367,8 +502,12 @@ export default function Produtos() {
       <div className="kpi-grid">
         <div className="kpi-card"><div className="kpi-label">Total de itens</div><div className="kpi-value">{produtos.length}</div></div>
         <div className="kpi-card"><div className="kpi-label">No cardápio</div><div className="kpi-value">{produtos.filter((p) => p.ativo_cardapio).length}</div></div>
-        <div className="kpi-card"><div className="kpi-label">Insumos</div><div className="kpi-value">{produtos.filter((p) => p.tipo_produto === 'insumo').length}</div></div>
-        <div className="kpi-card"><div className="kpi-label">Com opções</div><div className="kpi-value">{produtos.filter((p) => p.grupos > 0).length}</div></div>
+        <div className="kpi-card"><div className="kpi-label">Promoções ativas</div><div className="kpi-value">{produtos.filter((p) => p.promocao_ativa && p.promocao_preco != null && (() => {
+              const now = Date.now();
+              const start = p.promocao_inicio ? Date.parse(p.promocao_inicio) : null;
+              const end = p.promocao_fim ? Date.parse(p.promocao_fim) : null;
+              return (!start || now >= start) && (!end || now <= end);
+            })()).length}</div></div>
       </div>
 
       <Tabs value={tipoTab} onValueChange={setTipoTab}>
@@ -545,11 +684,48 @@ export default function Produtos() {
                 </div>
                 <div>
                   <Label htmlFor="categoria">Categoria</Label>
-                  <Input id="categoria" value={formData.categoria} onChange={(event) => onChangeForm('categoria', event.target.value)} />
+                  <Input
+                    id="categoria"
+                    list="categoria-list"
+                    value={formData.categoria}
+                    onChange={(event) => onChangeForm('categoria', event.target.value)}
+                    placeholder="Digite ou escolha uma categoria"
+                  />
+                  <datalist id="categoria-list">
+                    {categoryOptions.map((category) => (
+                      <option key={category.nome} value={category.nome} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <Label htmlFor="subcategoria">Subcategoria</Label>
-                  <Input id="subcategoria" value={formData.subcategoria} onChange={(event) => onChangeForm('subcategoria', event.target.value)} />
+                  <Input
+                    id="subcategoria"
+                    list="subcategoria-list"
+                    value={formData.subcategoria}
+                    onChange={(event) => onChangeForm('subcategoria', event.target.value)}
+                    placeholder="Digite ou escolha uma subcategoria"
+                  />
+                  <datalist id="subcategoria-list">
+                    {(categoryOptions.find((c) => c.nome === formData.categoria)?.subcategorias || []).map((sub) => (
+                      <option key={sub} value={sub} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <Label htmlFor="tipo_produto">Tipo de item</Label>
+                  <select
+                    id="tipo_produto"
+                    value={formData.tipo_produto}
+                    onChange={(event) => onChangeForm('tipo_produto', event.target.value as TipoProduto)}
+                    className="form-input"
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+                  >
+                    <option value="produto">Produto</option>
+                    <option value="combo">Combo</option>
+                    <option value="adicional">Adicional</option>
+                    <option value="insumo">Insumo</option>
+                  </select>
                 </div>
                 <div>
                   <Label htmlFor="preco">Preço sugerido</Label>
@@ -567,6 +743,97 @@ export default function Produtos() {
                     checked={formData.destaque_cardapio}
                     onChange={(event) => onChangeForm('destaque_cardapio', event.target.checked)}
                   />
+                </div>
+                {formData.tipo_produto === 'combo' && (
+                  <div className="form-grid-full" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: 16, background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12 }}>Itens do combo</div>
+                    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '2fr 80px 120px 120px' }}>
+                      <div>
+                        <Label htmlFor="comboProduto">Produto</Label>
+                        <select
+                          id="comboProduto"
+                          value={comboProductId}
+                          onChange={(event) => setComboProductId(Number(event.target.value))}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+                        >
+                          <option value={0}>Selecione um produto</option>
+                          {produtos
+                            .filter((p) => p.tipo_produto !== 'combo' && p.id !== editing?.id)
+                            .map((produto) => (
+                              <option key={produto.id} value={produto.id}>{produto.nome}</option>
+                            ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="comboQuantidade">Qtd.</Label>
+                        <Input id="comboQuantidade" type="number" min="1" value={comboProductQty} onChange={(event) => setComboProductQty(event.target.value)} />
+                      </div>
+                      <div>
+                        <Label htmlFor="comboObrigatorio">Obrig.</Label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                          <input id="comboObrigatorio" type="checkbox" checked={comboProductObrigatorio} onChange={(event) => setComboProductObrigatorio(event.target.checked)} />
+                          <span style={{ fontSize: 12, color: 'var(--text2)' }}>Obrigatório</span>
+                        </div>
+                      </div>
+                      <Button type="button" onClick={handleAddComboItem} style={{ alignSelf: 'end' }}>Adicionar</Button>
+                    </div>
+                    {formData.combo_items.length > 0 ? (
+                      <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+                        {formData.combo_items.map((item) => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 14, background: 'var(--surface)' }}>
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{item.nome}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text2)' }}>{item.quantidade}x • {item.obrigatorio ? 'Obrigatório' : 'Opcional'}</div>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => handleRemoveComboItem(item.id)}>Remover</Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 14, color: 'var(--text2)' }}>Adicione produtos para montar o combo.</div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+                      <div>
+                        <Label htmlFor="comboMin">Mín. seleções</Label>
+                        <Input id="comboMin" type="number" min="0" value={formData.combo_min_selecoes} onChange={(event) => onChangeForm('combo_min_selecoes', event.target.value)} />
+                      </div>
+                      <div>
+                        <Label htmlFor="comboMax">Máx. seleções</Label>
+                        <Input id="comboMax" type="number" min="0" value={formData.combo_max_selecoes} onChange={(event) => onChangeForm('combo_max_selecoes', event.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="form-grid-full" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: 16, background: 'rgba(255,255,255,0.02)' }}>
+                  <div style={{ fontWeight: 700, marginBottom: 12 }}>Promoção e regras</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" checked={formData.promocao_ativa} onChange={(event) => onChangeForm('promocao_ativa', event.target.checked)} />
+                      Ativar promoção
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" checked={formData.promocao_flash} onChange={(event) => onChangeForm('promocao_flash', event.target.checked)} />
+                      Flash sale
+                    </label>
+                  </div>
+                  <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
+                    <div>
+                      <Label htmlFor="precoPromocional">Preço promocional</Label>
+                      <Input id="precoPromocional" type="number" step="0.01" min="0" value={formData.promocao_preco} onChange={(event) => onChangeForm('promocao_preco', event.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="promocaoInicio">Início</Label>
+                      <Input id="promocaoInicio" type="date" value={formData.promocao_inicio} onChange={(event) => onChangeForm('promocao_inicio', event.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="promocaoFim">Fim</Label>
+                      <Input id="promocaoFim" type="date" value={formData.promocao_fim} onChange={(event) => onChangeForm('promocao_fim', event.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="promocaoNota">Observação</Label>
+                      <Input id="promocaoNota" value={formData.promocao_nota} onChange={(event) => onChangeForm('promocao_nota', event.target.value)} />
+                    </div>
+                  </div>
                 </div>
                 <div className="form-grid-full">
                   <div className="image-upload-box">
@@ -590,6 +857,201 @@ export default function Produtos() {
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <Button type="button" variant="secondary" onClick={() => { setDialogOpen(false); setEditing(null); setImageFile(null); setImagePreview(''); }}>Cancelar</Button>
                 <Button type="button" onClick={handleSave}>Salvar</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {categoryManagerOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-shell">
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">Gerenciar categorias</div>
+                <div style={{ color: 'var(--text2)', marginTop: 6 }}>Crie, edite e exclua categorias e subcategorias para os produtos.</div>
+              </div>
+              <Button variant="ghost" onClick={() => setCategoryManagerOpen(false)}>Fechar</Button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>Categorias</div>
+                <Button onClick={() => { setEditingCategory(null); setCategoryName(''); setCategoryDialogOpen(true); }}>＋ Nova categoria</Button>
+              </div>
+              {categoryOptions.length ? (
+                <div style={{ display: 'grid', gap: 16 }}>
+                  {categoryOptions.map((category) => (
+                    <div key={category.nome} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, background: 'var(--surface2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{category.nome}</div>
+                          <div style={{ color: 'var(--text2)', fontSize: 13 }}>{category.subcategorias.length} subcategorias</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <Button variant="outline" size="sm" onClick={() => { setEditingCategory(category.nome); setCategoryName(category.nome); setCategoryDialogOpen(true); }}>Editar</Button>
+                          <Button variant="destructive" size="sm" onClick={() => {
+                            setCategoryItems((prev) => prev.filter((item) => item.nome !== category.nome));
+                            setProdutos((prev) => prev.map((produto) => produto.categoria === category.nome ? { ...produto, categoria: '' } : produto));
+                            toast.success('Categoria removida');
+                          }}>
+                            Excluir
+                          </Button>
+                          <Button onClick={() => { setSubcategoryParent(category.nome); setEditingSubcategory(null); setSubcategoryName(''); setSubcategoryDialogOpen(true); }}>
+                            + Subcategoria
+                          </Button>
+                        </div>
+                      </div>
+                      {category.subcategorias.length > 0 && (
+                        <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                          {category.subcategorias.map((sub) => (
+                            <div key={sub} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: 10, borderRadius: 12, background: 'var(--surface)' }}>
+                              <span>{sub}</span>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <Button variant="outline" size="sm" onClick={() => { setSubcategoryParent(category.nome); setEditingSubcategory(sub); setSubcategoryName(sub); setSubcategoryDialogOpen(true); }}>
+                                  Editar
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => {
+                                  setCategoryItems((prev) => prev.map((item) => item.nome === category.nome ? {
+                                    ...item,
+                                    subcategorias: item.subcategorias.filter((s) => s !== sub)
+                                  } : item));
+                                  setProdutos((prev) => prev.map((produto) => produto.categoria === category.nome && produto.subcategoria === sub ? { ...produto, subcategoria: '' } : produto));
+                                  toast.success('Subcategoria removida');
+                                }}>
+                                  Excluir
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">Nenhuma categoria cadastrada ainda.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {categoryDialogOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-shell">
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">{editingCategory ? 'Editar categoria' : 'Nova categoria'}</div>
+              </div>
+              <Button variant="ghost" onClick={() => setCategoryDialogOpen(false)}>Fechar</Button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid-full">
+                <Label htmlFor="categoryName">Nome da categoria</Label>
+                <Input id="categoryName" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <Button variant="secondary" onClick={() => setCategoryDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={() => {
+                  if (!categoryName.trim()) {
+                    toast.error('Nome da categoria é obrigatório');
+                    return;
+                  }
+                  const trimmed = categoryName.trim();
+                  if (editingCategory) {
+                    setCategoryItems((prev) => {
+                      const idx = prev.findIndex((item) => item.nome === editingCategory);
+                      if (idx >= 0) {
+                        return prev.map((item) => item.nome === editingCategory ? { ...item, nome: trimmed } : item);
+                      }
+                      const productSubcats = produtos
+                        .filter((p) => p.categoria === editingCategory)
+                        .map((p) => p.subcategoria)
+                        .filter((p): p is string => !!p);
+                      return [...prev, { nome: trimmed, subcategorias: Array.from(new Set(productSubcats)).sort((a, b) => a.localeCompare(b)) }];
+                    });
+                    setProdutos((prev) => prev.map((produto) => produto.categoria === editingCategory ? { ...produto, categoria: trimmed } : produto));
+                    toast.success('Categoria atualizada');
+                  } else {
+                    const exists = categoryOptions.some((item) => item.nome.toLowerCase() === trimmed.toLowerCase());
+                    if (exists) {
+                      toast.error('Categoria já existe');
+                      return;
+                    }
+                    setCategoryItems((prev) => [...prev, { nome: trimmed, subcategorias: [] }].sort((a, b) => a.nome.localeCompare(b.nome)));
+                    toast.success('Categoria criada');
+                  }
+                  setCategoryDialogOpen(false);
+                  setEditingCategory(null);
+                  setCategoryName('');
+                }}>Salvar</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subcategoryDialogOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-shell">
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">{editingSubcategory ? 'Editar subcategoria' : 'Nova subcategoria'}</div>
+                <div style={{ color: 'var(--text2)', marginTop: 6 }}>Categoria pai: {subcategoryParent}</div>
+              </div>
+              <Button variant="ghost" onClick={() => setSubcategoryDialogOpen(false)}>Fechar</Button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid-full">
+                <Label htmlFor="subcategoryName">Nome da subcategoria</Label>
+                <Input id="subcategoryName" value={subcategoryName} onChange={(event) => setSubcategoryName(event.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <Button variant="secondary" onClick={() => setSubcategoryDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={() => {
+                  if (!subcategoryName.trim()) {
+                    toast.error('Nome da subcategoria é obrigatório');
+                    return;
+                  }
+                  const trimmed = subcategoryName.trim();
+                  setCategoryItems((prev) => {
+                    const idx = prev.findIndex((item) => item.nome === subcategoryParent);
+                    if (idx >= 0) {
+                      return prev.map((item) => {
+                        if (item.nome !== subcategoryParent) return item;
+                        const existing = item.subcategorias.find((sub) => sub.toLowerCase() === trimmed.toLowerCase());
+                        if (editingSubcategory && editingSubcategory !== trimmed) {
+                          return {
+                            ...item,
+                            subcategorias: item.subcategorias.map((sub) => sub === editingSubcategory ? trimmed : sub).sort((a, b) => a.localeCompare(b))
+                          };
+                        }
+                        if (!existing) {
+                          return {
+                            ...item,
+                            subcategorias: [...item.subcategorias.filter((sub) => sub !== editingSubcategory), trimmed].sort((a, b) => a.localeCompare(b))
+                          };
+                        }
+                        return item;
+                      });
+                    }
+                    const productSubcats = produtos
+                      .filter((p) => p.categoria === subcategoryParent)
+                      .map((p) => p.subcategoria)
+                      .filter((p): p is string => !!p);
+                    const newSubcategories = Array.from(new Set([...productSubcats, trimmed])).sort((a, b) => a.localeCompare(b));
+                    return [...prev, { nome: subcategoryParent, subcategorias: newSubcategories }];
+                  });
+                  if (editingSubcategory) {
+                    setProdutos((prev) => prev.map((produto) => produto.categoria === subcategoryParent && produto.subcategoria === editingSubcategory ? { ...produto, subcategoria: trimmed } : produto));
+                    toast.success('Subcategoria atualizada');
+                  } else {
+                    toast.success('Subcategoria criada');
+                  }
+                  setSubcategoryDialogOpen(false);
+                  setEditingSubcategory(null);
+                  setSubcategoryName('');
+                }}>Salvar</Button>
               </div>
             </div>
           </div>
