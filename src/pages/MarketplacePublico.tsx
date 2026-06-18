@@ -146,7 +146,7 @@ export default function MarketplacePublico() {
           .order("nome_loja");
 
         if (dbError) throw dbError;
-        setStores((rows as MarketplaceStore[]) || []);
+        setStores((rows as unknown as MarketplaceStore[]) || []);
       } catch (e) {
         console.error("marketplace load:", e);
         setStores([]);
