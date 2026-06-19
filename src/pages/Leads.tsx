@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { APP_NAME } from "@/config/branding";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Upload, Search, Tag, MessageSquare, Phone, Mail, User, Building2, Download, CheckSquare, Square, Trash2, Edit, GitBranch, X, DollarSign, Trophy, XCircle, Filter } from "lucide-react";
+import { Plus, Upload, Search, Tag, MessageSquare, Phone, Mail, User, Building2, Download, CheckSquare, Square, Trash2, Edit, GitBranch, X, DollarSign, Trophy, XCircle, Filter, Pizza, ShoppingBag, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { throttledProfilePicture } from "@/utils/profilePictureThrottle";
 import { useToast } from "@/hooks/use-toast";
@@ -874,34 +874,77 @@ title: "Clientes excluídos",
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
+  const totalClientes = filteredLeads.length;
+  const clientesComCompras = filteredLeads.filter(lead => Number(lead.value || 0) > 0).length;
+  const faturamentoClientes = filteredLeads.reduce((sum, lead) => sum + Number(lead.value || 0), 0);
+  const clientesWhatsapp = filteredLeads.filter(lead => lead.phone || lead.telefone).length;
+  const ticketMedioCliente = clientesComCompras > 0 ? faturamentoClientes / clientesComCompras : 0;
+
   return <div className="space-y-4 md:space-y-6">
       {/* Header responsivo */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Clientes do {APP_NAME}</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            Cadastro de clientes, pedidos e aniversariantes
-          </p>
+      <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-gradient-to-br from-[#170b04] via-[#0f0f12] to-[#0b1210] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] md:p-6">
+        <div className="absolute right-6 top-5 hidden h-24 w-24 rounded-full border border-orange-500/20 bg-orange-500/5 md:block" />
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-300">
+              <Pizza className="h-3.5 w-3.5" />
+              Base de clientes da pizzaria
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Clientes da Rosh Pizzaria</h1>
+            <p className="mt-1 text-sm md:text-base text-muted-foreground">
+              Acompanhe consumidores do delivery, balcão e mesas, com WhatsApp, tags, aniversários e histórico de compras.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <AniversariantesManager />
+            <Button variant="outline" size="sm" className="border-orange-500/25 bg-background/60 md:size-default" onClick={exportarLeads}>
+              <Download className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Exportar</span>
+            </Button>
+            <ImportarLeadsDialog onLeadsImported={carregarLeads} />
+            <NovoLeadDialog onLeadCreated={carregarLeads} mode="cliente" />
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <AniversariantesManager />
-          <Button variant="outline" size="sm" className="md:size-default" onClick={exportarLeads}>
-            <Download className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">Exportar</span>
-          </Button>
-          <ImportarLeadsDialog onLeadsImported={carregarLeads} />
-          <NovoLeadDialog onLeadCreated={carregarLeads} mode="cliente" />
+        <div className="relative mt-5 grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              Clientes filtrados <User className="h-4 w-4 text-orange-300" />
+            </div>
+            <div className="mt-2 text-2xl font-bold">{totalClientes}</div>
+            <div className="text-xs text-muted-foreground">{leads.length} cadastrados no total</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              Com WhatsApp <MessageSquare className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="mt-2 text-2xl font-bold text-emerald-400">{clientesWhatsapp}</div>
+            <div className="text-xs text-muted-foreground">prontos para campanha</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              Ticket médio <ShoppingBag className="h-4 w-4 text-blue-400" />
+            </div>
+            <div className="mt-2 text-2xl font-bold text-blue-400">R$ {ticketMedioCliente.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-xs text-muted-foreground">clientes com compra</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              Receita mapeada <DollarSign className="h-4 w-4 text-orange-300" />
+            </div>
+            <div className="mt-2 text-2xl font-bold text-orange-300">R$ {faturamentoClientes.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-xs text-muted-foreground">histórico dos clientes</div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 rounded-2xl border border-border/70 bg-card/40 p-3 md:p-4">
         {/* Busca e filtros responsivos */}
         <div className="flex flex-col md:flex-row gap-3 md:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input 
-              placeholder="Buscar clientes..." 
-              className="pl-10 text-sm" 
+              placeholder="Buscar por nome, telefone, bairro, tag ou canal..." 
+              className="h-11 rounded-xl border-border/70 bg-background/70 pl-10 text-sm" 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
             />
@@ -968,76 +1011,100 @@ title: "Clientes excluídos",
           </div>}
       </div>
 
-      <div className="grid gap-4">
-        {filteredLeads.map(lead => <Card key={lead.id} className={`transition-all hover:shadow-lg ${selectionMode && selectedLeads.has(lead.id) ? 'ring-2 ring-primary bg-primary/5' : ''}`} onClick={selectionMode ? () => toggleLeadSelection(lead.id) : undefined}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
+      <div className="grid gap-3">
+        {filteredLeads.map(lead => <Card key={lead.id} className={`overflow-hidden border-border/70 bg-[#0d0d0f] transition-all hover:border-orange-500/35 hover:shadow-[0_18px_45px_rgba(0,0,0,0.28)] ${selectionMode && selectedLeads.has(lead.id) ? 'ring-2 ring-orange-400 bg-orange-500/5' : ''}`} onClick={selectionMode ? () => toggleLeadSelection(lead.id) : undefined}>
+            <CardContent className="p-0">
+              <div className="flex items-stretch">
+                <div className="w-1.5 bg-gradient-to-b from-orange-400 via-red-500 to-emerald-500" />
+                <div className="flex flex-1 flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:p-5">
                 {selectionMode && <div className="mr-4 flex items-center">
                     <Checkbox checked={selectedLeads.has(lead.id)} onCheckedChange={() => toggleLeadSelection(lead.id)} onClick={e => e.stopPropagation()} />
                   </div>}
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-14 w-14 border-2 border-orange-500/25">
                       <AvatarImage src={getLeadAvatar(lead)} alt={lead.name} onError={e => {
                     // Fallback se a imagem não carregar
                     const target = e.target as HTMLImageElement;
-                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(lead.name)}&background=10b981&color=fff&size=128&bold=true`;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(lead.name)}&background=f97316&color=fff&size=128&bold=true`;
                   }} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-orange-500 text-white">
                         {getInitials(lead.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex items-center gap-3 flex-1">
-                    <h3 className="text-lg font-semibold">{lead.name}</h3>
+                    <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-lg font-semibold">{lead.name || "Cliente sem nome"}</h3>
                     <Badge className={getStatusColor(lead.status)}>
                       {lead.status}
                     </Badge>
-                    {lead.source && <Badge variant="outline">
+                    {Number(lead.value || 0) > 0 && <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
+                        <Star className="mr-1 h-3 w-3" />
+                        cliente ativo
+                      </Badge>}
+                    {lead.source && <Badge variant="outline" className="border-orange-500/25 text-orange-200">
                         <Tag className="mr-1 h-3 w-3" />
                         {lead.source}
                       </Badge>}
                     </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-sm text-muted-foreground">
+                      {(lead.phone || lead.telefone) && <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
+                          <Phone className="h-3.5 w-3.5" />
+                          {formatPhoneNumber(lead.phone || lead.telefone || "")}
+                        </span>}
+                      {lead.email && <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
+                          <Mail className="h-3.5 w-3.5" />
+                          {lead.email}
+                        </span>}
+                      {lead.company && <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
+                          <Building2 className="h-3.5 w-3.5" />
+                          {lead.company}
+                        </span>}
+                    </div>
+                    </div>
                   </div>
                   
                   {lead.tags && lead.tags.length > 0 && <div className="flex flex-wrap gap-2">
-                      {lead.tags.map(tag => <Badge key={tag} variant="secondary" className="gap-1">
+                      {lead.tags.slice(0, 6).map(tag => <Badge key={tag} variant="secondary" className="gap-1 rounded-full bg-orange-500/10 text-orange-200 hover:bg-orange-500/15">
                           <Tag className="h-3 w-3" />
                           {tag}
                         </Badge>)}
+                      {lead.tags.length > 6 && <Badge variant="outline" className="rounded-full">+{lead.tags.length - 6}</Badge>}
                     </div>}
-                  <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
-                    {lead.email && <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        {lead.email}
-                      </div>}
-                    {lead.phone && <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        {lead.phone}
-                        {!selectionMode && <Button variant="ghost" size="sm" className="h-6 px-2 ml-2 text-[#25D366] hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all" onClick={e => {
+                </div>
+                <div className="flex flex-col gap-3 md:min-w-[260px] md:items-end">
+                  <div className="grid w-full grid-cols-2 gap-2 md:w-[260px]">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total gasto</div>
+                      <div className="text-lg font-bold text-orange-300">
+                        R$ {Number(lead.value || 0).toLocaleString("pt-BR")}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Perfil</div>
+                      <div className="text-sm font-semibold text-emerald-300">
+                        {Number(lead.value || 0) > 0 ? "Comprador" : "Novo"}
+                      </div>
+                    </div>
+                  </div>
+                  {!selectionMode && <div className="flex flex-wrap justify-end gap-2">
+                      {(lead.phone || lead.telefone) && <Button variant="outline" size="sm" className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10" onClick={e => {
                     e.stopPropagation();
                     abrirConversa(lead);
-                  }} title="Abrir Conversa no WhatsApp">
-                            <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                            <span className="text-xs font-medium">WhatsApp</span>
-                          </Button>}
-                      </div>}
-                    {lead.company && <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span className="font-medium">{lead.company}</span>
-                      </div>}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="text-xl font-bold text-primary">
-                    R$ {Number(lead.value).toLocaleString("pt-BR")}
-                  </div>
-                  {!selectionMode && <div className="flex gap-2">
-                      <LeadQuickActions onEdit={() => handleEditarLead(lead)} />
+                  }} title="Abrir conversa no WhatsApp">
+                          <MessageSquare className="h-4 w-4 md:mr-2" />
+                          <span className="hidden md:inline">WhatsApp</span>
+                        </Button>}
                       <LeadTagsDialog leadId={lead.id} currentTags={lead.tags} onTagsUpdated={carregarLeads} triggerButton={<Button variant="outline" size="sm">
                             <Tag className="h-4 w-4 mr-2" />
                             Tags
                           </Button>} />
+                      <LeadQuickActions onEdit={() => handleEditarLead(lead)} />
                     </div>}
+                  <div className="text-right text-xs text-muted-foreground">
+                    Cliente desde {new Date(lead.created_at).toLocaleDateString("pt-BR")}
+                  </div>
+                </div>
                 </div>
               </div>
             </CardContent>

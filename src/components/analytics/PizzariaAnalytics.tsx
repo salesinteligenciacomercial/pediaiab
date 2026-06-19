@@ -200,10 +200,12 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
       </div>
 
       {/* Por tipo de atendimento */}
-      <Card>
+      <Card className="border-white/10 bg-[#0d0d0f] shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Pizza className="h-5 w-5 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-300">
+              <Pizza className="h-5 w-5" />
+            </span>
             Vendas por Tipo de Atendimento
           </CardTitle>
         </CardHeader>
@@ -215,21 +217,21 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
                 const Icon = data.icon;
                 const pct = totalPedidos > 0 ? (data.qtd / totalPedidos) * 100 : 0;
                 return (
-                  <div key={key} className="rounded-3xl border border-slate-200/70 bg-slate-50/80 p-5 space-y-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <div key={key} className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#171719] to-[#101012] p-5 space-y-3 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-500/35 hover:shadow-[0_16px_35px_rgba(0,0,0,0.25)]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-300">
                           <Icon className="h-5 w-5" />
                         </span>
-                        <span className="text-sm font-medium text-slate-800">{data.label}</span>
+                        <span className="text-sm font-medium text-foreground">{data.label}</span>
                       </div>
-                      <Badge variant="secondary">{pct.toFixed(0)}%</Badge>
+                      <Badge className="bg-orange-500/15 text-orange-200 border-orange-500/20">{pct.toFixed(0)}%</Badge>
                     </div>
-                    <div className="text-3xl font-semibold text-slate-900">{data.qtd}</div>
-                    <div className="text-sm text-slate-500">{fmtBRL(data.valor)}</div>
-                    <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                    <div className="text-3xl font-semibold text-foreground">{data.qtd}</div>
+                    <div className="text-sm text-muted-foreground">{fmtBRL(data.valor)}</div>
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                       <div
-                        className="h-full bg-primary transition-all"
+                        className="h-full bg-gradient-to-r from-orange-500 to-emerald-400 transition-all"
                         style={{ width: `${Math.max(pct, 4)}%` }}
                       />
                     </div>
@@ -242,10 +244,10 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
 
       {/* Canal e Pagamento */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="border-white/10 bg-[#0d0d0f] shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Smartphone className="h-5 w-5 text-primary" />
+              <Smartphone className="h-5 w-5 text-orange-300" />
               Origem dos Pedidos (Canal)
             </CardTitle>
           </CardHeader>
@@ -266,9 +268,9 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
                             {d.qtd} • {fmtBRL(d.valor)}
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className="h-full bg-gradient-to-r from-orange-500 to-blue-400 transition-all"
                             style={{ width: `${Math.max(pct, 6)}%` }}
                           />
                         </div>
@@ -280,10 +282,10 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-white/10 bg-[#0d0d0f] shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="h-5 w-5 text-primary" />
+              <CreditCard className="h-5 w-5 text-orange-300" />
               Formas de Pagamento
             </CardTitle>
           </CardHeader>
@@ -304,9 +306,9 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
                             {d.qtd} • {fmtBRL(d.valor)}
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className="h-full bg-gradient-to-r from-emerald-400 to-orange-500 transition-all"
                             style={{ width: `${Math.max(pct, 6)}%` }}
                           />
                         </div>
@@ -320,10 +322,10 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
       </div>
 
       {/* Top produtos */}
-      <Card>
+      <Card className="border-white/10 bg-[#0d0d0f] shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-primary" />
+            <Award className="h-5 w-5 text-orange-300" />
             Pizzas e Produtos Mais Vendidos
           </CardTitle>
         </CardHeader>
@@ -337,17 +339,17 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
               {topProdutos.map((p, idx) => (
                 <div
                   key={p.nome}
-                  className="flex items-center justify-between p-4 rounded-3xl border border-slate-200/70 bg-slate-50/80 transition hover:-translate-y-0.5 hover:shadow-sm"
+                  className="flex items-center justify-between p-4 rounded-2xl border border-white/10 bg-white/[0.03] transition hover:-translate-y-0.5 hover:border-orange-500/30 hover:bg-white/[0.05]"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-2xl bg-primary/10 text-primary font-bold text-sm">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-orange-500/10 text-orange-300 font-bold text-sm">
                       {idx + 1}
                     </div>
-                    <span className="font-medium text-slate-800">{p.nome}</span>
+                    <span className="font-medium text-foreground">{p.nome}</span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-slate-600">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>{p.qtd}x vendidos</span>
-                    <span className="font-semibold text-slate-900">{fmtBRL(p.valor)}</span>
+                    <span className="font-semibold text-orange-300">{fmtBRL(p.valor)}</span>
                   </div>
                 </div>
               ))}
@@ -357,10 +359,10 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
       </Card>
 
       {/* Horário de pico */}
-      <Card>
+      <Card className="border-white/10 bg-[#0d0d0f] shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" />
+            <Clock className="h-5 w-5 text-orange-300" />
             Horários de Movimento
           </CardTitle>
         </CardHeader>
@@ -378,7 +380,7 @@ export function PizzariaAnalytics({ companyId, period }: Props) {
                 {porHora.map((q, h) => (
                   <div key={h} className="flex flex-col items-center gap-1">
                     <div
-                      className="w-full bg-primary rounded-t transition-all"
+                      className="w-full bg-gradient-to-t from-orange-500 to-emerald-400 rounded-t transition-all"
                       style={{ height: `${(q / maxHora) * 100}%`, minHeight: q > 0 ? "4px" : "0" }}
                       title={`${h}h: ${q} pedidos`}
                     />
@@ -406,15 +408,16 @@ function KpiCard({
   icon: any;
 }) {
   return (
-    <Card className="border border-slate-200/70 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="overflow-hidden border-white/10 bg-[#0d0d0f] shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:border-orange-500/35 hover:shadow-[0_16px_35px_rgba(0,0,0,0.22)]">
+      <div className="h-1 bg-gradient-to-r from-orange-500 via-red-500 to-emerald-400" />
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-300">
           <Icon className="h-4 w-4" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold text-foreground">{value}</div>
         {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
       </CardContent>
     </Card>

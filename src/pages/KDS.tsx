@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import MesasView from "@/components/pedidos/MesasView";
+import EntregadoresView from "@/components/pedidos/EntregadoresView";
+import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,6 +22,10 @@ type Pedido = {
   total: number;
   observacoes: string | null;
   created_at: string;
+  entregador_id?: string | null;
+  valor_comissao?: number | null;
+  aceito_entregador_em?: string | null;
+  entregue_em?: string | null;
 };
 
 type PedidoItem = {
@@ -28,6 +34,19 @@ type PedidoItem = {
   produto_nome: string;
   quantidade: number;
   observacoes: string | null;
+};
+
+type Entregador = {
+  id: string;
+  company_id: string;
+  nome: string;
+  telefone: string | null;
+  veiculo: string;
+  status: string;
+  pct_comissao: number;
+  pix_chave: string | null;
+  avaliacao_media: number;
+  online: boolean;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -72,16 +91,76 @@ function getUrgency(createdAt: string, status: PedidoStatus): "normal" | "warnin
 
 // ─── PedidoCard Component ─────────────────────────────────────────────────────
 
+async function darBaixaEstoquePedido(pedidoId: string, companyId: string) {
+  const { data: itens } = await (supabase.from("pedido_itens" as any) as any)
+    .select("produto_id, produto_nome, quantidade")
+    .eq("pedido_id", pedidoId);
+
+  for (const item of (itens || [])) {
+    let produtoId = item.produto_id as string | null;
+    let controlaEstoque = false;
+
+    if (produtoId) {
+      const { data: produto } = await (supabase.from("produtos_servicos" as any) as any)
+        .select("id, controla_estoque")
+        .eq("company_id", companyId)
+        .eq("id", produtoId)
+        .maybeSingle();
+      controlaEstoque = !!produto?.controla_estoque;
+    } else {
+      const { data: produtos } = await (supabase.from("produtos_servicos" as any) as any)
+        .select("id, controla_estoque")
+        .eq("company_id", companyId)
+        .ilike("nome", item.produto_nome)
+        .limit(1);
+      produtoId = produtos?.[0]?.id ?? null;
+      controlaEstoque = !!produtos?.[0]?.controla_estoque;
+    }
+
+    if (!produtoId || !controlaEstoque) continue;
+
+    const { data: composicoes } = await (supabase.from("produto_composicoes" as any) as any)
+      .select("insumo_id, quantidade")
+      .eq("produto_id", produtoId);
+
+    if (composicoes?.length) {
+      for (const comp of composicoes) {
+        await supabase.rpc("registrar_movimentacao_estoque" as any, {
+          p_company_id: companyId,
+          p_produto_id: comp.insumo_id,
+          p_tipo: "saida",
+          p_quantidade: Number(comp.quantidade || 0) * Number(item.quantidade || 1),
+          p_motivo: "venda",
+          p_pedido_id: pedidoId,
+          p_observacao: `Baixa automatica do pedido ${pedidoId}`,
+        });
+      }
+    } else {
+      await supabase.rpc("registrar_movimentacao_estoque" as any, {
+        p_company_id: companyId,
+        p_produto_id: produtoId,
+        p_tipo: "saida",
+        p_quantidade: Number(item.quantidade || 1),
+        p_motivo: "venda",
+        p_pedido_id: pedidoId,
+        p_observacao: `Baixa automatica do pedido ${pedidoId}`,
+      });
+    }
+  }
+}
+
 function PedidoCard({
   pedido,
   itensByPedido,
   onAdvance,
   isNew,
+  entregadoresList,
 }: {
   pedido: Pedido;
   itensByPedido: Record<string, PedidoItem[]>;
   onAdvance: (pedido: Pedido) => void;
   isNew: boolean;
+  entregadoresList: Entregador[];
 }) {
   const itens = itensByPedido[pedido.id] || [];
   const cfg = STATUS_CONFIG[pedido.status];
@@ -248,8 +327,41 @@ function PedidoCard({
         </div>
       )}
 
+      {pedido.status === "saiu_entrega" && pedido.entregador_id && (() => {
+        const ent = entregadoresList.find((e) => e.id === pedido.entregador_id);
+        return ent ? (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "#1e0a2e", borderRadius: 6, padding: "5px 8px",
+          }}>
+            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#B980FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#12071A", fontWeight: 700 }}>
+              {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+            </div>
+            <span style={{ color: "#B980FF", fontSize: 9 }}>{ent.nome}</span>
+          </div>
+        ) : null;
+      })()}
+
       {/* Action button */}
-      {nextLabel[pedido.status] && (
+      {pedido.status === "pronto" && pedido.tipo_atendimento === "entrega" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{
+            background: "#0d2012", border: "0.5px solid #14532d",
+            borderRadius: 6, padding: "4px 8px",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <span style={{ color: "#4ade80", fontSize: 8 }}>Aguarda entregador</span>
+          </div>
+          <button onClick={() => onAdvance(pedido)} style={{
+            background: "#2ECC8F", color: "#001A08",
+            border: "none", borderRadius: 8, padding: "8px",
+            fontSize: 11, fontWeight: 600, cursor: "pointer", width: "100%",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            Atribuir entregador
+          </button>
+        </div>
+      ) : nextLabel[pedido.status] && (
         <button
           onClick={() => onAdvance(pedido)}
           style={{
@@ -294,12 +406,14 @@ function KDSColumn({
   itensByPedido,
   newIds,
   onAdvance,
+  entregadoresList,
 }: {
   status: PedidoStatus;
   pedidos: Pedido[];
   itensByPedido: Record<string, PedidoItem[]>;
   newIds: Set<string>;
   onAdvance: (pedido: Pedido) => void;
+  entregadoresList: Entregador[];
 }) {
   const cfg = STATUS_CONFIG[status];
 
@@ -381,9 +495,11 @@ function KDSColumn({
               itensByPedido={itensByPedido}
               onAdvance={onAdvance}
               isNew={newIds.has(p.id)}
+              entregadoresList={entregadoresList}
             />
           ))
         )}
+
       </div>
     </div>
   );
@@ -398,7 +514,12 @@ export default function KDS() {
   const [loading, setLoading] = useState(true);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [clock, setClock] = useState(new Date());
-  const [activeTab, setActiveTab] = useState<"delivery" | "mesas">("delivery");
+  const [activeTab, setActiveTab] = useState<"delivery" | "mesas" | "entregadores">("delivery");
+  const [entregadores, setEntregadores] = useState<Entregador[]>([]);
+  const [pedidoParaAtribuir, setPedidoParaAtribuir] = useState<Pedido | null>(null);
+  const [entregadorSelecionado, setEntregadorSelecionado] = useState<string | null>(null);
+  const [atribuindo, setAtribuindo] = useState(false);
+  const [novoPedidoOpen, setNovoPedidoOpen] = useState(false);
   const audioRef = useRef<AudioContext | null>(null);
 
   // Clock ticker
@@ -475,6 +596,21 @@ export default function KDS() {
     }
   }, [playBeep]);
 
+  const loadEntregadores = useCallback(async (cid: string) => {
+    const { data, error } = await (supabase.from("entregadores" as any) as any)
+      .select("*")
+      .eq("company_id", cid)
+      .eq("status", "ativo")
+      .order("nome");
+
+    if (error) {
+      console.error("[KDS] erro ao carregar entregadores", error);
+      return;
+    }
+
+    if (data) setEntregadores(data);
+  }, []);
+
   // Bootstrap
   useEffect(() => {
     (async () => {
@@ -482,9 +618,10 @@ export default function KDS() {
       if (!cid) return;
       setCompanyId(cid);
       await load(cid);
+      await loadEntregadores(cid);
       setLoading(false);
     })();
-  }, [load]);
+  }, [load, loadEntregadores]);
 
   // Realtime subscription
   useEffect(() => {
@@ -501,12 +638,71 @@ export default function KDS() {
         { event: "*", schema: "public", table: "pedido_itens" },
         () => load(companyId)
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entregadores", filter: `company_id=eq.${companyId}` },
+        () => loadEntregadores(companyId)
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [companyId, load]);
+  }, [companyId, load, loadEntregadores]);
+
+  const handleAtribuirEntregador = useCallback(async () => {
+    if (!pedidoParaAtribuir || !entregadorSelecionado || !companyId) return;
+    setAtribuindo(true);
+
+    const entregador = entregadores.find((e) => e.id === entregadorSelecionado);
+    const valorComissao = pedidoParaAtribuir.total * ((entregador?.pct_comissao ?? 10) / 100);
+
+    const { error } = await (supabase.from("pedidos" as any) as any)
+      .update({
+        entregador_id: entregadorSelecionado,
+        status: "saiu_entrega",
+        valor_comissao: valorComissao,
+        aceito_entregador_em: new Date().toISOString(),
+      })
+      .eq("id", pedidoParaAtribuir.id);
+
+    if (error) {
+      toast.error("Erro ao atribuir entregador");
+      setAtribuindo(false);
+      return;
+    }
+
+    await (supabase.from("pedido_eventos" as any) as any).insert({
+      pedido_id: pedidoParaAtribuir.id,
+      company_id: companyId,
+      tipo: "entregador_atribuido",
+      descricao: `Entregador ${entregador?.nome} atribuido. Comissao: R$${valorComissao.toFixed(2)}`,
+    });
+
+    const telLimpo = String(pedidoParaAtribuir.cliente_telefone || "").replace(/\D/g, "");
+    if (telLimpo.length >= 10) {
+      await supabase.functions.invoke("enviar-whatsapp", {
+        body: {
+          company_id: companyId,
+          numero: telLimpo,
+          mensagem: `*Saiu para entrega!*\n\nOla ${pedidoParaAtribuir.cliente_nome}, seu pedido *${pedidoParaAtribuir.codigo_pedido}* saiu para entrega com ${entregador?.nome}. Logo chegara ate voce!`,
+          origem: "kds-entregador",
+        },
+      });
+    }
+
+    toast.success(`${entregador?.nome} atribuido ao pedido #${pedidoParaAtribuir.codigo_pedido}`);
+    setPedidoParaAtribuir(null);
+    setEntregadorSelecionado(null);
+    setAtribuindo(false);
+    await load(companyId);
+  }, [pedidoParaAtribuir, entregadorSelecionado, entregadores, companyId, load]);
 
   // Advance status
   const handleAdvance = useCallback(async (pedido: Pedido) => {
+    if (pedido.status === "pronto" && pedido.tipo_atendimento === "entrega") {
+      setPedidoParaAtribuir(pedido);
+      setEntregadorSelecionado(null);
+      return;
+    }
+
     const flow: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto", "entregue"];
     const idx = flow.indexOf(pedido.status);
     if (idx < 0 || idx >= flow.length - 1) return;
@@ -535,6 +731,15 @@ export default function KDS() {
     });
 
     // 📲 Notificar cliente via WhatsApp sobre avanço de status
+    if (nextStatus === "entregue") {
+      try {
+        await darBaixaEstoquePedido(pedido.id, pedido.company_id);
+      } catch (stockErr) {
+        console.error("[KDS] erro ao dar baixa no estoque", stockErr);
+        toast.error("Pedido entregue, mas houve erro na baixa de estoque");
+      }
+    }
+
     try {
       const telLimpo = String(pedido.cliente_telefone || "").replace(/\D/g, "");
       if (telLimpo.length >= 10) {
@@ -733,7 +938,8 @@ export default function KDS() {
 
         {/* Tabs / Filters */}
         <div style={{display:'flex', flexDirection: 'column'}}>
-          <div className="kds-tabs">
+          <div className="kds-tabs" style={{ justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
               className={`kds-tab ${activeTab === "delivery" ? "active" : ""}`}
               onClick={() => setActiveTab("delivery")}
@@ -745,6 +951,35 @@ export default function KDS() {
               onClick={() => setActiveTab("mesas")}
             >
               🪑 Mesas
+            </button>
+            <button
+              className={`kds-tab ${activeTab === "entregadores" ? "active" : ""}`}
+              onClick={() => setActiveTab("entregadores")}
+              style={{ color: activeTab === "entregadores" ? "#B980FF" : undefined }}
+            >
+              Entregadores
+              <span style={{ marginLeft: 8, background: "#0b0b0d", padding: "2px 8px", borderRadius: 8, color: "#B980FF" }}>
+                {entregadores.filter((e) => e.online).length}
+              </span>
+            </button>
+            </div>
+            <button
+              onClick={() => setNovoPedidoOpen(true)}
+              style={{
+                border: "1px solid rgba(249,115,22,0.42)",
+                background: "linear-gradient(135deg, #F97316, #EF4444)",
+                color: "#fff",
+                borderRadius: 12,
+                padding: "10px 16px",
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: ".02em",
+                cursor: "pointer",
+                boxShadow: "0 10px 26px rgba(249,115,22,0.22)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              + Novo Pedido
             </button>
           </div>
           {activeTab === "delivery" && (
@@ -779,19 +1014,243 @@ export default function KDS() {
           </div>
         ) : activeTab === "mesas" ? (
           companyId ? <MesasView companyId={companyId} /> : null
+        ) : activeTab === "entregadores" ? (
+          companyId ? (
+            <EntregadoresView
+              entregadores={entregadores}
+              pedidos={pedidos}
+              companyId={companyId}
+              onReload={() => loadEntregadores(companyId)}
+            />
+          ) : null
         ) : (
-          <div className="kds-columns">
-            {KDS_STATUSES.map((status) => (
-              <KDSColumn
-                key={status}
-                status={status}
-                pedidos={pedidosByStatus[status]}
-                itensByPedido={itensByPedido}
-                newIds={newIds}
-                onAdvance={handleAdvance}
-              />
-            ))}
+          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+            <div className="kds-columns" style={{ flex: 1 }}>
+              {KDS_STATUSES.map((status) => (
+                <KDSColumn
+                  key={status}
+                  status={status}
+                  pedidos={pedidosByStatus[status]}
+                  itensByPedido={itensByPedido}
+                  newIds={newIds}
+                  onAdvance={handleAdvance}
+                  entregadoresList={entregadores}
+                />
+              ))}
+            </div>
+
+            <div style={{
+              width: 200, flexShrink: 0,
+              borderLeft: "1px solid #111827",
+              background: "#0a0a0f",
+              display: "flex", flexDirection: "column",
+              overflowY: "auto",
+            }}>
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid #111827" }}>
+                <div style={{ color: "#B980FF", fontSize: 11, fontWeight: 500, marginBottom: 4 }}>
+                  Entregadores
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ flex: 1, background: "#0d2012", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
+                    <div style={{ color: "#4ade80", fontSize: 14, fontWeight: 600 }}>
+                      {entregadores.filter((e) => e.online && !pedidos.some((p) => p.entregador_id === e.id && p.status === "saiu_entrega")).length}
+                    </div>
+                    <div style={{ color: "#444", fontSize: 8 }}>livres</div>
+                  </div>
+                  <div style={{ flex: 1, background: "#12071A", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
+                    <div style={{ color: "#B980FF", fontSize: 14, fontWeight: 600 }}>
+                      {pedidos.filter((p) => p.status === "saiu_entrega").length}
+                    </div>
+                    <div style={{ color: "#444", fontSize: 8 }}>em rota</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                {entregadores.filter((e) => e.online).map((ent) => {
+                  const emRota = pedidos.find((p) => p.entregador_id === ent.id && p.status === "saiu_entrega");
+                  return (
+                    <div key={ent.id} style={{
+                      background: "#111118",
+                      border: `0.5px solid ${emRota ? "#3B2544" : "#14532d"}`,
+                      borderRadius: 10, padding: "8px 10px",
+                      display: "flex", alignItems: "center", gap: 8,
+                      opacity: emRota ? 0.75 : 1,
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: "50%",
+                        background: emRota ? "#1e0a2e" : "#0d2012",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 10, fontWeight: 600,
+                        color: emRota ? "#B980FF" : "#4ade80",
+                        flexShrink: 0,
+                      }}>
+                        {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: "#e5e5e5", fontSize: 10, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {ent.nome.split(" ")[0]}
+                        </div>
+                        <div style={{ color: "#555", fontSize: 8, marginTop: 1 }}>
+                          {emRota ? `em rota - #${emRota.codigo_pedido}` : "disponivel"}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 8, padding: "2px 6px", borderRadius: 20,
+                        background: emRota ? "#12071A" : "#0d2012",
+                        color: emRota ? "#B980FF" : "#4ade80",
+                        border: `0.5px solid ${emRota ? "#3B2544" : "#14532d"}`,
+                        whiteSpace: "nowrap",
+                      }}>
+                        {emRota ? "rota" : "livre"}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {entregadores.filter((e) => !e.online).map((ent) => (
+                  <div key={ent.id} style={{
+                    background: "#0d0d0d", border: "0.5px solid #1a1a1a",
+                    borderRadius: 10, padding: "7px 10px",
+                    display: "flex", alignItems: "center", gap: 8, opacity: 0.4,
+                  }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#333", fontWeight: 600, flexShrink: 0 }}>
+                      {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: "#444", fontSize: 10, fontWeight: 500 }}>{ent.nome.split(" ")[0]}</div>
+                      <div style={{ color: "#333", fontSize: 8 }}>offline</div>
+                    </div>
+                    <span style={{ fontSize: 8, color: "#333" }}>off</span>
+                  </div>
+                ))}
+
+                {entregadores.length === 0 && (
+                  <div style={{ color: "#333", fontSize: 10, textAlign: "center", padding: "16px 0" }}>
+                    Nenhum entregador cadastrado
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+        )}
+
+        {pedidoParaAtribuir && (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000,
+          }}>
+            <div style={{
+              background: "#111118", borderRadius: 16,
+              border: "1px solid #2ECC8F",
+              width: "100%", maxWidth: 400,
+              boxShadow: "0 0 40px rgba(46,204,143,0.15)",
+              overflow: "hidden",
+            }}>
+              <div style={{ background: "#001A08", borderBottom: "0.5px solid #14532d", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#2ECC8F", fontSize: 13, fontWeight: 500 }}>Atribuir entregador</span>
+                <button onClick={() => setPedidoParaAtribuir(null)} style={{ background: "none", border: "none", color: "#444", fontSize: 18, cursor: "pointer" }}>x</button>
+              </div>
+
+              <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #1a1a22" }}>
+                <div style={{ color: "#555", fontSize: 10, marginBottom: 2 }}>#{pedidoParaAtribuir.codigo_pedido}</div>
+                <div style={{ color: "#e5e5e5", fontSize: 14, fontWeight: 500 }}>{pedidoParaAtribuir.cliente_nome}</div>
+                <div style={{ color: "#2ECC8F", fontSize: 11, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                  R${pedidoParaAtribuir.total.toFixed(2)} - comissao aprox. R${(pedidoParaAtribuir.total * ((entregadores.find((e) => e.id === entregadorSelecionado)?.pct_comissao ?? 10) / 100)).toFixed(2)}
+                </div>
+              </div>
+
+              <div style={{ padding: "10px 18px 4px" }}>
+                <div style={{ color: "#555", fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 8 }}>
+                  Entregadores disponiveis
+                </div>
+              </div>
+
+              <div style={{ padding: "0 18px 10px", display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+                {entregadores.filter((e) => e.online).map((ent) => {
+                  const emRota = pedidos.some((p) => p.entregador_id === ent.id && p.status === "saiu_entrega");
+                  const isSelected = entregadorSelecionado === ent.id;
+                  return (
+                    <div
+                      key={ent.id}
+                      onClick={() => !emRota && setEntregadorSelecionado(ent.id)}
+                      style={{
+                        background: isSelected ? "#001A08" : "#0d0d16",
+                        border: `1px solid ${isSelected ? "#2ECC8F" : "#1e1e28"}`,
+                        borderRadius: 10, padding: "10px 12px",
+                        display: "flex", alignItems: "center", gap: 10,
+                        cursor: emRota ? "not-allowed" : "pointer",
+                        opacity: emRota ? 0.45 : 1,
+                      }}
+                    >
+                      <div style={{
+                        width: 36, height: 36, borderRadius: "50%",
+                        background: isSelected ? "#0d2012" : "#1a1a2e",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: 600,
+                        color: isSelected ? "#4ade80" : "#6B7280",
+                        flexShrink: 0,
+                      }}>
+                        {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: "#e5e5e5", fontSize: 12, fontWeight: 500 }}>{ent.nome}</div>
+                        <div style={{ color: "#555", fontSize: 9, marginTop: 2 }}>
+                          {emRota ? "em rota" : "disponivel"} - {ent.veiculo}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ color: "#F5A623", fontSize: 10 }}>Nota {Number(ent.avaliacao_media || 0).toFixed(1)}</div>
+                        <div style={{ color: "#2ECC8F", fontSize: 10, marginTop: 2 }}>{Number(ent.pct_comissao || 0)}%</div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {entregadores.filter((e) => e.online).length === 0 && (
+                  <div style={{ color: "#444", fontSize: 12, textAlign: "center", padding: "20px 0" }}>
+                    Nenhum entregador online no momento
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: "10px 18px 16px", display: "flex", gap: 8, borderTop: "0.5px solid #1a1a22" }}>
+                <button
+                  onClick={() => setPedidoParaAtribuir(null)}
+                  style={{ flex: 1, background: "#1a1a2e", color: "#555", border: "0.5px solid #2a2a3e", borderRadius: 10, padding: 10, fontSize: 11, cursor: "pointer" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAtribuirEntregador}
+                  disabled={!entregadorSelecionado || atribuindo}
+                  style={{
+                    flex: 2, background: entregadorSelecionado ? "#2ECC8F" : "#0a2a18",
+                    color: entregadorSelecionado ? "#001A08" : "#333",
+                    border: "none", borderRadius: 10, padding: 10,
+                    fontSize: 11, fontWeight: 600, cursor: entregadorSelecionado ? "pointer" : "not-allowed",
+                  }}
+                >
+                  {atribuindo ? "Atribuindo..." : entregadorSelecionado
+                    ? `Atribuir ${entregadores.find((e) => e.id === entregadorSelecionado)?.nome.split(" ")[0]}`
+                    : "Selecione um entregador"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {companyId && (
+          <PedidoChatModal
+            open={novoPedidoOpen}
+            onOpenChange={async (open) => {
+              setNovoPedidoOpen(open);
+              if (!open) await load(companyId);
+            }}
+            companyId={companyId}
+            clienteNome=""
+            clienteTelefone=""
+          />
         )}
       </div>
     </>

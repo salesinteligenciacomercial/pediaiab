@@ -9,11 +9,13 @@ import { toast } from 'sonner';
 import { Package, ImagePlus, Trash2, Edit2 } from 'lucide-react';
 import { PizzaTamanhosManager } from '@/components/produtos/PizzaTamanhosManager';
 import { PizzaBordasManager } from '@/components/produtos/PizzaBordasManager';
+import { supabase } from '@/integrations/supabase/client';
 
 type TipoProduto = 'produto' | 'insumo' | 'combo' | 'adicional';
 
 type Produto = {
-  id: number;
+  id: string;
+  company_id?: string;
   nome: string;
   categoria: string;
   subcategoria: string | null;
@@ -27,7 +29,13 @@ type Produto = {
   permite_observacao: boolean;
   estoque_atual: number | null;
   estoque_minimo: number | null;
+  estoque_maximo?: number | null;
   unidade_medida: string | null;
+  controla_estoque?: boolean;
+  custo_unitario?: number | null;
+  fornecedor_nome?: string | null;
+  fornecedor_contato?: string | null;
+  codigo_interno?: string | null;
   grupos: number;
   combo_items: ComboItem[];
   combo_min_selecoes: number | null;
@@ -53,7 +61,13 @@ type ProdutoForm = {
   permite_observacao: boolean;
   estoque_atual: string;
   estoque_minimo: string;
+  estoque_maximo: string;
   unidade_medida: string;
+  controla_estoque: boolean;
+  custo_unitario: string;
+  fornecedor_nome: string;
+  fornecedor_contato: string;
+  codigo_interno: string;
   grupos: string;
   combo_items: ComboItem[];
   combo_min_selecoes: string;
@@ -74,11 +88,47 @@ type Opcao = {
 };
 
 type ComboItem = {
-  id: number;
-  produtoId: number;
+  id: string;
+  produtoId: string;
   nome: string;
   quantidade: number;
   obrigatorio: boolean;
+};
+
+type Movimentacao = {
+  id: string;
+  company_id: string;
+  produto_id: string;
+  tipo: 'entrada' | 'saida' | 'ajuste' | 'perda' | 'producao';
+  quantidade: number;
+  quantidade_anterior: number | null;
+  quantidade_posterior: number | null;
+  motivo: string | null;
+  pedido_id: string | null;
+  custo_unitario: number | null;
+  valor_total: number | null;
+  observacao: string | null;
+  created_at: string;
+  produto_nome?: string;
+};
+
+type Composicao = {
+  id: string;
+  produto_id: string;
+  insumo_id: string;
+  quantidade: number;
+  unidade_medida: string;
+  insumo_nome?: string;
+  insumo_unidade?: string;
+};
+
+type AlertaEstoque = {
+  id: string;
+  produto_id: string;
+  tipo: 'abaixo_minimo' | 'zerado' | 'acima_maximo';
+  resolvido: boolean;
+  created_at: string;
+  produto_nome?: string;
 };
 
 type CategoryItem = {
@@ -92,6 +142,8 @@ const PRODUCT_TABS = [
   { key: 'combo', label: 'Combos' },
   { key: 'adicional', label: 'Adicionais' },
   { key: 'insumo', label: 'Insumos' },
+  { key: 'estoque', label: 'Estoque' },
+  { key: 'composicao', label: 'Receitas' },
   { key: 'opcoes', label: 'Opções' },
   { key: 'tamanhos', label: 'Tamanhos' },
   { key: 'bordas', label: 'Bordas' },
@@ -149,13 +201,13 @@ body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,Arial,He
 `; 
 
 const mockProducts: Produto[] = [
-  { id: 1, nome: 'Pizza Calabresa', categoria: 'Pizzas Tradicionais', subcategoria: 'Salgadas', descricao: 'Molho, mussarela e calabresa', preco_sugerido: 49.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 12, estoque_minimo: 2, unidade_medida: 'un', grupos: 2, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
-  { id: 2, nome: 'Pizza 4 Queijos', categoria: 'Pizzas Especiais', subcategoria: 'Salgadas', descricao: 'Mussarela, parmesão, catupiry e gorgonzola', preco_sugerido: 62.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 8, estoque_minimo: 1, unidade_medida: 'un', grupos: 2, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
-  { id: 5, nome: 'Combo Família', categoria: 'Combos', subcategoria: null, descricao: '2 pizzas grandes + 2 refrigerantes 2L', preco_sugerido: 119.9, tipo_produto: 'combo', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: null, estoque_minimo: null, unidade_medida: null, grupos: 0, combo_items: [
-      { id: 1, produtoId: 1, nome: 'Pizza Calabresa', quantidade: 1, obrigatorio: true },
-      { id: 2, produtoId: 2, nome: 'Pizza 4 Queijos', quantidade: 1, obrigatorio: true }
+  { id: '1', nome: 'Pizza Calabresa', categoria: 'Pizzas Tradicionais', subcategoria: 'Salgadas', descricao: 'Molho, mussarela e calabresa', preco_sugerido: 49.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 12, estoque_minimo: 2, unidade_medida: 'un', grupos: 2, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
+  { id: '2', nome: 'Pizza 4 Queijos', categoria: 'Pizzas Especiais', subcategoria: 'Salgadas', descricao: 'Mussarela, parmesão, catupiry e gorgonzola', preco_sugerido: 62.9, tipo_produto: 'produto', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: 8, estoque_minimo: 1, unidade_medida: 'un', grupos: 2, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
+  { id: '5', nome: 'Combo Família', categoria: 'Combos', subcategoria: null, descricao: '2 pizzas grandes + 2 refrigerantes 2L', preco_sugerido: 119.9, tipo_produto: 'combo', ativo: true, ativo_cardapio: true, imagem_url: null, destaque_cardapio: true, permite_observacao: true, estoque_atual: null, estoque_minimo: null, unidade_medida: null, grupos: 0, combo_items: [
+      { id: '1', produtoId: '1', nome: 'Pizza Calabresa', quantidade: 1, obrigatorio: true },
+      { id: '2', produtoId: '2', nome: 'Pizza 4 Queijos', quantidade: 1, obrigatorio: true }
     ], combo_min_selecoes: 2, combo_max_selecoes: 4, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
-  { id: 8, nome: 'Farinha de Trigo 5kg', categoria: 'Insumos', subcategoria: null, descricao: 'Farinha tipo 1', preco_sugerido: 0, tipo_produto: 'insumo', ativo: true, ativo_cardapio: false, imagem_url: null, destaque_cardapio: false, permite_observacao: false, estoque_atual: 34, estoque_minimo: 5, unidade_medida: 'kg', grupos: 0, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
+  { id: '8', nome: 'Farinha de Trigo 5kg', categoria: 'Insumos', subcategoria: null, descricao: 'Farinha tipo 1', preco_sugerido: 0, tipo_produto: 'insumo', ativo: true, ativo_cardapio: false, imagem_url: null, destaque_cardapio: false, permite_observacao: false, estoque_atual: 34, estoque_minimo: 5, unidade_medida: 'kg', grupos: 0, combo_items: [], combo_min_selecoes: null, combo_max_selecoes: null, promocao_ativa: false, promocao_preco: null, promocao_inicio: null, promocao_fim: null, promocao_flash: false, promocao_nota: null },
 ];
 
 const mockOptions: Opcao[] = [
@@ -176,7 +228,13 @@ const EMPTY_FORM: ProdutoForm = {
   permite_observacao: true,
   estoque_atual: '',
   estoque_minimo: '',
+  estoque_maximo: '',
   unidade_medida: '',
+  controla_estoque: false,
+  custo_unitario: '',
+  fornecedor_nome: '',
+  fornecedor_contato: '',
+  codigo_interno: '',
   grupos: '0',
   combo_items: [],
   combo_min_selecoes: '0',
@@ -190,7 +248,9 @@ const EMPTY_FORM: ProdutoForm = {
 };
 
 export default function Produtos() {
-  const [produtos, setProdutos] = useState<Produto[]>(mockProducts);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [loadingProdutos, setLoadingProdutos] = useState(true);
   const [tipoTab, setTipoTab] = useState<string>('todos');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -205,9 +265,21 @@ export default function Produtos() {
   const [editingOption, setEditingOption] = useState<Opcao | null>(null);
   const [optionForm, setOptionForm] = useState({ nome: '', preco_adicional: '0', ativo: true });
 
-  const [comboProductId, setComboProductId] = useState<number>(0);
+  const [comboProductId, setComboProductId] = useState<string>('');
   const [comboProductQty, setComboProductQty] = useState('1');
   const [comboProductObrigatorio, setComboProductObrigatorio] = useState(true);
+
+  const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+  const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
+  const [modalMovOpen, setModalMovOpen] = useState(false);
+  const [produtoMovendo, setProdutoMovendo] = useState<Produto | null>(null);
+  const [movForm, setMovForm] = useState({ tipo: 'entrada', quantidade: '', motivo: 'compra', custo_unitario: '', observacao: '' });
+  const [loadingMov, setLoadingMov] = useState(false);
+  const [filtroMovProduto, setFiltroMovProduto] = useState<string>('');
+  const [periodoMov, setPeriodoMov] = useState<'hoje' | 'semana' | 'mes'>('semana');
+  const [produtoReceita, setProdutoReceita] = useState<string>('');
+  const [composicoesProduto, setComposicoesProduto] = useState<Composicao[]>([]);
+  const [novoInsumo, setNovoInsumo] = useState({ insumo_id: '', quantidade: '', unidade_medida: 'un' });
 
   const [categoryItems, setCategoryItems] = useState<CategoryItem[]>([]);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
@@ -219,9 +291,100 @@ export default function Produtos() {
   const [editingSubcategory, setEditingSubcategory] = useState<string | null>(null);
   const [subcategoryName, setSubcategoryName] = useState('');
 
+  const normalizeProduto = useCallback((p: any): Produto => ({
+    ...p,
+    preco_sugerido: Number(p.preco_sugerido || 0),
+    estoque_atual: p.estoque_atual == null ? null : Number(p.estoque_atual),
+    estoque_minimo: p.estoque_minimo == null ? null : Number(p.estoque_minimo),
+    estoque_maximo: p.estoque_maximo == null ? null : Number(p.estoque_maximo),
+    custo_unitario: p.custo_unitario == null ? null : Number(p.custo_unitario),
+    grupos: Number(p.grupos || 0),
+    combo_items: Array.isArray(p.combo_items) ? p.combo_items : [],
+    combo_min_selecoes: p.combo_min_selecoes == null ? null : Number(p.combo_min_selecoes),
+    combo_max_selecoes: p.combo_max_selecoes == null ? null : Number(p.combo_max_selecoes),
+    promocao_preco: p.promocao_preco == null ? null : Number(p.promocao_preco),
+  }), []);
+
+  const loadProdutos = useCallback(async (cid: string) => {
+    setLoadingProdutos(true);
+    const { data, error } = await (supabase.from('produtos_servicos' as any) as any)
+      .select('*')
+      .eq('company_id', cid)
+      .order('nome');
+
+    if (error) {
+      console.error('[Produtos] erro ao carregar produtos', error);
+      toast.error('Erro ao carregar produtos');
+    } else {
+      setProdutos((data || []).map(normalizeProduto));
+    }
+    setLoadingProdutos(false);
+  }, [normalizeProduto]);
+
+  const loadMovimentacoes = useCallback(async (cid: string) => {
+    const desde = periodoMov === 'hoje'
+      ? new Date().toISOString().slice(0, 10)
+      : periodoMov === 'semana'
+        ? new Date(Date.now() - 7 * 864e5).toISOString()
+        : new Date(Date.now() - 30 * 864e5).toISOString();
+
+    let query = (supabase.from('estoque_movimentacoes' as any) as any)
+      .select('*, produtos_servicos(nome, unidade_medida)')
+      .eq('company_id', cid)
+      .gte('created_at', desde)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (filtroMovProduto) query = query.eq('produto_id', filtroMovProduto);
+    const { data } = await query;
+    if (data) {
+      setMovimentacoes(data.map((m: any) => ({
+        ...m,
+        quantidade: Number(m.quantidade || 0),
+        quantidade_anterior: m.quantidade_anterior == null ? null : Number(m.quantidade_anterior),
+        quantidade_posterior: m.quantidade_posterior == null ? null : Number(m.quantidade_posterior),
+        custo_unitario: m.custo_unitario == null ? null : Number(m.custo_unitario),
+        valor_total: m.valor_total == null ? null : Number(m.valor_total),
+        produto_nome: m.produtos_servicos?.nome,
+      })));
+    }
+  }, [periodoMov, filtroMovProduto]);
+
+  const loadAlertas = useCallback(async (cid: string) => {
+    const { data } = await (supabase.from('estoque_alertas' as any) as any)
+      .select('*, produtos_servicos(nome)')
+      .eq('company_id', cid)
+      .eq('resolvido', false)
+      .order('created_at', { ascending: false });
+    if (data) setAlertas(data.map((a: any) => ({ ...a, produto_nome: a.produtos_servicos?.nome })));
+  }, []);
+
+  const verificarAlertas = useCallback(async (cid: string) => {
+    const { data: criticos } = await (supabase.from('produtos_servicos' as any) as any)
+      .select('id, nome, estoque_atual, estoque_minimo')
+      .eq('company_id', cid)
+      .eq('controla_estoque', true)
+      .not('estoque_minimo', 'is', null);
+
+    for (const p of (criticos || [])) {
+      const atual = Number(p.estoque_atual || 0);
+      const minimo = Number(p.estoque_minimo || 0);
+      if (atual === 0) {
+        await (supabase.from('estoque_alertas' as any) as any).upsert({
+          company_id: cid, produto_id: p.id, tipo: 'zerado', resolvido: false
+        }, { onConflict: 'produto_id,tipo', ignoreDuplicates: true });
+      } else if (atual <= minimo) {
+        await (supabase.from('estoque_alertas' as any) as any).upsert({
+          company_id: cid, produto_id: p.id, tipo: 'abaixo_minimo', resolvido: false
+        }, { onConflict: 'produto_id,tipo', ignoreDuplicates: true });
+      }
+    }
+    await loadAlertas(cid);
+  }, [loadAlertas]);
+
   const filteredProdutos = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
-    const specialTabs = ['opcoes', 'tamanhos', 'bordas'];
+    const specialTabs = ['opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao'];
     if (specialTabs.includes(tipoTab)) return [];
     return produtos.filter((p) => {
       const byType = tipoTab === 'todos' ? true : p.tipo_produto === tipoTab;
@@ -251,6 +414,36 @@ export default function Produtos() {
   }, [produtos, categoryItems]);
 
   useEffect(() => {
+    (async () => {
+      const { data: cid, error } = await supabase.rpc('get_my_company_id');
+      if (error || !cid) {
+        setLoadingProdutos(false);
+        toast.error('NÃ£o foi possÃ­vel identificar a empresa');
+        return;
+      }
+      setCompanyId(cid);
+      await loadProdutos(cid);
+      await loadMovimentacoes(cid);
+      await loadAlertas(cid);
+    })();
+  }, [loadProdutos, loadMovimentacoes, loadAlertas]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = supabase
+      .channel(`produtos-${companyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos_servicos', filter: `company_id=eq.${companyId}` }, () => loadProdutos(companyId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque_movimentacoes', filter: `company_id=eq.${companyId}` }, () => loadMovimentacoes(companyId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque_alertas', filter: `company_id=eq.${companyId}` }, () => loadAlertas(companyId))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [companyId, loadProdutos, loadMovimentacoes, loadAlertas]);
+
+  useEffect(() => {
+    if (companyId) loadMovimentacoes(companyId);
+  }, [companyId, loadMovimentacoes]);
+
+  useEffect(() => {
     if (!imageFile) {
       setImagePreview(editing?.imagem_url ?? '');
     }
@@ -266,8 +459,8 @@ export default function Produtos() {
 
   const handleOpenCreate = useCallback((tipo: TipoProduto) => {
     setEditing(null);
-    setFormData({ ...EMPTY_FORM, tipo_produto: tipo });
-    setComboProductId(0);
+    setFormData({ ...EMPTY_FORM, tipo_produto: tipo, controla_estoque: tipo === 'insumo', unidade_medida: tipo === 'insumo' ? 'kg' : 'un' });
+    setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
     setImageFile(null);
@@ -290,7 +483,13 @@ export default function Produtos() {
       permite_observacao: produto.permite_observacao,
       estoque_atual: produto.estoque_atual?.toString() ?? '',
       estoque_minimo: produto.estoque_minimo?.toString() ?? '',
-      unidade_medida: produto.unidade_medida ?? '',
+      estoque_maximo: produto.estoque_maximo?.toString() ?? '',
+      unidade_medida: produto.unidade_medida ?? 'un',
+      controla_estoque: !!produto.controla_estoque,
+      custo_unitario: produto.custo_unitario?.toString() ?? '',
+      fornecedor_nome: produto.fornecedor_nome ?? '',
+      fornecedor_contato: produto.fornecedor_contato ?? '',
+      codigo_interno: produto.codigo_interno ?? '',
       grupos: produto.grupos.toString(),
       combo_items: produto.combo_items ?? [],
       combo_min_selecoes: produto.combo_min_selecoes?.toString() ?? '0',
@@ -331,7 +530,7 @@ export default function Produtos() {
     }
     const quantidade = Number(comboProductQty) || 1;
     const item: ComboItem = {
-      id: Date.now(),
+      id: String(Date.now()),
       produtoId: selected.id,
       nome: selected.nome,
       quantidade,
@@ -341,12 +540,12 @@ export default function Produtos() {
       ...prev,
       combo_items: [...prev.combo_items, item],
     }));
-    setComboProductId(0);
+    setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
   }, [comboProductId, comboProductQty, comboProductObrigatorio, formData.combo_items, produtos]);
 
-  const handleRemoveComboItem = useCallback((itemId: number) => {
+  const handleRemoveComboItem = useCallback((itemId: string) => {
     setFormData((prev) => ({
       ...prev,
       combo_items: prev.combo_items.filter((item) => item.id !== itemId),
@@ -430,7 +629,7 @@ export default function Produtos() {
 
     const imagem_url = await uploadProductImage();
     const produto: Produto = {
-      id: editing?.id ?? Date.now(),
+      id: editing?.id ?? String(Date.now()),
       nome: formData.nome.trim(),
       categoria: formData.categoria.trim(),
       subcategoria: formData.subcategoria.trim() || null,
@@ -476,6 +675,186 @@ export default function Produtos() {
     setDeleteTarget(null);
     toast.success('Produto excluído');
   }, [deleteTarget]);
+
+  const handleSaveSupabase = useCallback(async () => {
+    if (!companyId) {
+      toast.error('Empresa nao carregada');
+      return;
+    }
+    if (!formData.nome.trim()) {
+      toast.error('Nome e obrigatorio');
+      return;
+    }
+    const preco = Number(formData.preco_sugerido);
+    if (Number.isNaN(preco) || preco < 0) {
+      toast.error('Preco nao pode ser negativo');
+      return;
+    }
+
+    const imagem_url = await uploadProductImage();
+    const payload = {
+      ...(editing ? { id: editing.id } : {}),
+      company_id: companyId,
+      nome: formData.nome.trim(),
+      categoria: formData.categoria.trim(),
+      subcategoria: formData.subcategoria.trim() || null,
+      descricao: formData.descricao.trim() || null,
+      preco_sugerido: preco,
+      tipo_produto: formData.tipo_produto,
+      ativo: formData.ativo,
+      ativo_cardapio: formData.ativo_cardapio,
+      imagem_url,
+      destaque_cardapio: formData.destaque_cardapio,
+      permite_observacao: formData.permite_observacao,
+      controla_estoque: formData.controla_estoque,
+      estoque_atual: formData.estoque_atual.trim() ? Number(formData.estoque_atual) : null,
+      estoque_minimo: formData.estoque_minimo.trim() ? Number(formData.estoque_minimo) : null,
+      estoque_maximo: formData.estoque_maximo.trim() ? Number(formData.estoque_maximo) : null,
+      unidade_medida: formData.unidade_medida.trim() || 'un',
+      custo_unitario: formData.custo_unitario.trim() ? Number(formData.custo_unitario) : null,
+      fornecedor_nome: formData.fornecedor_nome.trim() || null,
+      fornecedor_contato: formData.fornecedor_contato.trim() || null,
+      codigo_interno: formData.codigo_interno.trim() || null,
+      combo_min_selecoes: formData.tipo_produto === 'combo' ? (Number(formData.combo_min_selecoes) || null) : null,
+      combo_max_selecoes: formData.tipo_produto === 'combo' ? (Number(formData.combo_max_selecoes) || null) : null,
+      promocao_ativa: formData.promocao_ativa,
+      promocao_preco: formData.promocao_preco.trim() ? Number(formData.promocao_preco) : null,
+      promocao_inicio: formData.promocao_inicio.trim() || null,
+      promocao_fim: formData.promocao_fim.trim() || null,
+      promocao_flash: formData.promocao_flash,
+      promocao_nota: formData.promocao_nota.trim() || null,
+    };
+
+    const { error } = await (supabase.from('produtos_servicos' as any) as any).upsert(payload);
+    if (error) {
+      console.error('[Produtos] erro ao salvar', error);
+      toast.error(`Erro ao salvar produto: ${error.message}`);
+      return;
+    }
+
+    await loadProdutos(companyId);
+    setDialogOpen(false);
+    setEditing(null);
+    setImageFile(null);
+    setImagePreview('');
+    toast.success('Produto salvo com sucesso');
+  }, [companyId, editing, formData, loadProdutos, uploadProductImage]);
+
+  const confirmDeleteSupabase = useCallback(async () => {
+    if (!deleteTarget || !companyId) return;
+    const { error } = await (supabase.from('produtos_servicos' as any) as any)
+      .delete()
+      .eq('id', deleteTarget.id)
+      .eq('company_id', companyId);
+    if (error) {
+      toast.error(`Erro ao excluir produto: ${error.message}`);
+      return;
+    }
+    await loadProdutos(companyId);
+    setDeleteTarget(null);
+    toast.success('Produto excluido');
+  }, [companyId, deleteTarget, loadProdutos]);
+
+  const handleToggleProduto = useCallback(async (produto: Produto, field: 'ativo' | 'ativo_cardapio') => {
+    if (!companyId) return;
+    const nextValue = !produto[field];
+    setProdutos((prev) => prev.map((p) => p.id === produto.id ? { ...p, [field]: nextValue } : p));
+    const { error } = await (supabase.from('produtos_servicos' as any) as any)
+      .update({ [field]: nextValue })
+      .eq('id', produto.id)
+      .eq('company_id', companyId);
+    if (error) {
+      toast.error('Erro ao atualizar produto');
+      await loadProdutos(companyId);
+    }
+  }, [companyId, loadProdutos]);
+
+  const abrirMovimentacao = useCallback((produto: Produto, tipo = 'entrada') => {
+    setProdutoMovendo(produto);
+    setMovForm({ tipo, quantidade: '', motivo: tipo === 'entrada' ? 'compra' : 'venda', custo_unitario: produto.custo_unitario?.toString() ?? '', observacao: '' });
+    setModalMovOpen(true);
+  }, []);
+
+  const handleRegistrarMovimentacao = useCallback(async () => {
+    if (!produtoMovendo || !companyId || !movForm.quantidade) return;
+    setLoadingMov(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.rpc('registrar_movimentacao_estoque' as any, {
+      p_company_id: companyId,
+      p_produto_id: produtoMovendo.id,
+      p_tipo: movForm.tipo,
+      p_quantidade: Number(movForm.quantidade),
+      p_motivo: movForm.motivo || null,
+      p_pedido_id: null,
+      p_custo: movForm.custo_unitario ? Number(movForm.custo_unitario) : null,
+      p_observacao: movForm.observacao || null,
+      p_criado_por: userData.user?.id || null,
+    });
+
+    if (error) {
+      toast.error(`Erro ao registrar movimentacao: ${error.message}`);
+    } else {
+      toast.success('Movimentacao registrada e estoque atualizado');
+      setModalMovOpen(false);
+      setMovForm({ tipo: 'entrada', quantidade: '', motivo: 'compra', custo_unitario: '', observacao: '' });
+      await loadProdutos(companyId);
+      await loadMovimentacoes(companyId);
+      await verificarAlertas(companyId);
+    }
+    setLoadingMov(false);
+  }, [companyId, loadMovimentacoes, loadProdutos, movForm, produtoMovendo, verificarAlertas]);
+
+  const loadComposicoes = useCallback(async (produtoId: string) => {
+    const { data } = await (supabase.from('produto_composicoes' as any) as any)
+      .select('*, insumo:insumo_id(nome, unidade_medida)')
+      .eq('produto_id', produtoId);
+    if (data) {
+      setComposicoesProduto(data.map((c: any) => ({
+        ...c,
+        quantidade: Number(c.quantidade || 0),
+        insumo_nome: c.insumo?.nome,
+        insumo_unidade: c.insumo?.unidade_medida,
+      })));
+    }
+  }, []);
+
+  const handleSalvarComposicao = useCallback(async () => {
+    if (!produtoReceita || !novoInsumo.insumo_id || !novoInsumo.quantidade || !companyId) return;
+    const { error } = await (supabase.from('produto_composicoes' as any) as any).upsert({
+      company_id: companyId,
+      produto_id: produtoReceita,
+      insumo_id: novoInsumo.insumo_id,
+      quantidade: Number(novoInsumo.quantidade),
+      unidade_medida: novoInsumo.unidade_medida || 'un',
+    }, { onConflict: 'produto_id,insumo_id' });
+    if (error) {
+      toast.error(`Erro ao salvar receita: ${error.message}`);
+      return;
+    }
+    toast.success('Receita salva');
+    setNovoInsumo({ insumo_id: '', quantidade: '', unidade_medida: 'un' });
+    await loadComposicoes(produtoReceita);
+  }, [companyId, loadComposicoes, novoInsumo, produtoReceita]);
+
+  const handleRemoverComposicao = useCallback(async (id: string) => {
+    if (!produtoReceita) return;
+    await (supabase.from('produto_composicoes' as any) as any).delete().eq('id', id);
+    await loadComposicoes(produtoReceita);
+    toast.success('Insumo removido da receita');
+  }, [loadComposicoes, produtoReceita]);
+
+  useEffect(() => {
+    if (produtoReceita) loadComposicoes(produtoReceita);
+    else setComposicoesProduto([]);
+  }, [loadComposicoes, produtoReceita]);
+
+  const estoqueProdutos = useMemo(() => produtos.filter((p) => p.controla_estoque), [produtos]);
+  const estoqueBaixo = useMemo(() => estoqueProdutos.filter((p) => (p.estoque_atual ?? 0) > 0 && p.estoque_minimo != null && (p.estoque_atual ?? 0) <= p.estoque_minimo), [estoqueProdutos]);
+  const estoqueZerado = useMemo(() => estoqueProdutos.filter((p) => (p.estoque_atual ?? 0) === 0), [estoqueProdutos]);
+  const estoqueOk = useMemo(() => estoqueProdutos.filter((p) => (p.estoque_atual ?? 0) > (p.estoque_minimo ?? -1)), [estoqueProdutos]);
+  const custoTotalEstoque = useMemo(() => estoqueProdutos.reduce((total, p) => total + ((p.estoque_atual ?? 0) * (p.custo_unitario ?? 0)), 0), [estoqueProdutos]);
+  const produtosReceitaOptions = useMemo(() => produtos.filter((p) => p.tipo_produto === 'produto' || p.tipo_produto === 'combo'), [produtos]);
+  const insumosOptions = useMemo(() => produtos.filter((p) => p.tipo_produto === 'insumo' || p.controla_estoque), [produtos]);
 
   const onChangeForm = useCallback((key: keyof ProdutoForm, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -542,6 +921,21 @@ export default function Produtos() {
                     </div>
                     <div className="prod-category">{[produto.categoria, produto.subcategoria].filter(Boolean).join(' / ')}</div>
                     {produto.descricao && <div className="prod-desc">{produto.descricao}</div>}
+                    {produto.controla_estoque && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                        padding: '8px 10px', borderRadius: 10,
+                        background: produto.estoque_atual === 0 ? 'rgba(239,68,68,0.12)' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? 'rgba(245,166,35,0.12)' : 'rgba(46,204,143,0.08)',
+                        border: `1px solid ${produto.estoque_atual === 0 ? 'rgba(239,68,68,0.3)' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? 'rgba(245,166,35,0.3)' : 'rgba(46,204,143,0.2)'}`,
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: produto.estoque_atual === 0 ? '#EF4444' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? '#F5A623' : '#2ECC8F' }}>
+                          {produto.estoque_atual === 0 ? 'ZERADO' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? 'Estoque baixo' : 'Em estoque'}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+                          {produto.estoque_atual ?? 0} {produto.unidade_medida ?? 'un'}{produto.estoque_minimo != null ? ` / min ${produto.estoque_minimo}` : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="prod-meta">
                     <div>
@@ -551,15 +945,16 @@ export default function Produtos() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <span style={{ fontSize: 12, color: 'var(--text3)' }}>Ativo</span>
-                        <div className={`toggle ${produto.ativo ? 'on' : ''}`} onClick={() => setProdutos((prev) => prev.map((p) => p.id === produto.id ? { ...p, ativo: !p.ativo } : p))} />
+                        <div className={`toggle ${produto.ativo ? 'on' : ''}`} onClick={() => handleToggleProduto(produto, 'ativo')} />
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <span style={{ fontSize: 12, color: 'var(--text3)' }}>Cardápio</span>
-                        <div className={`toggle ${produto.ativo_cardapio ? 'on' : ''}`} onClick={() => setProdutos((prev) => prev.map((p) => p.id === produto.id ? { ...p, ativo_cardapio: !p.ativo_cardapio } : p))} />
+                        <div className={`toggle ${produto.ativo_cardapio ? 'on' : ''}`} onClick={() => handleToggleProduto(produto, 'ativo_cardapio')} />
                       </div>
                     </div>
                   </div>
                   <div className="prod-actions">
+                    {produto.controla_estoque && <button className="action-btn" type="button" onClick={() => abrirMovimentacao(produto)}>Entrada / saida</button>}
                     <button className="action-btn" type="button" onClick={() => handleOpenEdit(produto)}><Edit2 size={16} /> Editar</button>
                     <button className="action-btn" type="button" onClick={() => setDeleteTarget(produto)}><Trash2 size={16} /> Excluir</button>
                   </div>
@@ -571,7 +966,7 @@ export default function Produtos() {
           )}
         </TabsContent>
 
-        {PRODUCT_TABS.filter((tab) => !['todos', 'opcoes', 'tamanhos', 'bordas'].includes(tab.key)).map((tab) => (
+        {PRODUCT_TABS.filter((tab) => !['todos', 'opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao'].includes(tab.key)).map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
             {filteredProdutos.length ? (
               <div className="product-grid">
@@ -589,6 +984,21 @@ export default function Produtos() {
                       <div className="prod-name">{produto.nome}</div>
                       <div className="prod-category">{[produto.categoria, produto.subcategoria].filter(Boolean).join(' / ')}</div>
                       {produto.descricao && <div className="prod-desc">{produto.descricao}</div>}
+                      {produto.controla_estoque && (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                          padding: '8px 10px', borderRadius: 10,
+                          background: produto.estoque_atual === 0 ? 'rgba(239,68,68,0.12)' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? 'rgba(245,166,35,0.12)' : 'rgba(46,204,143,0.08)',
+                          border: `1px solid ${produto.estoque_atual === 0 ? 'rgba(239,68,68,0.3)' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? 'rgba(245,166,35,0.3)' : 'rgba(46,204,143,0.2)'}`,
+                        }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: produto.estoque_atual === 0 ? '#EF4444' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? '#F5A623' : '#2ECC8F' }}>
+                            {produto.estoque_atual === 0 ? 'ZERADO' : produto.estoque_minimo != null && (produto.estoque_atual ?? 0) <= produto.estoque_minimo ? 'Estoque baixo' : 'Em estoque'}
+                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+                            {produto.estoque_atual ?? 0} {produto.unidade_medida ?? 'un'}{produto.estoque_minimo != null ? ` / min ${produto.estoque_minimo}` : ''}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="prod-meta">
                       <div>
@@ -598,15 +1008,16 @@ export default function Produtos() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <span style={{ fontSize: 12, color: 'var(--text3)' }}>Ativo</span>
-                          <div className={`toggle ${produto.ativo ? 'on' : ''}`} onClick={() => setProdutos((prev) => prev.map((p) => p.id === produto.id ? { ...p, ativo: !p.ativo } : p))} />
+                          <div className={`toggle ${produto.ativo ? 'on' : ''}`} onClick={() => handleToggleProduto(produto, 'ativo')} />
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <span style={{ fontSize: 12, color: 'var(--text3)' }}>Cardápio</span>
-                          <div className={`toggle ${produto.ativo_cardapio ? 'on' : ''}`} onClick={() => setProdutos((prev) => prev.map((p) => p.id === produto.id ? { ...p, ativo_cardapio: !p.ativo_cardapio } : p))} />
+                          <div className={`toggle ${produto.ativo_cardapio ? 'on' : ''}`} onClick={() => handleToggleProduto(produto, 'ativo_cardapio')} />
                         </div>
                       </div>
                     </div>
                     <div className="prod-actions">
+                      {produto.controla_estoque && <button className="action-btn" type="button" onClick={() => abrirMovimentacao(produto)}>Entrada / saida</button>}
                       <button className="action-btn" type="button" onClick={() => handleOpenEdit(produto)}><Edit2 size={16} /> Editar</button>
                       <button className="action-btn" type="button" onClick={() => setDeleteTarget(produto)}><Trash2 size={16} /> Excluir</button>
                     </div>
@@ -618,6 +1029,157 @@ export default function Produtos() {
             )}
           </TabsContent>
         ))}
+
+        <TabsContent value="estoque">
+          <div className="kpi-grid">
+            <div className="kpi-card"><div className="kpi-label">Em estoque normal</div><div className="kpi-value">{estoqueOk.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Estoque baixo</div><div className="kpi-value" style={{ color: '#F5A623' }}>{estoqueBaixo.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Zerados</div><div className="kpi-value" style={{ color: '#EF4444' }}>{estoqueZerado.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Custo em estoque</div><div className="kpi-value">{custoTotalEstoque.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div></div>
+          </div>
+
+          {alertas.length > 0 && (
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 14, padding: '14px 18px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#EF4444', marginBottom: 8 }}>
+                {alertas.length} alerta{alertas.length > 1 ? 's' : ''} de estoque
+              </div>
+              {alertas.map((a) => (
+                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid rgba(239,68,68,0.1)' }}>
+                  <span style={{ fontSize: 12 }}>{a.produto_nome}</span>
+                  <span style={{ fontSize: 11, color: a.tipo === 'zerado' ? '#EF4444' : '#F5A623', fontWeight: 700 }}>
+                    {a.tipo === 'zerado' ? 'ZERADO' : 'Abaixo do minimo'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, overflow: 'hidden', marginBottom: 18 }}>
+            <div style={{ padding: 18, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>Posicao de estoque</div>
+                <div style={{ color: 'var(--text2)', marginTop: 4 }}>Produtos e insumos com controle ativo.</div>
+              </div>
+              <Button onClick={() => companyId && verificarAlertas(companyId)}>Atualizar alertas</Button>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 920 }}>
+                <thead>
+                  <tr style={{ color: 'var(--text2)', fontSize: 12, textAlign: 'left' }}>
+                    {['Produto', 'Tipo', 'Unidade', 'Atual', 'Min', 'Max', 'Status', 'Custo unit.', 'Valor', 'Acoes'].map((h) => <th key={h} style={{ padding: 12, borderBottom: '1px solid var(--border)' }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {estoqueProdutos.map((p) => {
+                    const baixo = p.estoque_minimo != null && (p.estoque_atual ?? 0) <= p.estoque_minimo;
+                    const zerado = (p.estoque_atual ?? 0) === 0;
+                    return (
+                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: 12, fontWeight: 700 }}>{p.nome}</td>
+                        <td style={{ padding: 12, color: 'var(--text2)' }}>{p.tipo_produto}</td>
+                        <td style={{ padding: 12 }}>{p.unidade_medida ?? 'un'}</td>
+                        <td style={{ padding: 12 }}>{p.estoque_atual ?? 0}</td>
+                        <td style={{ padding: 12 }}>{p.estoque_minimo ?? '-'}</td>
+                        <td style={{ padding: 12 }}>{p.estoque_maximo ?? '-'}</td>
+                        <td style={{ padding: 12, color: zerado ? '#EF4444' : baixo ? '#F5A623' : '#2ECC8F', fontWeight: 700 }}>{zerado ? 'Zerado' : baixo ? 'Baixo' : 'OK'}</td>
+                        <td style={{ padding: 12 }}>{(p.custo_unitario ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                        <td style={{ padding: 12 }}>{(((p.estoque_atual ?? 0) * (p.custo_unitario ?? 0))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                        <td style={{ padding: 12 }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <Button size="sm" variant="outline" onClick={() => abrirMovimentacao(p, 'entrada')}>Entrada</Button>
+                            <Button size="sm" variant="outline" onClick={() => abrirMovimentacao(p, 'saida')}>Saida</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {estoqueProdutos.length === 0 && <div className="empty-state">Nenhum item com controle de estoque ativo.</div>}
+          </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>Historico de movimentacoes</div>
+                <div style={{ color: 'var(--text2)', marginTop: 4 }}>Entradas, saidas, perdas e ajustes.</div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <select value={periodoMov} onChange={(e) => setPeriodoMov(e.target.value as 'hoje' | 'semana' | 'mes')} className="form-input">
+                  <option value="hoje">Hoje</option>
+                  <option value="semana">7 dias</option>
+                  <option value="mes">30 dias</option>
+                </select>
+                <select value={filtroMovProduto} onChange={(e) => setFiltroMovProduto(e.target.value)} className="form-input">
+                  <option value="">Todos os produtos</option>
+                  {estoqueProdutos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {movimentacoes.map((m) => (
+                <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 90px 90px 130px 1fr 110px', gap: 10, alignItems: 'center', padding: 12, borderRadius: 12, background: 'var(--surface2)', fontSize: 12 }}>
+                  <span style={{ color: 'var(--text2)' }}>{new Date(m.created_at).toLocaleString('pt-BR')}</span>
+                  <strong>{m.produto_nome ?? 'Produto'}</strong>
+                  <span style={{ color: m.tipo === 'entrada' ? '#2ECC8F' : m.tipo === 'saida' ? '#EF4444' : m.tipo === 'perda' ? '#F5A623' : '#4A9EFF', fontWeight: 700 }}>{m.tipo}</span>
+                  <span>{m.quantidade}</span>
+                  <span>{`${m.quantidade_anterior ?? '-'} -> ${m.quantidade_posterior ?? '-'}`}</span>
+                  <span style={{ color: 'var(--text2)' }}>{m.motivo ?? '-'}</span>
+                  <span>{(m.valor_total ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+              ))}
+              {movimentacoes.length === 0 && <div className="empty-state">Nenhuma movimentacao no periodo.</div>}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="composicao">
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 18 }}>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>Receitas / ficha tecnica</div>
+            <div style={{ color: 'var(--text2)', marginTop: 6, marginBottom: 18 }}>Defina quais insumos cada pizza, produto ou combo consome.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px,1fr) minmax(220px,1fr) 120px 120px auto', gap: 12, alignItems: 'end' }}>
+              <div>
+                <Label>Produto final</Label>
+                <select value={produtoReceita} onChange={(e) => setProdutoReceita(e.target.value)} className="form-input">
+                  <option value="">Selecione</option>
+                  {produtosReceitaOptions.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Insumo</Label>
+                <select value={novoInsumo.insumo_id} onChange={(e) => setNovoInsumo((prev) => ({ ...prev, insumo_id: e.target.value }))} className="form-input">
+                  <option value="">Selecione</option>
+                  {insumosOptions.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Qtd.</Label>
+                <Input type="number" min="0" step="0.001" value={novoInsumo.quantidade} onChange={(e) => setNovoInsumo((prev) => ({ ...prev, quantidade: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Unidade</Label>
+                <select value={novoInsumo.unidade_medida} onChange={(e) => setNovoInsumo((prev) => ({ ...prev, unidade_medida: e.target.value }))} className="form-input">
+                  {['un', 'kg', 'g', 'l', 'ml', 'cx', 'pct', 'pc'].map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              <Button onClick={handleSalvarComposicao} disabled={!produtoReceita || !novoInsumo.insumo_id || !novoInsumo.quantidade}>Adicionar</Button>
+            </div>
+
+            <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
+              {composicoesProduto.map((c) => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: 12, borderRadius: 12, background: 'var(--surface2)' }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{c.insumo_nome}</div>
+                    <div style={{ color: 'var(--text2)', fontSize: 12 }}>{c.quantidade} {c.unidade_medida || c.insumo_unidade || 'un'} por unidade produzida</div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handleRemoverComposicao(c.id)}>Remover</Button>
+                </div>
+              ))}
+              {produtoReceita && composicoesProduto.length === 0 && <div className="empty-state">Nenhum insumo nessa receita ainda.</div>}
+            </div>
+          </div>
+        </TabsContent>
 
         <TabsContent value="opcoes">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
@@ -662,7 +1224,7 @@ export default function Produtos() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>Excluir</AlertDialogAction>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDeleteSupabase}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -735,6 +1297,65 @@ export default function Produtos() {
                   <Label htmlFor="descricao">Descrição</Label>
                   <Textarea id="descricao" value={formData.descricao} onChange={(event) => onChangeForm('descricao', event.target.value)} />
                 </div>
+                <div className="form-grid-full" style={{ border: '1px solid rgba(255,107,53,0.18)', borderRadius: 18, padding: 16, background: 'rgba(255,107,53,0.04)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: formData.controla_estoque ? 14 : 0 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>Controlar estoque</div>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>Ativa quantidade, alertas e historico de entrada/saida.</div>
+                    </div>
+                    <div
+                      onClick={() => onChangeForm('controla_estoque', !formData.controla_estoque)}
+                      style={{ width: 44, height: 24, borderRadius: 999, background: formData.controla_estoque ? 'var(--accent)' : 'var(--surface3)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
+                    >
+                      <div style={{ position: 'absolute', top: 3, left: formData.controla_estoque ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                    </div>
+                  </div>
+                  {formData.controla_estoque && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+                      <div>
+                        <Label>Estoque inicial</Label>
+                        <Input type="number" min="0" step="0.001" value={formData.estoque_atual} onChange={(e) => onChangeForm('estoque_atual', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Estoque minimo</Label>
+                        <Input type="number" min="0" step="0.001" value={formData.estoque_minimo} onChange={(e) => onChangeForm('estoque_minimo', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Estoque maximo</Label>
+                        <Input type="number" min="0" step="0.001" value={formData.estoque_maximo} onChange={(e) => onChangeForm('estoque_maximo', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Unidade</Label>
+                        <select value={formData.unidade_medida} onChange={(e) => onChangeForm('unidade_medida', e.target.value)} className="form-input">
+                          <option value="un">un</option>
+                          <option value="kg">kg</option>
+                          <option value="g">g</option>
+                          <option value="l">L</option>
+                          <option value="ml">ml</option>
+                          <option value="cx">cx</option>
+                          <option value="pct">pct</option>
+                          <option value="pc">pc</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label>Custo unitario</Label>
+                        <Input type="number" min="0" step="0.01" value={formData.custo_unitario} onChange={(e) => onChangeForm('custo_unitario', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Codigo interno</Label>
+                        <Input value={formData.codigo_interno} onChange={(e) => onChangeForm('codigo_interno', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Fornecedor</Label>
+                        <Input value={formData.fornecedor_nome} onChange={(e) => onChangeForm('fornecedor_nome', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Contato fornecedor</Label>
+                        <Input value={formData.fornecedor_contato} onChange={(e) => onChangeForm('fornecedor_contato', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <Label htmlFor="destaque" style={{ minWidth: 100 }}>Destaque</Label>
                   <input
@@ -753,10 +1374,10 @@ export default function Produtos() {
                         <select
                           id="comboProduto"
                           value={comboProductId}
-                          onChange={(event) => setComboProductId(Number(event.target.value))}
+                          onChange={(event) => setComboProductId(event.target.value)}
                           style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
                         >
-                          <option value={0}>Selecione um produto</option>
+                          <option value="">Selecione um produto</option>
                           {produtos
                             .filter((p) => p.tipo_produto !== 'combo' && p.id !== editing?.id)
                             .map((produto) => (
@@ -856,7 +1477,104 @@ export default function Produtos() {
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <Button type="button" variant="secondary" onClick={() => { setDialogOpen(false); setEditing(null); setImageFile(null); setImagePreview(''); }}>Cancelar</Button>
-                <Button type="button" onClick={handleSave}>Salvar</Button>
+                <Button type="button" onClick={handleSaveSupabase}>Salvar</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalMovOpen && produtoMovendo && (
+        <div className="modal-backdrop" style={{ zIndex: 300 }}>
+          <div className="modal-shell" style={{ width: 'min(520px,95%)' }}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">Movimentacao de estoque</div>
+                <div style={{ color: 'var(--text2)', marginTop: 4 }}>{produtoMovendo.nome}</div>
+              </div>
+              <Button variant="ghost" onClick={() => setModalMovOpen(false)}>Fechar</Button>
+            </div>
+            <div style={{ padding: '14px 20px', background: 'var(--surface2)', display: 'flex', gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase' }}>Estoque atual</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: produtoMovendo.estoque_atual === 0 ? '#EF4444' : 'var(--text)' }}>
+                  {produtoMovendo.estoque_atual ?? 0} <span style={{ fontSize: 13, color: 'var(--text2)' }}>{produtoMovendo.unidade_medida ?? 'un'}</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase' }}>Minimo</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text2)' }}>{produtoMovendo.estoque_minimo ?? '-'}</div>
+              </div>
+            </div>
+            <div className="modal-body">
+              <div>
+                <Label>Tipo de movimentacao</Label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  {[
+                    { value: 'entrada', label: 'Entrada', color: '#2ECC8F' },
+                    { value: 'saida', label: 'Saida', color: '#EF4444' },
+                    { value: 'ajuste', label: 'Ajuste', color: '#4A9EFF' },
+                    { value: 'perda', label: 'Perda', color: '#F5A623' },
+                  ].map((op) => (
+                    <button
+                      key={op.value}
+                      type="button"
+                      onClick={() => setMovForm((prev) => ({ ...prev, tipo: op.value, motivo: op.value === 'entrada' ? 'compra' : op.value === 'perda' ? 'desperdicio' : 'inventario' }))}
+                      style={{
+                        padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
+                        border: `1px solid ${movForm.tipo === op.value ? op.color : 'var(--border)'}`,
+                        background: movForm.tipo === op.value ? `${op.color}22` : 'transparent',
+                        color: movForm.tipo === op.value ? op.color : 'var(--text2)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="form-grid">
+                <div>
+                  <Label>Quantidade</Label>
+                  <Input type="number" min="0" step="0.001" value={movForm.quantidade} onChange={(e) => setMovForm((prev) => ({ ...prev, quantidade: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Custo unitario</Label>
+                  <Input type="number" min="0" step="0.01" value={movForm.custo_unitario} onChange={(e) => setMovForm((prev) => ({ ...prev, custo_unitario: e.target.value }))} />
+                </div>
+                <div className="form-grid-full">
+                  <Label>Motivo</Label>
+                  <select value={movForm.motivo} onChange={(e) => setMovForm((prev) => ({ ...prev, motivo: e.target.value }))} className="form-input">
+                    <option value="compra">Compra de fornecedor</option>
+                    <option value="venda">Venda / pedido</option>
+                    <option value="producao">Producao interna</option>
+                    <option value="inventario">Inventario fisico</option>
+                    <option value="desperdicio">Desperdicio</option>
+                    <option value="vencimento">Vencimento</option>
+                    <option value="correcao">Correcao</option>
+                  </select>
+                </div>
+                <div className="form-grid-full">
+                  <Label>Observacao</Label>
+                  <Textarea rows={2} value={movForm.observacao} onChange={(e) => setMovForm((prev) => ({ ...prev, observacao: e.target.value }))} />
+                </div>
+              </div>
+              {movForm.quantidade && (
+                <div style={{ background: 'var(--surface2)', borderRadius: 12, padding: 12, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text2)' }}>Novo estoque</span>
+                  <strong style={{ color: 'var(--accent)' }}>
+                    {(movForm.tipo === 'entrada' || movForm.tipo === 'ajuste'
+                      ? (produtoMovendo.estoque_atual ?? 0) + Number(movForm.quantidade)
+                      : (produtoMovendo.estoque_atual ?? 0) - Number(movForm.quantidade)
+                    ).toLocaleString('pt-BR')} {produtoMovendo.unidade_medida ?? 'un'}
+                  </strong>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Button variant="secondary" onClick={() => setModalMovOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
+                <Button onClick={handleRegistrarMovimentacao} disabled={!movForm.quantidade || loadingMov} style={{ flex: 2 }}>
+                  {loadingMov ? 'Registrando...' : 'Confirmar movimentacao'}
+                </Button>
               </div>
             </div>
           </div>

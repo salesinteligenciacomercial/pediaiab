@@ -20,6 +20,7 @@ import Produtos from "./pages/Produtos";
 import CardapioDigital from "./pages/CardapioDigital";
 import CardapioPublico from "./pages/CardapioPublico";
 import MarketplacePublico from "./pages/MarketplacePublico";
+import EntregadorApp from "./pages/EntregadorApp";
 import OAuthCallback from "./pages/OAuthCallback";
 import GmailCallback from "./pages/GmailCallback";
 import { MainLayout } from "./components/layout/MainLayout";
@@ -75,6 +76,8 @@ const App = () => (
             <Route path="/marketplace" element={<MarketplacePublico />} />
             <Route path="/pede" element={<MarketplacePublico />} />
             <Route path="/cardapio/:slug" element={<CardapioPublico />} />
+            <Route path="/entregador" element={<EntregadorApp />} />
+            <Route path="/app-entregador" element={<EntregadorApp />} />
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Navigate to="/analytics" replace />} />
               <Route path="dashboard" element={<Navigate to="/analytics" replace />} />

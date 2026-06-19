@@ -1,0 +1,66 @@
+
+> vite_react_shadcn_ts@0.0.0 dev:4000
+> vite --port 4000 --strictPort
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m757[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.244:[1m4000[22m/[39m
+[2m19:10:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m19:14:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m19:17:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m19:23:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:23:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:24:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:24:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:25:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:25:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:25:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:26:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:26:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m19:30:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
+[2m19:31:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
+[2m19:31:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
+[2m19:31:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
+[2m19:31:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
+[2m19:32:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
+[2m19:33:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
+[2m19:33:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
+[2m19:33:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
+[2m19:37:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:37:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:37:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:37:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:38:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:38:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:38:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:39:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:39:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:39:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:39:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:39:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:41:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:42:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:42:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:43:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:43:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:43:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:43:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:44:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:44:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:45:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:45:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:47:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:47:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:49:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m19:50:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m19:50:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:51:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m19:55:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
+[2m19:55:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
+[2m19:58:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m19:58:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m19:59:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m19:59:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m

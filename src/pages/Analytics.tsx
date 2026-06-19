@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BarChart3, TrendingUp, Users, DollarSign, Target, MessageSquare, Calendar, CheckCircle, Bot, Activity, Trophy, XCircle, Download, Share2, Filter, Settings, Eye, PieChart, Clock, Zap, RefreshCw, CalendarDays, UserCheck, AlertTriangle, ArrowUpRight, ArrowDownRight, Megaphone, ExternalLink, Package, Cake, Gift, PartyPopper, Building2, Scale } from "lucide-react";
+import { BarChart3, TrendingUp, Users, DollarSign, Target, MessageSquare, Calendar, CheckCircle, Bot, Activity, Trophy, XCircle, Download, Share2, Filter, Settings, Eye, PieChart, Clock, Zap, RefreshCw, CalendarDays, UserCheck, AlertTriangle, ArrowUpRight, ArrowDownRight, Megaphone, ExternalLink, Package, Cake, Gift, PartyPopper, Building2, Scale, Pizza } from "lucide-react";
 import LeadsDrilldownModal, { DrilldownFilterType } from "@/components/analytics/LeadsDrilldownModal";
 import { PipelineFinanceiro } from "@/components/analytics/PipelineFinanceiro";
 import { LossReasonsReport } from "@/components/analytics/LossReasonsReport";
@@ -1064,15 +1064,21 @@ export default function Analytics() {
       </div>;
   }
   return <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">Relatórios do {APP_NAME}</h1>
+      <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-gradient-to-br from-[#170b04] via-[#0f0f12] to-[#08110c] p-5 shadow-[0_18px_70px_rgba(0,0,0,0.32)] md:p-6">
+      <div className="absolute right-8 top-6 hidden h-28 w-28 rounded-full border border-orange-500/20 bg-orange-500/5 md:block" />
+      <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="space-y-3">
+        <div className="flex w-fit items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-300">
+          <Pizza className="h-3.5 w-3.5" />
+          Painel gerencial da pizzaria
+        </div>
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground">Relatórios da Rosh Pizzaria</h1>
         <p className="text-muted-foreground text-lg">Acompanhe vendas, pedidos, clientes e o dia a dia do seu negócio</p>
         </div>
         
         {/* ✅ Indicador de Status de Conexão Realtime */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/30 border border-white/10">
             {realtimeStatus === 'connected' ? <>
                 <Wifi className="h-4 w-4 text-green-500" />
                 <span className="text-sm text-green-600 font-medium">Sincronizado</span>
@@ -1089,23 +1095,24 @@ export default function Analytics() {
           </div>
         </div>
       </div>
+      </div>
 
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full h-auto p-1 grid-cols-2 sm:grid-cols-4 rounded-3xl bg-slate-100/80 shadow-sm border border-slate-200/80">
-          <TabsTrigger value="overview" className="gap-2 py-3 rounded-2xl transition-colors duration-200 text-slate-600 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900">
+        <TabsList className="grid w-full h-auto p-1 grid-cols-2 sm:grid-cols-4 rounded-2xl bg-[#141416] shadow-sm border border-white/10">
+          <TabsTrigger value="overview" className="gap-2 py-3 rounded-xl transition-colors duration-200 text-muted-foreground hover:text-foreground data-[state=active]:bg-orange-500 data-[state=active]:shadow-sm data-[state=active]:text-white">
             <Eye className="h-4 w-4" />
             <span className="hidden sm:inline">Visão Geral PDV</span>
           </TabsTrigger>
-          <TabsTrigger value="vendas" className="gap-2 py-3 rounded-2xl transition-colors duration-200 text-slate-600 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900">
+          <TabsTrigger value="vendas" className="gap-2 py-3 rounded-xl transition-colors duration-200 text-muted-foreground hover:text-foreground data-[state=active]:bg-orange-500 data-[state=active]:shadow-sm data-[state=active]:text-white">
             <DollarSign className="h-4 w-4" />
             <span className="hidden sm:inline">Vendas & Faturamento</span>
           </TabsTrigger>
-          <TabsTrigger value="cardapio" className="gap-2 py-3 rounded-2xl transition-colors duration-200 text-slate-600 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900">
+          <TabsTrigger value="cardapio" className="gap-2 py-3 rounded-xl transition-colors duration-200 text-muted-foreground hover:text-foreground data-[state=active]:bg-orange-500 data-[state=active]:shadow-sm data-[state=active]:text-white">
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Cardápio Digital</span>
           </TabsTrigger>
-          <TabsTrigger value="customize" className="gap-2 py-3 rounded-2xl transition-colors duration-200 text-slate-600 hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900">
+          <TabsTrigger value="customize" className="gap-2 py-3 rounded-xl transition-colors duration-200 text-muted-foreground hover:text-foreground data-[state=active]:bg-orange-500 data-[state=active]:shadow-sm data-[state=active]:text-white">
             <Cake className="h-4 w-4" />
             <span className="hidden sm:inline">Aniversariantes</span>
           </TabsTrigger>
