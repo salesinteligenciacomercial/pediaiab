@@ -4,6 +4,7 @@ import MesasView from "@/components/pedidos/MesasView";
 import EntregadoresView from "@/components/pedidos/EntregadoresView";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { toast } from "sonner";
+import { Bell, BellOff } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
