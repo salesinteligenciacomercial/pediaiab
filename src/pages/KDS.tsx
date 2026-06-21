@@ -848,6 +848,12 @@ export default function KDS() {
           50%      { opacity: 0.5; }
         }
 
+        @keyframes kdsBellPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(249,115,22,0.45); }
+          50%      { transform: scale(1.08); box-shadow: 0 0 26px rgba(249,115,22,0.85); }
+        }
+
+
         @keyframes scanline {
           0%   { transform: translateY(-100%); }
           100% { transform: translateY(100vh); }
