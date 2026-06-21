@@ -4181,6 +4181,7 @@ export type Database = {
           horario_funcionamento: Json | null
           id: string
           impressao_automatica: boolean | null
+          impressora_config: Json | null
           logo_url: string | null
           mensagem_boas_vindas: string | null
           mensagem_loja: string | null
@@ -4209,6 +4210,7 @@ export type Database = {
           horario_funcionamento?: Json | null
           id?: string
           impressao_automatica?: boolean | null
+          impressora_config?: Json | null
           logo_url?: string | null
           mensagem_boas_vindas?: string | null
           mensagem_loja?: string | null
@@ -4237,6 +4239,7 @@ export type Database = {
           horario_funcionamento?: Json | null
           id?: string
           impressao_automatica?: boolean | null
+          impressora_config?: Json | null
           logo_url?: string | null
           mensagem_boas_vindas?: string | null
           mensagem_loja?: string | null
