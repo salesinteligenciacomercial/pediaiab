@@ -791,6 +791,14 @@ export default function KDS() {
   }, {} as Record<PedidoStatus, Pedido[]>);
 
   const totalAtivos = pedidos.length;
+  const novosCount = pedidosByStatus["novo"]?.length || 0;
+
+  // Repeat alert beep every 6s while there are pending "novo" pedidos
+  useEffect(() => {
+    if (!soundEnabled || novosCount === 0) return;
+    const id = setInterval(() => playBeep(), 6000);
+    return () => clearInterval(id);
+  }, [soundEnabled, novosCount, playBeep]);
 
   return (
     <>
