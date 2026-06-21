@@ -138,7 +138,7 @@ export function ProdutosServicosManager() {
       return;
     }
 
-    setProdutos(data || []);
+    setProdutos((data || []) as any);
   };
 
   const resetForm = () => {
