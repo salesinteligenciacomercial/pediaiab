@@ -918,6 +918,51 @@ export default function KDS() {
                 </div>
               </div>
             )}
+            {/* Sino de novos pedidos */}
+            <button
+              onClick={() => {
+                setSoundEnabled((s) => !s);
+                // garante que o AudioContext seja desbloqueado pelo gesto do usuário
+                try {
+                  if (!audioRef.current) audioRef.current = new AudioContext();
+                  audioRef.current.resume?.();
+                } catch {}
+              }}
+              title={soundEnabled ? "Som ativado — clique para silenciar" : "Som silenciado — clique para ativar"}
+              style={{
+                position: "relative",
+                width: 40, height: 40, borderRadius: 10,
+                border: `1px solid ${novosCount > 0 ? "rgba(249,115,22,0.6)" : "rgba(255,255,255,0.08)"}`,
+                background: novosCount > 0
+                  ? "linear-gradient(135deg, rgba(249,115,22,0.25), rgba(239,68,68,0.25))"
+                  : "#111827",
+                color: novosCount > 0 ? "#FDBA74" : (soundEnabled ? "#E5E7EB" : "#6B7280"),
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+                animation: novosCount > 0 ? "kdsBellPulse 1.1s ease-in-out infinite" : undefined,
+                boxShadow: novosCount > 0 ? "0 0 18px rgba(249,115,22,0.45)" : "none",
+                transition: "background .2s, color .2s, border-color .2s",
+              }}
+            >
+              {soundEnabled ? <Bell size={18} /> : <BellOff size={18} />}
+              {novosCount > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: -6, right: -6,
+                  minWidth: 18, height: 18, padding: "0 5px",
+                  borderRadius: 999,
+                  background: "#EF4444",
+                  color: "#fff",
+                  fontSize: 10, fontWeight: 800,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  border: "2px solid #0b0b0d",
+                }}>
+                  {novosCount > 99 ? "99+" : novosCount}
+                </span>
+              )}
+            </button>
+
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 6, height: 6, borderRadius: "50%",
