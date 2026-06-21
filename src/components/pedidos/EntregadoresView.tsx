@@ -283,8 +283,12 @@ export default function EntregadoresView({ entregadores, pedidos, companyId, onR
               <button onClick={() => setShowCreate(false)} style={{ background: "transparent", border: 0, color: "#555", fontSize: 18, cursor: "pointer" }}>x</button>
             </div>
             <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-              <input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome" style={inputStyle} />
-              <input value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} placeholder="Telefone" style={inputStyle} />
+              <input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome *" style={inputStyle} />
+              <input value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} placeholder="Telefone * (DDD + numero, ex: 11999998888)" style={inputStyle} />
+              <div style={{ color: "#777", fontSize: 10, marginTop: -4 }}>
+                Este telefone sera usado pelo entregador para vincular o app.
+              </div>
+
               <select value={form.veiculo} onChange={(e) => setForm((f) => ({ ...f, veiculo: e.target.value }))} style={inputStyle}>
                 <option value="moto">moto</option>
                 <option value="bike">bike</option>
