@@ -5339,9 +5339,6 @@ export type Database = {
           created_at: string
           descricao: string | null
           destaque_cardapio: boolean | null
-          estoque_atual: number | null
-          estoque_minimo: number | null
-          unidade_medida: string | null
           id: string
           imagem_url: string | null
           nome: string
@@ -5349,14 +5346,6 @@ export type Database = {
           permite_meio_a_meio: boolean | null
           permite_observacao: boolean | null
           preco_sugerido: number | null
-          combo_min_selecoes: number | null
-          combo_max_selecoes: number | null
-          promocao_ativa: boolean | null
-          promocao_preco: number | null
-          promocao_inicio: string | null
-          promocao_fim: string | null
-          promocao_flash: boolean | null
-          promocao_nota: string | null
           subcategoria: string | null
           tipo_produto: string | null
           updated_at: string
@@ -5369,17 +5358,6 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           destaque_cardapio?: boolean | null
-          estoque_atual?: number | null
-          estoque_minimo?: number | null
-          unidade_medida?: string | null
-          combo_min_selecoes?: number | null
-          combo_max_selecoes?: number | null
-          promocao_ativa?: boolean | null
-          promocao_preco?: number | null
-          promocao_inicio?: string | null
-          promocao_fim?: string | null
-          promocao_flash?: boolean | null
-          promocao_nota?: string | null
           id?: string
           imagem_url?: string | null
           nome: string
@@ -5399,17 +5377,6 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           destaque_cardapio?: boolean | null
-          estoque_atual?: number | null
-          estoque_minimo?: number | null
-          unidade_medida?: string | null
-          combo_min_selecoes?: number | null
-          combo_max_selecoes?: number | null
-          promocao_ativa?: boolean | null
-          promocao_preco?: number | null
-          promocao_inicio?: string | null
-          promocao_fim?: string | null
-          promocao_flash?: boolean | null
-          promocao_nota?: string | null
           id?: string
           imagem_url?: string | null
           nome?: string
