@@ -390,7 +390,7 @@ export default function EntregadorApp() {
     ? Number(pedidoAtivo.valor_comissao || pedidoAtivo.total * ((entregador?.pct_comissao ?? 10) / 100))
     : 0;
 
-  const trackingUrl = pedidoAtivo ? `${window.location.origin}/acompanhar/${pedidoAtivo.id}` : "";
+  const trackingUrl = pedidoAtivo ? `https://pediaiab.lovable.app/acompanhar/${pedidoAtivo.id}` : "";
 
   useEffect(() => {
     if (!entregador || !pedidoAtivo || !("geolocation" in navigator)) return;
