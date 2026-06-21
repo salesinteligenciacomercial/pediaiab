@@ -535,26 +535,35 @@ export default function KDS() {
 
   // Play beep sound when new pedido arrives
   const playBeep = useCallback(() => {
+    if (!soundEnabled) return;
     try {
       if (!audioRef.current) {
         audioRef.current = new AudioContext();
       }
       const ctx = audioRef.current;
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
-      gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.4);
+      // double-beep for stronger alert
+      [0, 0.18].forEach((offset) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(1000, ctx.currentTime + offset);
+        oscillator.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + offset + 0.15);
+        gainNode.gain.setValueAtTime(0.5, ctx.currentTime + offset);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.4);
+        oscillator.start(ctx.currentTime + offset);
+        oscillator.stop(ctx.currentTime + offset + 0.4);
+      });
     } catch {
       // AudioContext blocked until user interaction — fine
     }
-  }, []);
+  }, [soundEnabled]);
+
+  // Persist sound preference
+  useEffect(() => {
+    try { localStorage.setItem("kds_sound_enabled", String(soundEnabled)); } catch {}
+  }, [soundEnabled]);
 
   // Load data
   const load = useCallback(async (cid: string) => {
