@@ -142,26 +142,42 @@ export default function EntregadoresView({ entregadores, pedidos, companyId, onR
       toast.error("Informe o nome do entregador");
       return;
     }
+    const telDigits = form.telefone.replace(/\D/g, "");
+    if (telDigits.length < 10 || telDigits.length > 15) {
+      toast.error("Telefone obrigatorio (10 a 15 digitos) - usado para o app do entregador");
+      return;
+    }
+    if (!companyId) {
+      toast.error("Empresa nao identificada. Recarregue a pagina.");
+      return;
+    }
 
     setSaving(true);
-    const { error } = await (supabase.from("entregadores" as any) as any).insert({
+    const payload = {
       company_id: companyId,
       nome: form.nome.trim(),
-      telefone: form.telefone.trim() || null,
+      telefone: telDigits,
       veiculo: form.veiculo,
       pct_comissao: Number(form.pct_comissao || 10),
       pix_chave: form.pix_chave.trim() || null,
       status: "ativo",
       online: false,
-    });
+    };
+    console.log("[Entregadores] criando entregador", payload);
+    const { data, error } = await (supabase.from("entregadores" as any) as any)
+      .insert(payload)
+      .select()
+      .single();
     setSaving(false);
 
     if (error) {
-      toast.error("Erro ao cadastrar entregador");
+      console.error("[Entregadores] erro ao cadastrar", error);
+      toast.error(`Erro ao cadastrar: ${error.message || "verifique o console"}`);
       return;
     }
 
-    toast.success("Entregador cadastrado");
+    console.log("[Entregadores] cadastrado", data);
+    toast.success("Entregador cadastrado com sucesso");
     setShowCreate(false);
     setForm({ nome: "", telefone: "", veiculo: "moto", pct_comissao: "10", pix_chave: "" });
     onReload();
@@ -267,8 +283,12 @@ export default function EntregadoresView({ entregadores, pedidos, companyId, onR
               <button onClick={() => setShowCreate(false)} style={{ background: "transparent", border: 0, color: "#555", fontSize: 18, cursor: "pointer" }}>x</button>
             </div>
             <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-              <input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome" style={inputStyle} />
-              <input value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} placeholder="Telefone" style={inputStyle} />
+              <input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome *" style={inputStyle} />
+              <input value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} placeholder="Telefone * (DDD + numero, ex: 11999998888)" style={inputStyle} />
+              <div style={{ color: "#777", fontSize: 10, marginTop: -4 }}>
+                Este telefone sera usado pelo entregador para vincular o app.
+              </div>
+
               <select value={form.veiculo} onChange={(e) => setForm((f) => ({ ...f, veiculo: e.target.value }))} style={inputStyle}>
                 <option value="moto">moto</option>
                 <option value="bike">bike</option>
