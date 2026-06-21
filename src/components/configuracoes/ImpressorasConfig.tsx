@@ -82,7 +82,7 @@ function formatDate(iso: string) { try { return new Date(iso).toLocaleString('pt
 function buildCupom(pedido: Pedido, store: StoreInfo, config: PrinterConfig, copy = 1, totalCopies = 1) {
   const COLS = config.paper_width === '58mm' ? 32 : 48;
   const bytes: number[] = [];
-  const push = (...chunks: number[][]) => chunks.forEach(c => bytes.push(...c));
+  const push = (...chunks: Array<number | number[]>) => chunks.forEach(c => Array.isArray(c) ? bytes.push(...c) : bytes.push(c));
   push(CMD.INIT);
   push(CMD.ALIGN_CENTER);
   push(CMD.FONT_DOUBLE, ...str((store.nome_loja||'').toUpperCase()), ...lf(), CMD.FONT_NORMAL);
@@ -208,13 +208,15 @@ export default function ImpressorasConfig() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).maybeSingle();
-        if (!profile?.company_id) return;
-        setCompanyId(profile.company_id);
-        const { data: lojaData } = await supabase.from('loja_configuracoes').select('nome_loja, endereco_loja, telefone_loja, impressora_config').eq('company_id', profile.company_id).maybeSingle();
-        if (lojaData) {
-          setStore({ nome_loja: lojaData.nome_loja || store.nome_loja, endereco_loja: lojaData.endereco_loja || '', telefone_loja: lojaData.telefone_loja || '' });
-          if (lojaData.impressora_config) setConfig((p) => ({ ...p, ...(lojaData.impressora_config as any) }));
+        const { data: roleRow } = await (supabase.from('user_roles') as any).select('company_id').eq('user_id', user.id).maybeSingle();
+        const cid = (roleRow as any)?.company_id;
+        if (!cid) return;
+        setCompanyId(cid);
+        const { data: lojaData } = await (supabase.from('loja_configuracoes') as any).select('nome_loja, endereco_loja, telefone_loja, impressora_config').eq('company_id', cid).maybeSingle();
+        const loja = lojaData as any;
+        if (loja) {
+          setStore({ nome_loja: loja.nome_loja || store.nome_loja, endereco_loja: loja.endereco_loja || '', telefone_loja: loja.telefone_loja || '' });
+          if (loja.impressora_config) setConfig((p) => ({ ...p, ...(loja.impressora_config as any) }));
         }
       } catch (err) {
         console.error('[ImpressorasConfig] erro ao carregar:', err);
@@ -243,7 +245,7 @@ export default function ImpressorasConfig() {
     if (!companyId) return;
     setSavingConfig(true);
     try {
-      const { error } = await supabase.from('loja_configuracoes').update({ impressora_config: config }).eq('company_id', companyId);
+      const { error } = await (supabase.from('loja_configuracoes') as any).update({ impressora_config: config } as any).eq('company_id', companyId);
       if (error) throw error;
       toast.success('Configurações salvas!');
     } catch (err: any) { toast.error(`Erro ao salvar: ${err?.message}`); } finally { setSavingConfig(false); }

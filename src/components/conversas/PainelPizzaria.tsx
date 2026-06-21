@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClienteLTVFidelidadePanel } from "./ClienteLTVFidelidadePanel";
@@ -103,8 +104,9 @@ export function PainelPizzaria({
           .eq("company_id", companyId)
           .maybeSingle();
 
-        if (!error && data?.slug) {
-          setCardapioSlug(String(data.slug));
+        const slug = (data as any)?.slug;
+        if (!error && slug) {
+          setCardapioSlug(String(slug));
         } else {
           setCardapioSlug("loja");
         }

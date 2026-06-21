@@ -1,0 +1,1 @@
+ALTER TABLE public.loja_configuracoes ADD COLUMN IF NOT EXISTS impressora_config jsonb;
