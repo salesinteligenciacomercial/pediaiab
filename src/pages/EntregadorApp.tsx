@@ -117,6 +117,12 @@ const buttonStyle = {
   cursor: "pointer",
 } as const;
 
+const TRACKING_BASE_URL = "https://pediaiab.lovable.app";
+
+function buildTrackingUrl(pedidoId?: string | null) {
+  return pedidoId ? `${TRACKING_BASE_URL}/acompanhar/${pedidoId}` : "";
+}
+
 export default function EntregadorApp() {
   const [loading, setLoading] = useState(true);
   const [telefoneVinculo, setTelefoneVinculo] = useState("");
@@ -135,7 +141,15 @@ export default function EntregadorApp() {
   const lastLocationSentAt = useRef(0);
 
   useEffect(() => {
-    registerSW({ immediate: true });
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        updateSW(true);
+      },
+      onRegisteredSW(_swUrl, registration) {
+        registration?.update();
+      },
+    });
 
     document.title = "App do Entregador";
     const setMeta = (name: string, content: string) => {
@@ -390,7 +404,7 @@ export default function EntregadorApp() {
     ? Number(pedidoAtivo.valor_comissao || pedidoAtivo.total * ((entregador?.pct_comissao ?? 10) / 100))
     : 0;
 
-  const trackingUrl = pedidoAtivo ? `https://pediaiab.lovable.app/acompanhar/${pedidoAtivo.id}` : "";
+  const trackingUrl = buildTrackingUrl(pedidoAtivo?.id);
 
   useEffect(() => {
     if (!entregador || !pedidoAtivo || !("geolocation" in navigator)) return;
