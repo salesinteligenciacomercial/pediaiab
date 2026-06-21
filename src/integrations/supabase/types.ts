@@ -2042,6 +2042,293 @@ export type Database = {
           },
         ]
       }
+      entregador_avaliacoes: {
+        Row: {
+          avaliado_por: string | null
+          comentario: string | null
+          company_id: string
+          created_at: string | null
+          entregador_id: string
+          id: string
+          nota: number | null
+          pedido_id: string
+        }
+        Insert: {
+          avaliado_por?: string | null
+          comentario?: string | null
+          company_id: string
+          created_at?: string | null
+          entregador_id: string
+          id?: string
+          nota?: number | null
+          pedido_id: string
+        }
+        Update: {
+          avaliado_por?: string | null
+          comentario?: string | null
+          company_id?: string
+          created_at?: string | null
+          entregador_id?: string
+          id?: string
+          nota?: number | null
+          pedido_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregador_avaliacoes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_avaliacoes_entregador_id_fkey"
+            columns: ["entregador_id"]
+            isOneToOne: false
+            referencedRelation: "entregadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_avaliacoes_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entregador_candidaturas: {
+        Row: {
+          aceito_em: string | null
+          company_id: string
+          entregador_id: string
+          expira_em: string | null
+          id: string
+          ofertado_em: string | null
+          pedido_id: string
+          status: string | null
+        }
+        Insert: {
+          aceito_em?: string | null
+          company_id: string
+          entregador_id: string
+          expira_em?: string | null
+          id?: string
+          ofertado_em?: string | null
+          pedido_id: string
+          status?: string | null
+        }
+        Update: {
+          aceito_em?: string | null
+          company_id?: string
+          entregador_id?: string
+          expira_em?: string | null
+          id?: string
+          ofertado_em?: string | null
+          pedido_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregador_candidaturas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_candidaturas_entregador_id_fkey"
+            columns: ["entregador_id"]
+            isOneToOne: false
+            referencedRelation: "entregadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_candidaturas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entregador_localizacoes: {
+        Row: {
+          accuracy: number | null
+          company_id: string
+          created_at: string
+          entregador_id: string
+          heading: number | null
+          id: string
+          latitude: number
+          longitude: number
+          pedido_id: string | null
+          speed: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          company_id: string
+          created_at?: string
+          entregador_id: string
+          heading?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          pedido_id?: string | null
+          speed?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          company_id?: string
+          created_at?: string
+          entregador_id?: string
+          heading?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          pedido_id?: string | null
+          speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregador_localizacoes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_localizacoes_entregador_id_fkey"
+            columns: ["entregador_id"]
+            isOneToOne: false
+            referencedRelation: "entregadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_localizacoes_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entregador_pagamentos: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          entregador_id: string
+          id: string
+          pago_em: string | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          status: string | null
+          total_entregas: number | null
+          valor_bruto: number | null
+          valor_pago: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          entregador_id: string
+          id?: string
+          pago_em?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          status?: string | null
+          total_entregas?: number | null
+          valor_bruto?: number | null
+          valor_pago?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          entregador_id?: string
+          id?: string
+          pago_em?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          status?: string | null
+          total_entregas?: number | null
+          valor_bruto?: number | null
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregador_pagamentos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregador_pagamentos_entregador_id_fkey"
+            columns: ["entregador_id"]
+            isOneToOne: false
+            referencedRelation: "entregadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entregadores: {
+        Row: {
+          avaliacao_media: number | null
+          company_id: string
+          created_at: string | null
+          foto_url: string | null
+          id: string
+          nome: string
+          online: boolean | null
+          pct_comissao: number | null
+          pix_chave: string | null
+          status: string | null
+          telefone: string | null
+          updated_at: string | null
+          user_id: string | null
+          veiculo: string | null
+        }
+        Insert: {
+          avaliacao_media?: number | null
+          company_id: string
+          created_at?: string | null
+          foto_url?: string | null
+          id?: string
+          nome: string
+          online?: boolean | null
+          pct_comissao?: number | null
+          pix_chave?: string | null
+          status?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          veiculo?: string | null
+        }
+        Update: {
+          avaliacao_media?: number | null
+          company_id?: string
+          created_at?: string | null
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          online?: boolean | null
+          pct_comissao?: number | null
+          pix_chave?: string | null
+          status?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          veiculo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregadores_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etapas: {
         Row: {
           atualizado_em: string | null
@@ -4457,6 +4744,7 @@ export type Database = {
       }
       pedidos: {
         Row: {
+          aceito_entregador_em: string | null
           canal: string
           cliente_nome: string
           cliente_telefone: string
@@ -4464,6 +4752,8 @@ export type Database = {
           company_id: string
           created_at: string
           desconto: number
+          entregador_id: string | null
+          entregue_em: string | null
           forma_pagamento: string | null
           id: string
           lead_id: string | null
@@ -4477,8 +4767,10 @@ export type Database = {
           tipo_atendimento: string
           total: number
           updated_at: string
+          valor_comissao: number | null
         }
         Insert: {
+          aceito_entregador_em?: string | null
           canal?: string
           cliente_nome: string
           cliente_telefone: string
@@ -4486,6 +4778,8 @@ export type Database = {
           company_id: string
           created_at?: string
           desconto?: number
+          entregador_id?: string | null
+          entregue_em?: string | null
           forma_pagamento?: string | null
           id?: string
           lead_id?: string | null
@@ -4499,8 +4793,10 @@ export type Database = {
           tipo_atendimento?: string
           total?: number
           updated_at?: string
+          valor_comissao?: number | null
         }
         Update: {
+          aceito_entregador_em?: string | null
           canal?: string
           cliente_nome?: string
           cliente_telefone?: string
@@ -4508,6 +4804,8 @@ export type Database = {
           company_id?: string
           created_at?: string
           desconto?: number
+          entregador_id?: string | null
+          entregue_em?: string | null
           forma_pagamento?: string | null
           id?: string
           lead_id?: string | null
@@ -4521,6 +4819,7 @@ export type Database = {
           tipo_atendimento?: string
           total?: number
           updated_at?: string
+          valor_comissao?: number | null
         }
         Relationships: [
           {
@@ -4528,6 +4827,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_entregador_id_fkey"
+            columns: ["entregador_id"]
+            isOneToOne: false
+            referencedRelation: "entregadores"
             referencedColumns: ["id"]
           },
           {
@@ -7192,6 +7498,142 @@ export type Database = {
         }[]
       }
       elevate_self_to_super_admin: { Args: never; Returns: Json }
+      entregador_app_concluir_pedido: {
+        Args: { p_entregador_id: string; p_pedido_id: string }
+        Returns: {
+          aceito_entregador_em: string | null
+          canal: string
+          cliente_nome: string
+          cliente_telefone: string
+          codigo_pedido: string
+          company_id: string
+          created_at: string
+          desconto: number
+          entregador_id: string | null
+          entregue_em: string | null
+          forma_pagamento: string | null
+          id: string
+          lead_id: string | null
+          mesa_id: string | null
+          observacoes: string | null
+          origem_publica: Json | null
+          status: string
+          status_pagamento: string
+          subtotal: number
+          taxa_entrega: number
+          tipo_atendimento: string
+          total: number
+          updated_at: string
+          valor_comissao: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pedidos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      entregador_app_get_data: {
+        Args: { p_entregador_id: string }
+        Returns: Json
+      }
+      entregador_app_get_entregador: {
+        Args: { p_entregador_id: string }
+        Returns: {
+          avaliacao_media: number | null
+          company_id: string
+          created_at: string | null
+          foto_url: string | null
+          id: string
+          nome: string
+          online: boolean | null
+          pct_comissao: number | null
+          pix_chave: string | null
+          status: string | null
+          telefone: string | null
+          updated_at: string | null
+          user_id: string | null
+          veiculo: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "entregadores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      entregador_app_pegar_pedido: {
+        Args: { p_entregador_id: string; p_pedido_id: string }
+        Returns: {
+          aceito_entregador_em: string | null
+          canal: string
+          cliente_nome: string
+          cliente_telefone: string
+          codigo_pedido: string
+          company_id: string
+          created_at: string
+          desconto: number
+          entregador_id: string | null
+          entregue_em: string | null
+          forma_pagamento: string | null
+          id: string
+          lead_id: string | null
+          mesa_id: string | null
+          observacoes: string | null
+          origem_publica: Json | null
+          status: string
+          status_pagamento: string
+          subtotal: number
+          taxa_entrega: number
+          tipo_atendimento: string
+          total: number
+          updated_at: string
+          valor_comissao: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pedidos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      entregador_app_toggle_online: {
+        Args: { p_entregador_id: string; p_online: boolean }
+        Returns: {
+          avaliacao_media: number | null
+          company_id: string
+          created_at: string | null
+          foto_url: string | null
+          id: string
+          nome: string
+          online: boolean | null
+          pct_comissao: number | null
+          pix_chave: string | null
+          status: string | null
+          telefone: string | null
+          updated_at: string | null
+          user_id: string | null
+          veiculo: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "entregadores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      entregador_app_update_location: {
+        Args: {
+          p_accuracy?: number
+          p_entregador_id: string
+          p_heading?: number
+          p_latitude: number
+          p_longitude: number
+          p_pedido_id: string
+          p_speed?: number
+        }
+        Returns: Json
+      }
       formatar_telefone: { Args: { telefone: string }; Returns: string }
       generate_pedido_codigo: { Args: never; Returns: string }
       generate_protocol_number: {
@@ -7238,6 +7680,10 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_pedido_tracking_public: {
+        Args: { p_pedido_id: string }
+        Returns: Json
+      }
       get_subconta_historical_cost: {
         Args: { p_company_id: string; p_master_company_id: string }
         Returns: Json
@@ -7275,6 +7721,31 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: never; Returns: boolean }
+      link_entregador_by_phone_public: {
+        Args: { p_phone: string }
+        Returns: {
+          avaliacao_media: number | null
+          company_id: string
+          created_at: string | null
+          foto_url: string | null
+          id: string
+          nome: string
+          online: boolean | null
+          pct_comissao: number | null
+          pix_chave: string | null
+          status: string | null
+          telefone: string | null
+          updated_at: string | null
+          user_id: string | null
+          veiculo: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "entregadores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reorder_etapas: {
         Args: { p_funil_id: string; p_order: string[] }
         Returns: undefined
