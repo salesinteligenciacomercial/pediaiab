@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, MessageSquare, Bot, Settings, LogOut, DollarSign, Lock, X, Package, Store } from "lucide-react";
+import { LayoutDashboard, Users, MessageSquare, Bot, Settings, LogOut, DollarSign, Lock, X, Package, Store, Truck, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,16 @@ const navigation = [{
   href: "/cardapio-digital",
   icon: Store,
   menuKey: "cardapio-digital"
+}, {
+  name: "Entregadores",
+  href: "/entregadores",
+  icon: Truck,
+  menuKey: "entregadores"
+}, {
+  name: "Marketing",
+  href: "/marketing",
+  icon: Megaphone,
+  menuKey: "marketing"
 }, {
   name: "Bate-Papo",
   href: "/conversas",

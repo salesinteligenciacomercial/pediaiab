@@ -3,64 +3,42 @@
 > vite --port 4000 --strictPort
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m757[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m873[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4000[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.244:[1m4000[22m/[39m
-[2m19:10:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
-[2m19:14:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m19:17:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m19:23:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:23:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:24:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:24:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:25:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:25:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:25:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:26:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:26:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
-[2m19:30:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
-[2m19:31:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
-[2m19:31:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
-[2m19:31:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
-[2m19:31:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
-[2m19:32:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/analytics/PizzariaAnalytics.tsx, /src/index.css[22m
-[2m19:33:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
-[2m19:33:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
-[2m19:33:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
-[2m19:37:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:37:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:37:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:37:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:38:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:38:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:38:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:39:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:39:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:39:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:39:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:39:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:40:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:41:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:42:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:42:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:43:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:43:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:43:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:43:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:44:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:44:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:45:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:45:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:47:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:47:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:49:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m19:50:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m19:50:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:51:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
-[2m19:55:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
-[2m19:55:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Analytics.tsx, /src/index.css[22m
-[2m19:58:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m19:58:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m19:59:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m19:59:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m12:35:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:35:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:35:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:36:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:36:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:37:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m12:39:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:42:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m12:47:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m12:49:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m12:52:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m12:58:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m12:58:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m12:58:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m12:59:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m12:59:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m12:59:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m12:59:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:00:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:00:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:00:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:29:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:30:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:31:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:31:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:32:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:35:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:36:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:36:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:36:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:37:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:38:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/CardapioPublico.tsx, /src/components/conversas/PedidoChatModal.tsx[22m
+[2m13:39:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:39:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m13:39:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/CardapioPublico.tsx, /src/components/conversas/PedidoChatModal.tsx[22m

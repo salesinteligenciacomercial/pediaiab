@@ -21,6 +21,9 @@ import CardapioDigital from "./pages/CardapioDigital";
 import CardapioPublico from "./pages/CardapioPublico";
 import MarketplacePublico from "./pages/MarketplacePublico";
 import EntregadorApp from "./pages/EntregadorApp";
+import Entregadores from "./pages/Entregadores";
+import MarketingPromocional from "./pages/MarketingPromocional";
+import AcompanharPedido from "./pages/AcompanharPedido";
 import OAuthCallback from "./pages/OAuthCallback";
 import GmailCallback from "./pages/GmailCallback";
 import { MainLayout } from "./components/layout/MainLayout";
@@ -78,6 +81,7 @@ const App = () => (
             <Route path="/cardapio/:slug" element={<CardapioPublico />} />
             <Route path="/entregador" element={<EntregadorApp />} />
             <Route path="/app-entregador" element={<EntregadorApp />} />
+            <Route path="/acompanhar/:pedidoId" element={<AcompanharPedido />} />
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Navigate to="/analytics" replace />} />
               <Route path="dashboard" element={<Navigate to="/analytics" replace />} />
@@ -86,6 +90,8 @@ const App = () => (
               
               <Route path="produtos" element={<Produtos />} />
               <Route path="cardapio-digital" element={<CardapioDigital />} />
+              <Route path="entregadores" element={<Entregadores />} />
+              <Route path="marketing" element={<MarketingPromocional />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="conversas" element={<Conversas />} />
               <Route path="ia" element={<IA />} />

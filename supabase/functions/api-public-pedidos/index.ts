@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { criarPedidoFinal } from "../_shared/criar-pedido.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,7 +99,7 @@ serve(async (req) => {
     if (body.action === "menu") {
       const { data: products, error } = await supabase
         .from("produtos_servicos")
-        .select("id, nome, descricao, preco_sugerido, categoria, imagem_url, destaque_cardapio, permite_observacao, permite_meio_a_meio, ordem_exibicao")
+        .select("id, nome, descricao, descricao_curta, descricao_completa, preco_sugerido, categoria, imagem_url, destaque_cardapio, permite_observacao, permite_meio_a_meio, ordem_exibicao, tipo_produto, combo_items, combo_min_selecoes, combo_max_selecoes, promocao_ativa, promocao_preco, promocao_inicio, promocao_fim, promocao_flash, promocao_nota")
         .eq("company_id", store.company_id)
         .eq("ativo", true)
         .eq("ativo_cardapio", true)
@@ -213,6 +214,29 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      const pedidoCriado = await criarPedidoFinal(supabase, store.company_id, {
+        cliente_nome: body.customer.nome,
+        cliente_telefone: body.customer.telefone,
+        itens: body.items,
+        tipo_atendimento: body.customer.tipo_atendimento,
+        endereco: body.customer.endereco || null,
+        forma_pagamento: body.customer.forma_pagamento,
+        observacoes: body.customer.observacoes || null,
+      }, "cardapio", {
+        slug: body.slug,
+        origem: "cardapio-digital",
+        enviarConfirmacaoWhatsapp: true,
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        pedido_id: pedidoCriado.id,
+        codigo_pedido: pedidoCriado.codigo_pedido,
+      }), {
+        status: 201,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
       const subtotal = body.items.reduce(
         (sum, item) => sum + Number(item.valor_unitario || 0) * Number(item.quantidade || 1),

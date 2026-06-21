@@ -2188,7 +2188,57 @@ serve(async (req) => {
                 }
               }).catch(e => console.error('❌ [WEBHOOK-IA] Erro ia-agendamento:', e));
             }
-            // Se modo = 'all' ou sem registro, usar lógica atual (orchestrator/global)
+            else if (aiModeForConversation === 'garcom') {
+              console.log('[WEBHOOK-IA] Modo garcom - chamando ia-garcom...');
+              const supabaseUrlEnv = Deno.env.get('SUPABASE_URL')!;
+              const supabaseKeyEnv = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+              const canalGarcom = validatedData.origem === 'Instagram' ? 'instagram' : 'whatsapp';
+              const enviarEndpoint = canalGarcom === 'instagram' ? 'enviar-instagram' : 'enviar-whatsapp';
+              const { data: leadDataForIA } = await supabase
+                .from('leads').select('*').eq('id', leadId).single();
+
+              fetch(`${supabaseUrlEnv}/functions/v1/ia-garcom`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${supabaseKeyEnv}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  conversationId: telefoneParaBusca || data.id,
+                  message: validatedData.mensagem,
+                  numero: numeroLimpo,
+                  leadData: leadDataForIA,
+                  companyId,
+                  canal: canalGarcom,
+                })
+              }).then(async (r) => {
+                const result = await r.json();
+                if (result.response) {
+                  const delay = 1500 + Math.random() * 1500;
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  await fetch(`${supabaseUrlEnv}/functions/v1/${enviarEndpoint}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${supabaseKeyEnv}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ numero: numeroLimpo, mensagem: result.response, tipo_mensagem: 'text', company_id: companyId })
+                  });
+                  await supabase.from('conversas').insert({
+                    numero: numeroFinal,
+                    telefone_formatado: telefoneFormatadoFinal,
+                    mensagem: result.response,
+                    origem: validatedData.origem,
+                    status: 'Enviada',
+                    tipo_mensagem: 'texto',
+                    nome_contato: nomeContatoFinal,
+                    lead_id: leadId,
+                    company_id: companyId,
+                    fromme: true,
+                    sent_by: 'Garcom IA',
+                    delivered: true,
+                    read: false,
+                  });
+                  if (result.pedidoCriado) {
+                    console.log('[WEBHOOK-IA] Pedido criado pelo Garcom IA:', result.pedidoCriado.id);
+                  }
+                }
+              }).catch(e => console.error('[WEBHOOK-IA] Erro ia-garcom:', e));
+            }            // Se modo = 'all' ou sem registro, usar lógica atual (orchestrator/global)
             else {
               // Comportamento padrão: verificar ia_configurations global
               const { data: iaConfig } = await supabase

@@ -88,6 +88,10 @@ export const CARDAPIO_CSS = `
 .c-pill-count{background:rgba(255,255,255,.2);border-radius:100px;padding:0 6px;font-size:10.5px;font-weight:700}
 
 .c-main{max-width:900px;margin:0 auto;padding:22px 16px 140px;position:relative;z-index:1}
+.c-category-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.c-mini-action{border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.04);
+  color:var(--text2);font-family:var(--font);font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer}
+.c-mini-action:hover{border-color:rgba(255,107,26,.35);color:var(--fire2);background:rgba(255,107,26,.08)}
 .c-section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;gap:10px}
 .c-section-title{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:-.5px}
 .c-section-sub{font-size:11px;color:var(--text3);letter-spacing:.04em;text-transform:uppercase}
@@ -110,11 +114,34 @@ export const CARDAPIO_CSS = `
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--text)}
 .c-destaque-price{font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--fire3),var(--fire2));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.c-price-old{font-size:11px;color:var(--text3);text-decoration:line-through;line-height:1.1;margin-bottom:1px}
+
+.c-offer-section{padding:16px;border:1px solid rgba(255,107,26,.18);border-radius:18px;
+  background:linear-gradient(135deg,rgba(255,69,0,.08),rgba(255,179,71,.04))}
+.c-offer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.c-offer-card{border:1px solid var(--border);border-radius:14px;background:rgba(26,20,16,.92);
+  color:var(--text);font-family:var(--font);text-align:left;padding:13px;cursor:pointer;transition:all .2s;min-height:150px}
+.c-offer-card:hover{border-color:rgba(255,107,26,.45);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.c-offer-top{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.c-offer-badge{display:inline-flex;align-items:center;border-radius:999px;background:var(--fire);color:#fff;
+  font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px}
+.c-offer-badge.flash{background:var(--gold);color:#1A1410}
+.c-offer-name{font-size:14px;font-weight:800;line-height:1.25;color:var(--text);margin-bottom:5px}
+.c-offer-desc{font-size:12px;color:var(--text2);line-height:1.45;min-height:36px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-offer-price-row{display:flex;align-items:baseline;gap:8px;margin-top:10px;flex-wrap:wrap}
+.c-offer-price{font-size:18px;font-weight:900;color:var(--fire2)}
+@media(max-width:620px){.c-offer-grid{grid-template-columns:1fr}.c-section-header{align-items:flex-start;flex-direction:column;gap:2px}}
 
 .c-category-section{margin-bottom:34px;scroll-margin-top:140px}
 .c-cat-label{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.3px;
-  margin-bottom:13px;padding-bottom:10px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:10px}
+  margin-bottom:13px;padding:0 0 10px;border:0;border-bottom:1px solid var(--border);background:transparent;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;color:var(--text);cursor:pointer;text-align:left}
+.c-cat-left{display:flex;align-items:center;gap:10px;min-width:0}
+.c-cat-toggle{width:26px;height:26px;border-radius:9px;border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;color:var(--fire2);font-family:var(--font);font-weight:900;font-size:16px;flex-shrink:0}
+.c-cat-state{font-family:var(--font);font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.c-cat-label:hover .c-cat-toggle{border-color:var(--fire2);background:rgba(255,107,26,.1)}
 .c-cat-label small{font-size:12px;color:var(--text3);font-family:var(--font);font-weight:400}
 .c-prod-list{display:flex;flex-direction:column;gap:10px}
 .c-prod-item{background:var(--dark2);border:1px solid var(--border);border-radius:14px;overflow:hidden;
@@ -126,6 +153,7 @@ export const CARDAPIO_CSS = `
 .c-prod-desc{font-size:12px;color:var(--text2);line-height:1.55;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .c-prod-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
+.c-prod-badges{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 .c-prod-price-from{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
 .c-prod-price{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--fire3),var(--fire));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.5px}
@@ -156,7 +184,10 @@ export const CARDAPIO_CSS = `
   display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10}
 .c-modal-body{padding:18px}
 .c-modal-name{font-family:var(--font-display);font-size:21px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;line-height:1.2}
+.c-modal-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:9px}
 .c-modal-desc{color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:14px}
+.c-modal-promo-note{font-size:12px;line-height:1.45;color:var(--fire3);background:rgba(255,179,71,.08);
+  border:1px solid rgba(255,179,71,.22);border-radius:10px;padding:9px 10px;margin:-4px 0 12px}
 .c-modal-price{font-size:24px;font-weight:700;background:linear-gradient(135deg,var(--fire3),var(--fire));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;margin-bottom:18px}
 .c-sub2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--fire2);
