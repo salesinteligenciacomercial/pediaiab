@@ -4,6 +4,7 @@ import MesasView from "@/components/pedidos/MesasView";
 import EntregadoresView from "@/components/pedidos/EntregadoresView";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { toast } from "sonner";
+import { Bell, BellOff } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -520,6 +521,10 @@ export default function KDS() {
   const [entregadorSelecionado, setEntregadorSelecionado] = useState<string | null>(null);
   const [atribuindo, setAtribuindo] = useState(false);
   const [novoPedidoOpen, setNovoPedidoOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("kds_sound_enabled") !== "false";
+  });
   const audioRef = useRef<AudioContext | null>(null);
 
   // Clock ticker
@@ -530,26 +535,35 @@ export default function KDS() {
 
   // Play beep sound when new pedido arrives
   const playBeep = useCallback(() => {
+    if (!soundEnabled) return;
     try {
       if (!audioRef.current) {
         audioRef.current = new AudioContext();
       }
       const ctx = audioRef.current;
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
-      gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.4);
+      // double-beep for stronger alert
+      [0, 0.18].forEach((offset) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(1000, ctx.currentTime + offset);
+        oscillator.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + offset + 0.15);
+        gainNode.gain.setValueAtTime(0.5, ctx.currentTime + offset);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.4);
+        oscillator.start(ctx.currentTime + offset);
+        oscillator.stop(ctx.currentTime + offset + 0.4);
+      });
     } catch {
       // AudioContext blocked until user interaction — fine
     }
-  }, []);
+  }, [soundEnabled]);
+
+  // Persist sound preference
+  useEffect(() => {
+    try { localStorage.setItem("kds_sound_enabled", String(soundEnabled)); } catch {}
+  }, [soundEnabled]);
 
   // Load data
   const load = useCallback(async (cid: string) => {
@@ -777,6 +791,14 @@ export default function KDS() {
   }, {} as Record<PedidoStatus, Pedido[]>);
 
   const totalAtivos = pedidos.length;
+  const novosCount = pedidosByStatus["novo"]?.length || 0;
+
+  // Repeat alert beep every 6s while there are pending "novo" pedidos
+  useEffect(() => {
+    if (!soundEnabled || novosCount === 0) return;
+    const id = setInterval(() => playBeep(), 6000);
+    return () => clearInterval(id);
+  }, [soundEnabled, novosCount, playBeep]);
 
   return (
     <>
@@ -825,6 +847,12 @@ export default function KDS() {
           0%, 100% { opacity: 1; }
           50%      { opacity: 0.5; }
         }
+
+        @keyframes kdsBellPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(249,115,22,0.45); }
+          50%      { transform: scale(1.08); box-shadow: 0 0 26px rgba(249,115,22,0.85); }
+        }
+
 
         @keyframes scanline {
           0%   { transform: translateY(-100%); }
@@ -896,6 +924,51 @@ export default function KDS() {
                 </div>
               </div>
             )}
+            {/* Sino de novos pedidos */}
+            <button
+              onClick={() => {
+                setSoundEnabled((s) => !s);
+                // garante que o AudioContext seja desbloqueado pelo gesto do usuário
+                try {
+                  if (!audioRef.current) audioRef.current = new AudioContext();
+                  audioRef.current.resume?.();
+                } catch {}
+              }}
+              title={soundEnabled ? "Som ativado — clique para silenciar" : "Som silenciado — clique para ativar"}
+              style={{
+                position: "relative",
+                width: 40, height: 40, borderRadius: 10,
+                border: `1px solid ${novosCount > 0 ? "rgba(249,115,22,0.6)" : "rgba(255,255,255,0.08)"}`,
+                background: novosCount > 0
+                  ? "linear-gradient(135deg, rgba(249,115,22,0.25), rgba(239,68,68,0.25))"
+                  : "#111827",
+                color: novosCount > 0 ? "#FDBA74" : (soundEnabled ? "#E5E7EB" : "#6B7280"),
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+                animation: novosCount > 0 ? "kdsBellPulse 1.1s ease-in-out infinite" : undefined,
+                boxShadow: novosCount > 0 ? "0 0 18px rgba(249,115,22,0.45)" : "none",
+                transition: "background .2s, color .2s, border-color .2s",
+              }}
+            >
+              {soundEnabled ? <Bell size={18} /> : <BellOff size={18} />}
+              {novosCount > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: -6, right: -6,
+                  minWidth: 18, height: 18, padding: "0 5px",
+                  borderRadius: 999,
+                  background: "#EF4444",
+                  color: "#fff",
+                  fontSize: 10, fontWeight: 800,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  border: "2px solid #0b0b0d",
+                }}>
+                  {novosCount > 99 ? "99+" : novosCount}
+                </span>
+              )}
+            </button>
+
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 6, height: 6, borderRadius: "50%",
