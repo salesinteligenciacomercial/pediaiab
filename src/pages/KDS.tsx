@@ -521,6 +521,10 @@ export default function KDS() {
   const [entregadorSelecionado, setEntregadorSelecionado] = useState<string | null>(null);
   const [atribuindo, setAtribuindo] = useState(false);
   const [novoPedidoOpen, setNovoPedidoOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("kds_sound_enabled") !== "false";
+  });
   const audioRef = useRef<AudioContext | null>(null);
 
   // Clock ticker
