@@ -165,6 +165,7 @@ const PRODUCT_TABS = [
   { key: 'opcoes', label: 'Opções' },
   { key: 'tamanhos', label: 'Tamanhos' },
   { key: 'bordas', label: 'Bordas' },
+  { key: 'meio-categorias', label: 'Categorias Meio a Meio' },
 ];
 
 const CSS = `
