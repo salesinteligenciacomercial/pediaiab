@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Package, ImagePlus, Trash2, Edit2 } from 'lucide-react';
 import { PizzaTamanhosManager } from '@/components/produtos/PizzaTamanhosManager';
 import { PizzaBordasManager } from '@/components/produtos/PizzaBordasManager';
+import { PizzaMeioCategoriasManager } from '@/components/produtos/PizzaMeioCategoriasManager';
 import { supabase } from '@/integrations/supabase/client';
 
 type TipoProduto = 'produto' | 'insumo' | 'combo' | 'adicional';
@@ -164,6 +165,7 @@ const PRODUCT_TABS = [
   { key: 'opcoes', label: 'Opções' },
   { key: 'tamanhos', label: 'Tamanhos' },
   { key: 'bordas', label: 'Bordas' },
+  { key: 'meio-categorias', label: 'Categorias Meio a Meio' },
 ];
 
 const CSS = `
@@ -1324,7 +1326,7 @@ export default function Produtos() {
           )}
         </TabsContent>
 
-        {PRODUCT_TABS.filter((tab) => !['todos', 'precificacao', 'opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao', 'lucro'].includes(tab.key)).map((tab) => (
+        {PRODUCT_TABS.filter((tab) => !['todos', 'precificacao', 'opcoes', 'tamanhos', 'bordas', 'meio-categorias', 'estoque', 'composicao', 'lucro'].includes(tab.key)).map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
             {filteredProdutos.length ? (
               <div className="product-grid">
@@ -1692,6 +1694,9 @@ export default function Produtos() {
         </TabsContent>
         <TabsContent value="bordas">
           <PizzaBordasManager />
+        </TabsContent>
+        <TabsContent value="meio-categorias">
+          <PizzaMeioCategoriasManager />
         </TabsContent>
       </Tabs>
 
