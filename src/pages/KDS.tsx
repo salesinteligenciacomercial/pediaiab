@@ -1,10 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import MesasView from "@/components/pedidos/MesasView";
-import EntregadoresView from "@/components/pedidos/EntregadoresView";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { toast } from "sonner";
-import { Bell, BellOff } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +51,11 @@ type Entregador = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const KDS_STATUSES: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto", "saiu_entrega", "entregue"];
+const TRACKING_BASE_URL = "https://pediaiab.lovable.app";
+
+function buildTrackingUrl(pedidoId?: string | null) {
+  return pedidoId ? `${TRACKING_BASE_URL}/acompanhar/${pedidoId}` : "";
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; glow: string }> = {
   novo:        { label: "Novos",       color: "#4A9EFF", bg: "#071025", border: "#213647", glow: "rgba(74,158,255,0.14)" },
@@ -154,12 +157,18 @@ function PedidoCard({
   pedido,
   itensByPedido,
   onAdvance,
+  onEdit,
+  onAddItem,
+  onDelete,
   isNew,
   entregadoresList,
 }: {
   pedido: Pedido;
   itensByPedido: Record<string, PedidoItem[]>;
   onAdvance: (pedido: Pedido) => void;
+  onEdit: (pedido: Pedido) => void;
+  onAddItem: (pedido: Pedido) => void;
+  onDelete: (pedidoId: string) => void;
   isNew: boolean;
   entregadoresList: Entregador[];
 }) {
@@ -328,6 +337,54 @@ function PedidoCard({
         </div>
       )}
 
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          onClick={() => onEdit(pedido)}
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "#E5E7EB",
+            borderRadius: 8,
+            padding: "8px 10px",
+            fontSize: 11,
+            cursor: "pointer",
+            flex: 1,
+          }}
+        >
+          ✏️ Editar
+        </button>
+        <button
+          onClick={() => onAddItem(pedido)}
+          style={{
+            background: "rgba(34,197,94,0.14)",
+            border: "1px solid #22C55E",
+            color: "#A7F3D0",
+            borderRadius: 8,
+            padding: "8px 10px",
+            fontSize: 11,
+            cursor: "pointer",
+            flex: 1,
+          }}
+        >
+          + Produto
+        </button>
+        <button
+          onClick={() => onDelete(pedido.id)}
+          style={{
+            background: "rgba(239,68,68,0.12)",
+            border: "1px solid #EF4444",
+            color: "#FCA5A5",
+            borderRadius: 8,
+            padding: "8px 10px",
+            fontSize: 11,
+            cursor: "pointer",
+            flex: 1,
+          }}
+        >
+          🗑️ Excluir
+        </button>
+      </div>
+
       {pedido.status === "saiu_entrega" && pedido.entregador_id && (() => {
         const ent = entregadoresList.find((e) => e.id === pedido.entregador_id);
         return ent ? (
@@ -407,6 +464,9 @@ function KDSColumn({
   itensByPedido,
   newIds,
   onAdvance,
+  onEdit,
+  onAddItem,
+  onDelete,
   entregadoresList,
 }: {
   status: PedidoStatus;
@@ -414,6 +474,9 @@ function KDSColumn({
   itensByPedido: Record<string, PedidoItem[]>;
   newIds: Set<string>;
   onAdvance: (pedido: Pedido) => void;
+  onEdit: (pedido: Pedido) => void;
+  onAddItem: (pedido: Pedido) => void;
+  onDelete: (pedidoId: string) => void;
   entregadoresList: Entregador[];
 }) {
   const cfg = STATUS_CONFIG[status];
@@ -495,6 +558,9 @@ function KDSColumn({
               pedido={p}
               itensByPedido={itensByPedido}
               onAdvance={onAdvance}
+              onEdit={onEdit}
+              onAddItem={onAddItem}
+              onDelete={onDelete}
               isNew={newIds.has(p.id)}
               entregadoresList={entregadoresList}
             />
@@ -514,24 +580,29 @@ export default function KDS() {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
-  const [clock, setClock] = useState(new Date());
-  const [activeTab, setActiveTab] = useState<"delivery" | "mesas" | "entregadores">("delivery");
+  const [activeTab, setActiveTab] = useState<"delivery" | "mesas">("delivery");
   const [entregadores, setEntregadores] = useState<Entregador[]>([]);
   const [pedidoParaAtribuir, setPedidoParaAtribuir] = useState<Pedido | null>(null);
   const [entregadorSelecionado, setEntregadorSelecionado] = useState<string | null>(null);
   const [atribuindo, setAtribuindo] = useState(false);
   const [novoPedidoOpen, setNovoPedidoOpen] = useState(false);
+  const [produtos, setProdutos] = useState<Array<{ id: string; nome: string; preco_sugerido: number | null }>>([]);
+  const [addItemOrderId, setAddItemOrderId] = useState<string | null>(null);
+  const [selectedAddProductId, setSelectedAddProductId] = useState<string>("");
+  const [addItemQuantity, setAddItemQuantity] = useState<number>(1);
+  const [addItemObservations, setAddItemObservations] = useState<string>("");
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState<string>("");
+  const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
+  const [editObservations, setEditObservations] = useState<string>("");
+  const [isSavingOrderEdit, setIsSavingOrderEdit] = useState(false);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("kds_sound_enabled") !== "false";
   });
   const audioRef = useRef<AudioContext | null>(null);
-
-  // Clock ticker
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   // Play beep sound when new pedido arrives
   const playBeep = useCallback(() => {
@@ -625,17 +696,186 @@ export default function KDS() {
     if (data) setEntregadores(data);
   }, []);
 
+  const loadProdutos = useCallback(async (cid: string) => {
+    const { data, error } = await (supabase.from("produtos_servicos" as any) as any)
+      .select("id, nome, preco_sugerido")
+      .eq("company_id", cid)
+      .eq("ativo", true)
+      .order("nome");
+
+    if (error) {
+      console.error("[KDS] erro ao carregar produtos", error);
+      return;
+    }
+
+    if (data) setProdutos(data);
+  }, []);
+
+  const registrarItemPedido = async (
+    pedidoId: string,
+    produtoId: string | undefined,
+    produtoNome: string,
+    quantidade: number,
+    valorUnitario: number,
+    observacoes?: string | null
+  ) => {
+    const { error } = await supabase.rpc("registrar_item_pedido_com_custo" as any, {
+      p_pedido_id: pedidoId,
+      p_company_id: companyId,
+      p_produto_id: produtoId || null,
+      p_produto_nome: produtoNome,
+      p_quantidade: quantidade,
+      p_valor_unitario: valorUnitario,
+      p_observacoes: observacoes || null,
+    });
+
+    if (error) {
+      const msg = String(error.message || "");
+      const rpcNaoExiste = error.code === "PGRST202" || msg.includes("registrar_item_pedido_com_custo") || msg.includes("Could not find the function");
+      if (!rpcNaoExiste) throw error;
+
+      const { error: insertError } = await supabase.from("pedido_itens" as any).insert({
+        pedido_id: pedidoId,
+        company_id: companyId,
+        produto_id: produtoId || null,
+        produto_nome: produtoNome,
+        quantidade,
+        valor_unitario: valorUnitario,
+        valor_total: valorUnitario * quantidade,
+        observacoes: observacoes || null,
+      });
+      if (insertError) throw insertError;
+    }
+  };
+
+  const atualizarTotalPedido = async (pedidoId: string) => {
+    const [{ data: pedidoData, error: pedidoErr }, { data: itensData, error: itensErr }] = await Promise.all([
+      supabase.from("pedidos" as any).select("taxa_entrega, desconto").eq("id", pedidoId).single(),
+      supabase.from("pedido_itens" as any).select("valor_total").eq("pedido_id", pedidoId),
+    ]);
+
+    if (pedidoErr) throw pedidoErr;
+    if (itensErr) throw itensErr;
+
+    const subtotal = (itensData || []).reduce((sum: number, item: any) => sum + Number(item.valor_total || 0), 0);
+    const total = subtotal + Number(pedidoData?.taxa_entrega || 0) - Number(pedidoData?.desconto || 0);
+
+    const { error: updateErr } = await supabase.from("pedidos" as any).update({ subtotal, total }).eq("id", pedidoId);
+    if (updateErr) throw updateErr;
+  };
+
+  const abrirEdicaoPedido = useCallback((pedido: Pedido) => {
+    setEditOrderId(pedido.id);
+    setEditCustomerName(pedido.cliente_nome);
+    setEditCustomerPhone(pedido.cliente_telefone || "");
+    setEditObservations(pedido.observacoes || "");
+  }, []);
+
+  const handleAtualizarPedido = useCallback(async () => {
+    if (!editOrderId || !companyId) return;
+    setIsSavingOrderEdit(true);
+
+    const { error } = await (supabase.from("pedidos" as any) as any)
+      .update({
+        cliente_nome: editCustomerName.trim(),
+        cliente_telefone: editCustomerPhone.trim(),
+        observacoes: editObservations.trim() || null,
+      })
+      .eq("id", editOrderId);
+
+    if (error) {
+      toast.error(`Erro ao atualizar pedido: ${error.message}`);
+      setIsSavingOrderEdit(false);
+      return;
+    }
+
+    await (supabase.from("pedido_eventos" as any) as any).insert({
+      pedido_id: editOrderId,
+      company_id: companyId,
+      tipo: "pedido_editado",
+      descricao: "Pedido atualizado via KDS",
+    });
+
+    setEditOrderId(null);
+    setIsSavingOrderEdit(false);
+    await load(companyId);
+    toast.success("Pedido atualizado");
+  }, [editOrderId, editCustomerName, editCustomerPhone, editObservations, companyId, load]);
+
+  const handleAdicionarItemPedido = useCallback(async () => {
+    if (!addItemOrderId || !companyId) return;
+    const produto = produtos.find((p) => p.id === selectedAddProductId);
+    if (!produto) return toast.error("Selecione um produto");
+    if (addItemQuantity <= 0) return toast.error("Informe quantidade válida");
+
+    setIsAddingItem(true);
+    try {
+      await registrarItemPedido(
+        addItemOrderId,
+        produto.id,
+        produto.nome,
+        addItemQuantity,
+        Number(produto.preco_sugerido || 0),
+        addItemObservations.trim() || null
+      );
+      await atualizarTotalPedido(addItemOrderId);
+      await (supabase.from("pedido_eventos" as any) as any).insert({
+        pedido_id: addItemOrderId,
+        company_id: companyId,
+        tipo: "item_adicionado",
+        descricao: `Item adicionado via KDS: ${addItemQuantity}× ${produto.nome}`,
+      });
+      setAddItemOrderId(null);
+      setSelectedAddProductId("");
+      setAddItemQuantity(1);
+      setAddItemObservations("");
+      await load(companyId);
+      toast.success("Item adicionado ao pedido");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || "Erro ao adicionar item");
+    } finally {
+      setIsAddingItem(false);
+    }
+  }, [addItemOrderId, companyId, selectedAddProductId, addItemQuantity, addItemObservations, produtos, registrarItemPedido, load]);
+
+  const abrirAdicaoItemPedido = useCallback((pedido: Pedido) => {
+    setAddItemOrderId(pedido.id);
+    setSelectedAddProductId("");
+    setAddItemQuantity(1);
+    setAddItemObservations("");
+  }, []);
+
+  const handleExcluirPedido = useCallback(async (pedidoId: string) => {
+    if (!companyId) return;
+    if (!confirm("Tem certeza que deseja excluir este pedido?")) return;
+    setIsDeletingOrder(true);
+
+    const { error } = await (supabase.from("pedidos" as any) as any)
+      .delete()
+      .eq("id", pedidoId);
+
+    if (error) {
+      toast.error(`Erro ao excluir pedido: ${error.message}`);
+      setIsDeletingOrder(false);
+      return;
+    }
+
+    setPedidos((prev) => prev.filter((p) => p.id !== pedidoId));
+    setIsDeletingOrder(false);
+    toast.success("Pedido excluído");
+  }, [companyId]);
+
   // Bootstrap
   useEffect(() => {
     (async () => {
       const { data: cid } = await supabase.rpc("get_my_company_id");
       if (!cid) return;
       setCompanyId(cid);
-      await load(cid);
-      await loadEntregadores(cid);
+      await Promise.all([load(cid), loadEntregadores(cid), loadProdutos(cid)]);
       setLoading(false);
     })();
-  }, [load, loadEntregadores]);
+  }, [load, loadEntregadores, loadProdutos]);
 
   // Realtime subscription
   useEffect(() => {
@@ -696,7 +936,18 @@ export default function KDS() {
         body: {
           company_id: companyId,
           numero: telLimpo,
-          mensagem: `*Saiu para entrega!*\n\nOla ${pedidoParaAtribuir.cliente_nome}, seu pedido *${pedidoParaAtribuir.codigo_pedido}* saiu para entrega com ${entregador?.nome}. Logo chegara ate voce!`,
+          mensagem: [
+            `Ola ${pedidoParaAtribuir.cliente_nome}, seu pedido #${pedidoParaAtribuir.codigo_pedido} saiu para entrega.`,
+            "",
+            `Entregador: ${entregador?.nome || "entregador"}`,
+            `Veiculo: ${entregador?.veiculo || "moto"}`,
+            `Avaliacao: ${Number(entregador?.avaliacao_media || 5).toFixed(1)}`,
+            "",
+            "Acompanhe a trajetoria da entrega em tempo real pelo link:",
+            buildTrackingUrl(pedidoParaAtribuir.id),
+            "",
+            "Para sua seguranca, confira o nome e a foto do entregador na pagina de rastreio.",
+          ].join("\n"),
           origem: "kds-entregador",
         },
       });
@@ -859,14 +1110,43 @@ export default function KDS() {
           100% { transform: translateY(100vh); }
         }
 
-        .kds-scanline {
-          position: fixed;
-          top: 0; left: 0; right: 0;
-          height: 3px;
-          background: linear-gradient(180deg, transparent, rgba(249,115,22,0.06), transparent);
-          pointer-events: none;
-          animation: scanline 8s linear infinite;
-          z-index: 999;
+        .kds-new-order-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          background: linear-gradient(90deg, rgba(244,63,94,0.16), rgba(245,158,11,0.12));
+          border: 1px solid rgba(245,158,11,0.28);
+          color: #F8FAFC;
+          padding: 12px 16px;
+          border-radius: 14px;
+          margin: 0 16px 12px;
+          animation: pulseOrder 1.6s ease-in-out infinite;
+        }
+
+        .kds-new-order-banner strong {
+          color: #FFEDD5;
+        }
+
+        .kds-new-order-button {
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.14);
+          color: #F8FAFC;
+          border-radius: 999px;
+          padding: 8px 14px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        .kds-new-order-button:hover {
+          background: rgba(255,255,255,0.16);
+          transform: translateY(-1px);
+        }
+
+        @keyframes pulseOrder {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.18); }
+          50% { box-shadow: 0 0 0 10px rgba(245,158,11,0.05); }
         }
 
         ::-webkit-scrollbar { width: 4px; }
@@ -877,137 +1157,6 @@ export default function KDS() {
       <div className="kds-root">
         <div className="kds-scanline" />
 
-        {/* Header */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 20px",
-          borderBottom: "1px solid #111827",
-          background: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(10px)",
-          flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "linear-gradient(135deg, #F97316, #EF4444)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 16,
-            }}>
-              🍕
-            </div>
-            <div>
-              <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 15, fontWeight: 700, color: "#F97316",
-                letterSpacing: "1px",
-              }}>
-                ROSH PIZZARIA
-              </div>
-              <div style={{ fontSize: 10, color: "#6B7280", letterSpacing: "2px", textTransform: "uppercase" }}>
-                Kitchen Display System
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            {activeTab === "mesas" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 110, padding: "5px 14px", borderRadius: 8, background: "#131618", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: "#FF8C42", lineHeight: 1 }}>{totalAtivos}</span>
-                  <span style={{ fontSize: 9, color: "#5f6368", textTransform: "uppercase", letterSpacing: ".07em", marginTop: 2 }}>Pedidos abertos</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 110, padding: "5px 14px", borderRadius: 8, background: "#131618", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: "#2ECC8F", lineHeight: 1 }}>Tempo real</span>
-                  <span style={{ fontSize: 9, color: "#5f6368", textTransform: "uppercase", letterSpacing: ".07em", marginTop: 2 }}>Mesas sincronizadas</span>
-                </div>
-              </div>
-            )}
-            {/* Sino de novos pedidos */}
-            <button
-              onClick={() => {
-                setSoundEnabled((s) => !s);
-                // garante que o AudioContext seja desbloqueado pelo gesto do usuário
-                try {
-                  if (!audioRef.current) audioRef.current = new AudioContext();
-                  audioRef.current.resume?.();
-                } catch {}
-              }}
-              title={soundEnabled ? "Som ativado — clique para silenciar" : "Som silenciado — clique para ativar"}
-              style={{
-                position: "relative",
-                width: 40, height: 40, borderRadius: 10,
-                border: `1px solid ${novosCount > 0 ? "rgba(249,115,22,0.6)" : "rgba(255,255,255,0.08)"}`,
-                background: novosCount > 0
-                  ? "linear-gradient(135deg, rgba(249,115,22,0.25), rgba(239,68,68,0.25))"
-                  : "#111827",
-                color: novosCount > 0 ? "#FDBA74" : (soundEnabled ? "#E5E7EB" : "#6B7280"),
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer",
-                animation: novosCount > 0 ? "kdsBellPulse 1.1s ease-in-out infinite" : undefined,
-                boxShadow: novosCount > 0 ? "0 0 18px rgba(249,115,22,0.45)" : "none",
-                transition: "background .2s, color .2s, border-color .2s",
-              }}
-            >
-              {soundEnabled ? <Bell size={18} /> : <BellOff size={18} />}
-              {novosCount > 0 && (
-                <span style={{
-                  position: "absolute",
-                  top: -6, right: -6,
-                  minWidth: 18, height: 18, padding: "0 5px",
-                  borderRadius: 999,
-                  background: "#EF4444",
-                  color: "#fff",
-                  fontSize: 10, fontWeight: 800,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  border: "2px solid #0b0b0d",
-                }}>
-                  {novosCount > 99 ? "99+" : novosCount}
-                </span>
-              )}
-            </button>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: companyId && !loading ? "#22C55E" : "#6B7280",
-                boxShadow: companyId && !loading ? "0 0 8px #22C55E" : "none",
-              }} />
-              <span style={{ fontSize: 11, color: "#6B7280" }}>
-                {loading ? "conectando..." : "tempo real"}
-              </span>
-            </div>
-
-            {activeTab === "delivery" && <div style={{
-              background: "#111827",
-              border: "0.5px solid #1F2937",
-              borderRadius: 8,
-              padding: "4px 12px",
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <span style={{ fontSize: 11, color: "#6B7280" }}>em fila</span>
-              <span style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 18, fontWeight: 700,
-                color: totalAtivos > 0 ? "#F97316" : "#4B5563",
-              }}>
-                {totalAtivos}
-              </span>
-            </div>}
-
-            <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 20, fontWeight: 700,
-              color: "#E5E7EB",
-              letterSpacing: "1px",
-              minWidth: 80, textAlign: "right",
-            }}>
-              {clock.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </div>
-          </div>
-        </div>
 
         {/* Tabs / Filters */}
         <div style={{display:'flex', flexDirection: 'column'}}>
@@ -1017,23 +1166,13 @@ export default function KDS() {
               className={`kds-tab ${activeTab === "delivery" ? "active" : ""}`}
               onClick={() => setActiveTab("delivery")}
             >
-              🛵 Delivery / Balcão <span style={{marginLeft:8, background:'#0b0b0d', padding:'2px 8px', borderRadius:8}}>{totalAtivos}</span>
+              Delivery / Balcao <span style={{marginLeft:8, background:'#0b0b0d', padding:'2px 8px', borderRadius:8}}>{totalAtivos}</span>
             </button>
             <button
               className={`kds-tab ${activeTab === "mesas" ? "active" : ""}`}
               onClick={() => setActiveTab("mesas")}
             >
-              🪑 Mesas
-            </button>
-            <button
-              className={`kds-tab ${activeTab === "entregadores" ? "active" : ""}`}
-              onClick={() => setActiveTab("entregadores")}
-              style={{ color: activeTab === "entregadores" ? "#B980FF" : undefined }}
-            >
-              Entregadores
-              <span style={{ marginLeft: 8, background: "#0b0b0d", padding: "2px 8px", borderRadius: 8, color: "#B980FF" }}>
-                {entregadores.filter((e) => e.online).length}
-              </span>
+              Mesas
             </button>
             </div>
             <button
@@ -1055,15 +1194,32 @@ export default function KDS() {
               + Novo Pedido
             </button>
           </div>
+
+          {novosCount > 0 && (
+            <div className="kds-new-order-banner">
+              <div>
+                <strong>{novosCount} novo{novosCount > 1 ? "s" : ""} pedido{novosCount > 1 ? "s" : ""}</strong> aguardando aceitação.
+                <div style={{ color: "#E2E8F0", fontSize: 12, marginTop: 4 }}>
+                  Abra a coluna de pedidos novos e aceite agora para não atrasar a preparação.
+                </div>
+              </div>
+              <button
+                className="kds-new-order-button"
+                onClick={() => setActiveTab("delivery")}
+              >
+                Ver pedidos
+              </button>
+            </div>
+          )}
           {activeTab === "delivery" && (
             <div className="kds-filterbar">
               <div className="kds-chips">
                 <div className="kds-chip active">Todos os canais</div>
-                <div className="kds-chip">Cardápio Digital</div>
+                <div className="kds-chip">Cardapio Digital</div>
                 <div className="kds-chip">WhatsApp</div>
                 <div className="kds-chip">Instagram</div>
                 <div className="kds-chip">Chat</div>
-                <div className="kds-chip">Manual / Balcão</div>
+                <div className="kds-chip">Manual / Balcao</div>
               </div>
               <div style={{color:'#6B7280', fontSize:12}}>Exibindo: 6 colunas</div>
             </div>
@@ -1087,15 +1243,6 @@ export default function KDS() {
           </div>
         ) : activeTab === "mesas" ? (
           companyId ? <MesasView companyId={companyId} /> : null
-        ) : activeTab === "entregadores" ? (
-          companyId ? (
-            <EntregadoresView
-              entregadores={entregadores}
-              pedidos={pedidos}
-              companyId={companyId}
-              onReload={() => loadEntregadores(companyId)}
-            />
-          ) : null
         ) : (
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
             <div className="kds-columns" style={{ flex: 1 }}>
@@ -1107,6 +1254,9 @@ export default function KDS() {
                   itensByPedido={itensByPedido}
                   newIds={newIds}
                   onAdvance={handleAdvance}
+                  onEdit={abrirEdicaoPedido}
+                  onAddItem={abrirAdicaoItemPedido}
+                  onDelete={handleExcluirPedido}
                   entregadoresList={entregadores}
                 />
               ))}
@@ -1313,6 +1463,125 @@ export default function KDS() {
             </div>
           </div>
         )}
+
+        {editOrderId && (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.76)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100,
+          }}>
+            <div style={{ width: "min(520px,calc(100vw-40px))", background: "#0f1724", borderRadius: 16, border: "1px solid #334155", padding: 24, boxShadow: "0 20px 70px rgba(0,0,0,0.55)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Editar Pedido</div>
+                  <div style={{ color: "#94a3b8", fontSize: 12 }}>Atualize cliente, telefone e observações.</div>
+                </div>
+                <button onClick={() => setEditOrderId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>×</button>
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
+                  Nome do cliente
+                  <input
+                    value={editCustomerName}
+                    onChange={(e) => setEditCustomerName(e.target.value)}
+                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
+                  Telefone
+                  <input
+                    value={editCustomerPhone}
+                    onChange={(e) => setEditCustomerPhone(e.target.value)}
+                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
+                  Observações
+                  <textarea
+                    value={editObservations}
+                    onChange={(e) => setEditObservations(e.target.value)}
+                    rows={4}
+                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px", resize: "vertical" }}
+                  />
+                </label>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+                <button
+                  onClick={() => setEditOrderId(null)}
+                  style={{ background: "#111827", color: "#94a3b8", border: "1px solid #334155", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
+                >Cancelar</button>
+                <button
+                  onClick={handleAtualizarPedido}
+                  disabled={isSavingOrderEdit}
+                  style={{ background: "#f97316", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
+                >{isSavingOrderEdit ? "Salvando..." : "Salvar"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {addItemOrderId && (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.76)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100,
+          }}>
+            <div style={{ width: "min(520px,calc(100vw-40px))", background: "#0f1724", borderRadius: 16, border: "1px solid #334155", padding: 24, boxShadow: "0 20px 70px rgba(0,0,0,0.55)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Adicionar Produto</div>
+                  <div style={{ color: "#94a3b8", fontSize: 12 }}>Adicione um item ao pedido.</div>
+                </div>
+                <button onClick={() => setAddItemOrderId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>×</button>
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
+                  Produto
+                  <select
+                    value={selectedAddProductId}
+                    onChange={(e) => setSelectedAddProductId(e.target.value)}
+                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
+                  >
+                    <option value="">Selecione um produto</option>
+                    {produtos.map((produto) => (
+                      <option key={produto.id} value={produto.id}>{produto.nome} {produto.preco_sugerido != null ? `- R$ ${Number(produto.preco_sugerido).toFixed(2)}` : ""}</option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
+                    Quantidade
+                    <input
+                      type="number"
+                      min={1}
+                      value={addItemQuantity}
+                      onChange={(e) => setAddItemQuantity(Number(e.target.value))}
+                      style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
+                    />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
+                    Observações
+                    <input
+                      value={addItemObservations}
+                      onChange={(e) => setAddItemObservations(e.target.value)}
+                      style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
+                    />
+                  </label>
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+                <button
+                  onClick={() => setAddItemOrderId(null)}
+                  style={{ background: "#111827", color: "#94a3b8", border: "1px solid #334155", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
+                >Cancelar</button>
+                <button
+                  onClick={handleAdicionarItemPedido}
+                  disabled={isAddingItem}
+                  style={{ background: "#22c55e", color: "#0f172a", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
+                >{isAddingItem ? "Adicionando..." : "Adicionar"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {companyId && (
           <PedidoChatModal
             open={novoPedidoOpen}

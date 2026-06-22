@@ -1,7 +1,10 @@
 -- ===========================
--- Sequência para código de pedido
+-- Código de pedido com contador diário
 -- ===========================
-CREATE SEQUENCE IF NOT EXISTS pedidos_codigo_seq START 1000;
+CREATE TABLE IF NOT EXISTS public.pedidos_codigo_diario (
+  dia date PRIMARY KEY,
+  contador integer NOT NULL DEFAULT 0
+);
 
 CREATE OR REPLACE FUNCTION public.generate_pedido_codigo()
 RETURNS TEXT
@@ -9,8 +12,31 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  hoje date := current_date;
+  seq integer;
 BEGIN
-  RETURN 'PED-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('pedidos_codigo_seq')::text, 5, '0');
+  LOOP
+    UPDATE public.pedidos_codigo_diario
+      SET contador = contador + 1
+      WHERE dia = hoje
+      RETURNING contador INTO seq;
+
+    IF FOUND THEN
+      EXIT;
+    END IF;
+
+    BEGIN
+      INSERT INTO public.pedidos_codigo_diario(dia, contador)
+      VALUES (hoje, 1);
+      seq := 1;
+      EXIT;
+    EXCEPTION WHEN unique_violation THEN
+      -- outro processo já criou a linha no mesmo dia; tentar novamente
+    END;
+  END LOOP;
+
+  RETURN 'PED-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(seq::text, 2, '0');
 END;
 $$;
 
