@@ -5644,10 +5644,21 @@ export type Database = {
           ativo: boolean | null
           ativo_cardapio: boolean | null
           categoria: string | null
+          codigo_interno: string | null
+          combo_items: Json | null
+          combo_max_selecoes: number | null
+          combo_min_selecoes: number | null
           company_id: string
+          controla_estoque: boolean | null
           created_at: string
+          custo_unitario: number | null
           descricao: string | null
           destaque_cardapio: boolean | null
+          estoque_atual: number | null
+          estoque_maximo: number | null
+          estoque_minimo: number | null
+          fornecedor_contato: string | null
+          fornecedor_nome: string | null
           id: string
           imagem_url: string | null
           nome: string
@@ -5655,18 +5666,36 @@ export type Database = {
           permite_meio_a_meio: boolean | null
           permite_observacao: boolean | null
           preco_sugerido: number | null
+          promocao_ativa: boolean | null
+          promocao_fim: string | null
+          promocao_flash: boolean | null
+          promocao_inicio: string | null
+          promocao_nota: string | null
+          promocao_preco: number | null
           subcategoria: string | null
           tipo_produto: string | null
+          unidade_medida: string | null
           updated_at: string
         }
         Insert: {
           ativo?: boolean | null
           ativo_cardapio?: boolean | null
           categoria?: string | null
+          codigo_interno?: string | null
+          combo_items?: Json | null
+          combo_max_selecoes?: number | null
+          combo_min_selecoes?: number | null
           company_id: string
+          controla_estoque?: boolean | null
           created_at?: string
+          custo_unitario?: number | null
           descricao?: string | null
           destaque_cardapio?: boolean | null
+          estoque_atual?: number | null
+          estoque_maximo?: number | null
+          estoque_minimo?: number | null
+          fornecedor_contato?: string | null
+          fornecedor_nome?: string | null
           id?: string
           imagem_url?: string | null
           nome: string
@@ -5674,18 +5703,36 @@ export type Database = {
           permite_meio_a_meio?: boolean | null
           permite_observacao?: boolean | null
           preco_sugerido?: number | null
+          promocao_ativa?: boolean | null
+          promocao_fim?: string | null
+          promocao_flash?: boolean | null
+          promocao_inicio?: string | null
+          promocao_nota?: string | null
+          promocao_preco?: number | null
           subcategoria?: string | null
           tipo_produto?: string | null
+          unidade_medida?: string | null
           updated_at?: string
         }
         Update: {
           ativo?: boolean | null
           ativo_cardapio?: boolean | null
           categoria?: string | null
+          codigo_interno?: string | null
+          combo_items?: Json | null
+          combo_max_selecoes?: number | null
+          combo_min_selecoes?: number | null
           company_id?: string
+          controla_estoque?: boolean | null
           created_at?: string
+          custo_unitario?: number | null
           descricao?: string | null
           destaque_cardapio?: boolean | null
+          estoque_atual?: number | null
+          estoque_maximo?: number | null
+          estoque_minimo?: number | null
+          fornecedor_contato?: string | null
+          fornecedor_nome?: string | null
           id?: string
           imagem_url?: string | null
           nome?: string
@@ -5693,8 +5740,15 @@ export type Database = {
           permite_meio_a_meio?: boolean | null
           permite_observacao?: boolean | null
           preco_sugerido?: number | null
+          promocao_ativa?: boolean | null
+          promocao_fim?: string | null
+          promocao_flash?: boolean | null
+          promocao_inicio?: string | null
+          promocao_nota?: string | null
+          promocao_preco?: number | null
           subcategoria?: string | null
           tipo_produto?: string | null
+          unidade_medida?: string | null
           updated_at?: string
         }
         Relationships: [
