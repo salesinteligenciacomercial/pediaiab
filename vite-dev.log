@@ -3,42 +3,85 @@
 > vite --port 4000 --strictPort
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m873[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m802[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4000[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.244:[1m4000[22m/[39m
-[2m12:35:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:35:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:35:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:36:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:36:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:37:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
-[2m12:39:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:42:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
-[2m12:47:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
-[2m12:49:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
-[2m12:52:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
-[2m12:58:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m12:58:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m12:58:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m12:59:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m12:59:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m12:59:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m12:59:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:00:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:00:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:00:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:29:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:30:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:31:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:31:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:32:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:35:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:36:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:36:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:36:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:37:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:38:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/CardapioPublico.tsx, /src/components/conversas/PedidoChatModal.tsx[22m
-[2m13:39:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:39:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
-[2m13:39:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/CardapioPublico.tsx, /src/components/conversas/PedidoChatModal.tsx[22m
+[2m12:40:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:40:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:40:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:40:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:40:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:40:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:41:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:41:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:41:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:41:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:42:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:42:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:43:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:43:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:43:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:44:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:45:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m12:46:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m12:46:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/conversas/PedidoChatModal.tsx, /src/index.css[22m
+[2m12:47:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m12:55:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/MetaIntegrationsConfig.tsx, /src/index.css[22m
+[2m12:56:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/MetaIntegrationsConfig.tsx[22m
+[2m12:56:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Configuracoes.tsx, /src/index.css[22m
+[2m12:57:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Configuracoes.tsx, /src/index.css[22m
+[2m12:58:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Configuracoes.tsx, /src/index.css[22m
+[2m12:58:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Configuracoes.tsx, /src/index.css[22m
+[2m13:02:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:04:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:05:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:10:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:12:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:12:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:12:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:12:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:15:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:15:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+
+PWA v1.3.0
+mode      generateSW
+precache  1 entries (0.00 KiB)
+files generated
+  dev-dist/sw.js.map
+  dev-dist/sw.js
+  dev-dist/workbox-73bde303.js.map
+  dev-dist/workbox-73bde303.js
+[2m13:20:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:20:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:21:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/conversas/PedidoChatModal.tsx, /src/index.css[22m
+[2m13:21:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:21:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:22:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:22:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:22:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:23:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:23:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:23:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:24:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:24:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:25:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
+[2m13:31:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m13:32:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m13:32:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m13:32:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m13:33:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AcompanharPedido.tsx, /src/index.css[22m
+[2m13:33:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AcompanharPedido.tsx, /src/index.css[22m
+[2m13:45:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AcompanharPedido.tsx, /src/index.css[22m
+[2m13:46:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m13:46:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/EntregadorApp.tsx, /src/index.css[22m
+[2m14:02:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m14:07:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m14:07:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/CardapioPublico.tsx, /src/components/conversas/PedidoChatModal.tsx[22m
+[2m14:07:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m14:09:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m14:15:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m14:16:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m14:16:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m14:17:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m14:28:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m

@@ -1,0 +1,88 @@
+[2m13:12:03[22m [31m[1m[vite][22m[39m [31mInternal server error:   x Unterminated regexp literal
+      ,-[C:/Users/Douglas/Documents/dd/pediaiab/src/pages/KDS.tsx:1003:1]
+ 1000 |           </div>
+ 1001 |         </div>
+ 1002 | 
+ 1003 |         </div>
+      :          ^^^^^
+ 1004 |         )}
+ 1005 | 
+ 1006 |         {/* Tabs / Filters */}
+      `----
+
+
+Caused by:
+    Syntax Error[39m
+  Plugin: [35mvite:react-swc[39m
+  File: [36mC:/Users/Douglas/Documents/dd/pediaiab/src/pages/KDS.tsx[39m
+  
+[2m13:12:03[22m [31m[1m[vite][22m[39m [31mInternal server error:   x Unterminated regexp literal
+      ,-[C:/Users/Douglas/Documents/dd/pediaiab/src/pages/KDS.tsx:1003:1]
+ 1000 |           </div>
+ 1001 |         </div>
+ 1002 | 
+ 1003 |         </div>
+      :          ^^^^^
+ 1004 |         )}
+ 1005 | 
+ 1006 |         {/* Tabs / Filters */}
+      `----
+
+
+Caused by:
+    Syntax Error[39m
+  Plugin: [35mvite:react-swc[39m
+  File: [36mC:/Users/Douglas/Documents/dd/pediaiab/src/pages/KDS.tsx[39m
+  
+warnings
+  One of the glob patterns doesn't match any files. Please remove or fix the following: {
+  "globDirectory": "C:/Users/Douglas/Documents/dd/pediaiab/dev-dist",
+  "globPattern": "**/*.{js,css,html,ico,png,svg,webp,woff2}",
+  "globIgnores": [
+    "**/node_modules/**/*",
+    "sw.js",
+    "workbox-*.js"
+  ]
+}
+
+[2m13:20:58[22m [31m[1m[vite][22m[39m [31mInternal server error:   x Expected ',', got 'className'
+     ,-[C:/Users/Douglas/Documents/dd/pediaiab/src/components/pedidos/MesasView.tsx:148:1]
+ 145 |   pedidos: Pedido[];
+ 146 |   items: ItemComStatus[];
+ 147 |   total: number;
+ 148 |       <div className="ct-row"><span>Servico (10%)</span><span>{brl(service)}</span></div>
+     :            ^^^^^^^^^
+ 149 |   finalTotal: number;
+ 150 |   status: DerivedStatus;
+ 150 |   tempo: number;
+     `----
+
+
+Caused by:
+    Syntax Error[39m
+  Plugin: [35mvite:react-swc[39m
+  File: [36mC:/Users/Douglas/Documents/dd/pediaiab/src/components/pedidos/MesasView.tsx[39m
+  
+[2m13:20:58[22m [31m[1m[vite][22m[39m [31mInternal server error:   x Expected ',', got 'className'
+     ,-[C:/Users/Douglas/Documents/dd/pediaiab/src/components/pedidos/MesasView.tsx:148:1]
+ 145 |   pedidos: Pedido[];
+ 146 |   items: ItemComStatus[];
+ 147 |   total: number;
+ 148 |       <div className="ct-row"><span>Servico (10%)</span><span>{brl(service)}</span></div>
+     :            ^^^^^^^^^
+ 149 |   finalTotal: number;
+ 150 |   status: DerivedStatus;
+ 150 |   tempo: number;
+     `----
+
+
+Caused by:
+    Syntax Error[39m
+  Plugin: [35mvite:react-swc[39m
+  File: [36mC:/Users/Douglas/Documents/dd/pediaiab/src/components/pedidos/MesasView.tsx[39m
+  
+[2m13:21:48[22m [31m[1m[vite][22m[39m [31mInternal server error: EBUSY: resource busy or locked, open 'C:\Users\Douglas\Documents\dd\pediaiab\src\components\pedidos\MesasView.tsx'[39m
+      at async open (node:internal/fs/promises:640:25)
+      at async Object.readFile (node:internal/fs/promises:1287:14)
+      at async loadAndTransform (file:///C:/Users/Douglas/Documents/dd/pediaiab/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51925:16)
+      at async viteTransformMiddleware (file:///C:/Users/Douglas/Documents/dd/pediaiab/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)

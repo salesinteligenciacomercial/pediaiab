@@ -332,6 +332,11 @@ export default function CardapioPublico() {
     [activePromotions]
   );
 
+  const discountOffers = useMemo(
+    () => activePromotions.filter((p) => Number(p.promocao_preco || 0) > 0 && Number(p.promocao_preco || 0) < Number(p.preco_sugerido || 0)),
+    [activePromotions]
+  );
+
   const bonusOffers = useMemo(
     () => activePromotions.filter(isBonusOffer),
     [activePromotions]
@@ -572,7 +577,7 @@ export default function CardapioPublico() {
     );
   }
 
-  const telWa = (config.telefone_loja || "").replace(/\D/g, "");
+  const whatsappNumber = (config.whatsapp_loja || config.telefone_loja || "").replace(/\D/g, "");
   const aberto = config.aberto !== false;
   const minimo = Number(config.pedido_minimo || 0);
   const taxa = Number(config.taxa_entrega || 0);
@@ -614,7 +619,11 @@ export default function CardapioPublico() {
       {/* HEADER */}
       <header className="c-header">
         <div className="c-logo-wrap">
-          <span className="c-logo-flame">🍕</span>
+          {config.logo_url ? (
+            <img src={config.logo_url} alt={config.nome_loja || "Logo da loja"} className="c-logo-img" />
+          ) : (
+            <span className="c-logo-flame">🍕</span>
+          )}
           <span className="c-logo-text">{nomeLoja}</span>
         </div>
         <div className="c-header-actions">
@@ -637,6 +646,16 @@ export default function CardapioPublico() {
           )}
         </div>
       </header>
+
+      {(topShown.length > 0 || discountOffers.length > 0 || activePromotions.length > 0 || flashPromotions.length > 0 || dayOffers.length > 0) && (
+        <div className="c-promo-banner">
+          {topShown.length > 0 && <span className="c-promo-badge">🔥 Mais pedidos</span>}
+          {discountOffers.length > 0 && <span className="c-promo-badge">💰 Descontos</span>}
+          {activePromotions.length > 0 && <span className="c-promo-badge">💸 Promoções</span>}
+          {flashPromotions.length > 0 && <span className="c-promo-badge flash">⚡ Flash offers</span>}
+          {dayOffers.length > 0 && <span className="c-promo-badge">🌞 Oferta do dia</span>}
+        </div>
+      )}
 
       {/* HERO */}
       <section className="c-hero">
@@ -885,8 +904,8 @@ export default function CardapioPublico() {
       )}
 
       {/* WHATSAPP */}
-      {telWa && (
-        <a className="c-wa-btn" href={`https://api.whatsapp.com/send/?phone=${telWa}`} target="_blank" rel="noopener noreferrer" title="WhatsApp">
+      {whatsappNumber && (
+        <a className="c-wa-btn" href={`https://api.whatsapp.com/send/?phone=${whatsappNumber}`} target="_blank" rel="noopener noreferrer" title="WhatsApp">
           Chat
         </a>
       )}

@@ -54,6 +54,8 @@ type ProdutoForm = {
   subcategoria: string;
   descricao: string;
   preco_sugerido: string;
+  margem_pct: string;
+  modo_calculo: 'por_margem' | 'manual';
   tipo_produto: TipoProduto;
   ativo: boolean;
   ativo_cardapio: boolean;
@@ -136,14 +138,27 @@ type CategoryItem = {
   subcategorias: string[];
 };
 
+type ProdutoLucro = {
+  produto_id: string;
+  produto_nome: string;
+  categoria: string | null;
+  quantidade_vendida: number;
+  receita_total: number;
+  custo_total: number;
+  lucro_total: number;
+  margem_media_pct: number;
+};
+
 const PRODUCT_TABS = [
   { key: 'todos', label: 'Todos' },
   { key: 'produto', label: 'Produtos' },
   { key: 'combo', label: 'Combos' },
   { key: 'adicional', label: 'Adicionais' },
   { key: 'insumo', label: 'Insumos' },
+  { key: 'precificacao', label: 'Precificação' },
   { key: 'estoque', label: 'Estoque' },
   { key: 'composicao', label: 'Receitas' },
+  { key: 'lucro', label: 'Lucro' },
   { key: 'opcoes', label: 'Opções' },
   { key: 'tamanhos', label: 'Tamanhos' },
   { key: 'bordas', label: 'Bordas' },
@@ -221,6 +236,8 @@ const EMPTY_FORM: ProdutoForm = {
   subcategoria: '',
   descricao: '',
   preco_sugerido: '0',
+  margem_pct: '50',
+  modo_calculo: 'manual',
   tipo_produto: 'produto',
   ativo: true,
   ativo_cardapio: true,
@@ -246,6 +263,67 @@ const EMPTY_FORM: ProdutoForm = {
   promocao_flash: false,
   promocao_nota: '',
 };
+
+function GestorMargens({ companyId, categorias }: { companyId: string; categorias: string[] }) {
+  const [margens, setMargens] = useState<Record<string, number>>({});
+
+  const loadMargens = useCallback(async () => {
+    const { data } = await (supabase.from('categoria_margens' as any) as any)
+      .select('categoria, margem_padrao_pct')
+      .eq('company_id', companyId);
+    if (!data) return;
+    const map: Record<string, number> = {};
+    data.forEach((item: any) => {
+      map[item.categoria] = Number(item.margem_padrao_pct || 0);
+    });
+    setMargens(map);
+  }, [companyId]);
+
+  useEffect(() => {
+    void loadMargens();
+  }, [loadMargens]);
+
+  const handleSalvar = useCallback(async (categoria: string, valor: number) => {
+    const margem = Math.min(95, Math.max(0, Number(valor) || 0));
+    const { error } = await (supabase.from('categoria_margens' as any) as any).upsert({
+      company_id: companyId,
+      categoria,
+      margem_padrao_pct: margem,
+    }, { onConflict: 'company_id,categoria' });
+
+    if (error) {
+      toast.error(`Erro ao salvar margem: ${error.message}`);
+      return;
+    }
+    setMargens((prev) => ({ ...prev, [categoria]: margem }));
+    toast.success(`Margem padrao de ${categoria} atualizada`);
+  }, [companyId]);
+
+  if (!categorias.length) {
+    return <div className="empty-state">Cadastre categorias para configurar margens padrao.</div>;
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {categorias.map((categoria) => (
+        <div key={categoria} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 13 }}>{categoria}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number"
+              min="0"
+              max="95"
+              defaultValue={margens[categoria] ?? 50}
+              onBlur={(event) => void handleSalvar(categoria, Number(event.target.value))}
+              style={{ width: 64, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface3)', color: 'var(--text)', textAlign: 'right' }}
+            />
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>%</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -280,6 +358,9 @@ export default function Produtos() {
   const [produtoReceita, setProdutoReceita] = useState<string>('');
   const [composicoesProduto, setComposicoesProduto] = useState<Composicao[]>([]);
   const [novoInsumo, setNovoInsumo] = useState({ insumo_id: '', quantidade: '', unidade_medida: 'un' });
+  const [periodoLucro, setPeriodoLucro] = useState<'hoje' | 'semana' | 'mes' | 'tudo'>('mes');
+  const [produtosLucro, setProdutosLucro] = useState<ProdutoLucro[]>([]);
+  const [loadingLucro, setLoadingLucro] = useState(false);
 
   const [categoryItems, setCategoryItems] = useState<CategoryItem[]>([]);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
@@ -359,6 +440,58 @@ export default function Produtos() {
     if (data) setAlertas(data.map((a: any) => ({ ...a, produto_nome: a.produtos_servicos?.nome })));
   }, []);
 
+  const loadLucroPorProduto = useCallback(async (cid: string) => {
+    setLoadingLucro(true);
+    const desde = periodoLucro === 'hoje'
+      ? new Date().toISOString().slice(0, 10)
+      : periodoLucro === 'semana'
+        ? new Date(Date.now() - 7 * 864e5).toISOString()
+        : periodoLucro === 'mes'
+          ? new Date(Date.now() - 30 * 864e5).toISOString()
+          : new Date(0).toISOString();
+
+    const { data, error } = await (supabase.from('pedido_itens' as any) as any)
+      .select('produto_id, produto_nome, quantidade, valor_total, custo_total_momento, lucro_item, produtos_servicos(categoria)')
+      .eq('company_id', cid)
+      .gte('created_at', desde)
+      .not('lucro_item', 'is', null);
+
+    if (error) {
+      console.error('[Produtos] erro ao carregar lucro por produto', error);
+      toast.error('Erro ao carregar lucro por produto');
+      setLoadingLucro(false);
+      return;
+    }
+
+    const agrupado = new Map<string, ProdutoLucro>();
+    (data || []).forEach((item: any) => {
+      const key = item.produto_id || item.produto_nome;
+      const atual = agrupado.get(key) || {
+        produto_id: key,
+        produto_nome: item.produto_nome,
+        categoria: item.produtos_servicos?.categoria || null,
+        quantidade_vendida: 0,
+        receita_total: 0,
+        custo_total: 0,
+        lucro_total: 0,
+        margem_media_pct: 0,
+      };
+      atual.quantidade_vendida += Number(item.quantidade || 0);
+      atual.receita_total += Number(item.valor_total || 0);
+      atual.custo_total += Number(item.custo_total_momento || 0);
+      atual.lucro_total += Number(item.lucro_item || 0);
+      agrupado.set(key, atual);
+    });
+
+    const lista = Array.from(agrupado.values()).map((produto) => ({
+      ...produto,
+      margem_media_pct: produto.receita_total > 0 ? (produto.lucro_total / produto.receita_total) * 100 : 0,
+    }));
+    lista.sort((a, b) => b.lucro_total - a.lucro_total);
+    setProdutosLucro(lista);
+    setLoadingLucro(false);
+  }, [periodoLucro]);
+
   const verificarAlertas = useCallback(async (cid: string) => {
     const { data: criticos } = await (supabase.from('produtos_servicos' as any) as any)
       .select('id, nome, estoque_atual, estoque_minimo')
@@ -384,7 +517,7 @@ export default function Produtos() {
 
   const filteredProdutos = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
-    const specialTabs = ['opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao'];
+    const specialTabs = ['opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao', 'lucro', 'precificacao'];
     if (specialTabs.includes(tipoTab)) return [];
     return produtos.filter((p) => {
       const byType = tipoTab === 'todos' ? true : p.tipo_produto === tipoTab;
@@ -444,6 +577,10 @@ export default function Produtos() {
   }, [companyId, loadMovimentacoes]);
 
   useEffect(() => {
+    if (companyId && tipoTab === 'lucro') loadLucroPorProduto(companyId);
+  }, [companyId, tipoTab, loadLucroPorProduto]);
+
+  useEffect(() => {
     if (!imageFile) {
       setImagePreview(editing?.imagem_url ?? '');
     }
@@ -459,7 +596,7 @@ export default function Produtos() {
 
   const handleOpenCreate = useCallback((tipo: TipoProduto) => {
     setEditing(null);
-    setFormData({ ...EMPTY_FORM, tipo_produto: tipo, controla_estoque: tipo === 'insumo', unidade_medida: tipo === 'insumo' ? 'kg' : 'un' });
+    setFormData({ ...EMPTY_FORM, tipo_produto: tipo, controla_estoque: tipo === 'insumo', unidade_medida: tipo === 'insumo' ? 'kg' : 'un', margem_pct: '50', modo_calculo: 'por_margem' });
     setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
@@ -476,6 +613,10 @@ export default function Produtos() {
       subcategoria: produto.subcategoria ?? '',
       descricao: produto.descricao ?? '',
       preco_sugerido: produto.preco_sugerido.toString(),
+      margem_pct: produto.preco_sugerido > 0 && produto.custo_unitario != null
+        ? (((produto.preco_sugerido - produto.custo_unitario) / produto.preco_sugerido) * 100).toFixed(1)
+        : '50',
+      modo_calculo: 'manual',
       tipo_produto: produto.tipo_produto,
       ativo: produto.ativo,
       ativo_cardapio: produto.ativo_cardapio,
@@ -855,6 +996,82 @@ export default function Produtos() {
   const custoTotalEstoque = useMemo(() => estoqueProdutos.reduce((total, p) => total + ((p.estoque_atual ?? 0) * (p.custo_unitario ?? 0)), 0), [estoqueProdutos]);
   const produtosReceitaOptions = useMemo(() => produtos.filter((p) => p.tipo_produto === 'produto' || p.tipo_produto === 'combo'), [produtos]);
   const insumosOptions = useMemo(() => produtos.filter((p) => p.tipo_produto === 'insumo' || p.controla_estoque), [produtos]);
+  const curvaABC = useMemo(() => {
+    if (produtosLucro.length === 0) return [];
+    const totalLucro = produtosLucro.reduce((total, produto) => total + Math.max(produto.lucro_total, 0), 0);
+    if (totalLucro === 0) {
+      return produtosLucro.map((produto) => ({ ...produto, classe: 'C' as const, percentualAcumulado: 0 }));
+    }
+
+    let acumulado = 0;
+    return produtosLucro
+      .slice()
+      .sort((a, b) => b.lucro_total - a.lucro_total)
+      .map((produto) => {
+        acumulado += Math.max(produto.lucro_total, 0);
+        const percentualAcumulado = (acumulado / totalLucro) * 100;
+        const classe = percentualAcumulado <= 80 ? 'A' : percentualAcumulado <= 95 ? 'B' : 'C';
+        return { ...produto, classe, percentualAcumulado };
+      });
+  }, [produtosLucro]);
+
+  const calcularPrecoPorMargem = useCallback((custo: number, margemPct: number): number => {
+    if (margemPct >= 100) return 0;
+    return custo / (1 - margemPct / 100);
+  }, []);
+
+  const calcularMargemPorPreco = useCallback((custo: number, preco: number): number => {
+    if (preco <= 0) return 0;
+    return ((preco - custo) / preco) * 100;
+  }, []);
+
+  const handleCustoChange = useCallback((valor: string) => {
+    setFormData((prev) => {
+      const custo = Number(valor) || 0;
+      if (prev.modo_calculo === 'por_margem' && prev.margem_pct) {
+        const precoSugerido = calcularPrecoPorMargem(custo, Number(prev.margem_pct));
+        return { ...prev, custo_unitario: valor, preco_sugerido: precoSugerido.toFixed(2) };
+      }
+      const preco = Number(prev.preco_sugerido) || 0;
+      return { ...prev, custo_unitario: valor, margem_pct: calcularMargemPorPreco(custo, preco).toFixed(1) };
+    });
+  }, [calcularMargemPorPreco, calcularPrecoPorMargem]);
+
+  const handleMargemChange = useCallback((valor: string) => {
+    setFormData((prev) => {
+      const margem = Number(valor) || 0;
+      const custo = Number(prev.custo_unitario) || 0;
+      const precoSugerido = calcularPrecoPorMargem(custo, margem);
+      return { ...prev, margem_pct: valor, modo_calculo: 'por_margem', preco_sugerido: precoSugerido.toFixed(2) };
+    });
+  }, [calcularPrecoPorMargem]);
+
+  const handlePrecoManualChange = useCallback((valor: string) => {
+    setFormData((prev) => {
+      const preco = Number(valor) || 0;
+      const custo = Number(prev.custo_unitario) || 0;
+      const margemCalculada = calcularMargemPorPreco(custo, preco);
+      return { ...prev, preco_sugerido: valor, modo_calculo: 'manual', margem_pct: margemCalculada.toFixed(1) };
+    });
+  }, [calcularMargemPorPreco]);
+
+  const aplicarMargemPadraoCategoria = useCallback(async (categoria: string) => {
+    if (!companyId || !categoria) return;
+    const { data } = await (supabase.from('categoria_margens' as any) as any)
+      .select('margem_padrao_pct')
+      .eq('company_id', companyId)
+      .eq('categoria', categoria)
+      .maybeSingle();
+
+    if (data?.margem_padrao_pct) {
+      setFormData((prev) => {
+        const margem = String(data.margem_padrao_pct);
+        const custo = Number(prev.custo_unitario) || 0;
+        const precoSugerido = calcularPrecoPorMargem(custo, Number(margem));
+        return { ...prev, margem_pct: margem, modo_calculo: 'por_margem', preco_sugerido: custo > 0 ? precoSugerido.toFixed(2) : prev.preco_sugerido };
+      });
+    }
+  }, [calcularPrecoPorMargem, companyId]);
 
   const onChangeForm = useCallback((key: keyof ProdutoForm, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -966,7 +1183,53 @@ export default function Produtos() {
           )}
         </TabsContent>
 
-        {PRODUCT_TABS.filter((tab) => !['todos', 'opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao'].includes(tab.key)).map((tab) => (
+        <TabsContent value="precificacao">
+          {produtos.length ? (
+            <div className="product-grid">
+              {produtos.map((produto) => {
+                const custo = produto.custo_unitario ?? 0;
+                const preco = produto.preco_sugerido ?? 0;
+                const margem = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
+                return (
+                  <div className={`prod-card ${produto.destaque_cardapio ? 'destaque' : ''}`} key={produto.id}>
+                    <div className="prod-image-wrap">
+                      {produto.imagem_url ? (
+                        <img src={produto.imagem_url} alt={produto.nome} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+                      ) : (
+                        <div className="image-placeholder"><Package size={42} /></div>
+                      )}
+                      <span className="badge">{produto.tipo_produto}</span>
+                    </div>
+                    <div className="prod-body">
+                      <div className="prod-name">{produto.nome}</div>
+                      <div className="prod-category">{[produto.categoria, produto.subcategoria].filter(Boolean).join(' / ')}</div>
+                      {produto.descricao && <div className="prod-desc">{produto.descricao}</div>}
+                    </div>
+                    <div className="prod-meta">
+                      <div>
+                        <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{preco > 0 ? preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem preço'}</div>
+                        <span>{custo > 0 ? `Custo: ${custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : 'Custo não informado'}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text2)' }}>Margem</div>
+                        <div style={{ fontWeight: 700, color: margem >= 30 ? '#2ECC8F' : '#F5A623' }}>{preco > 0 ? `${margem.toFixed(1)}%` : '—'}</div>
+                      </div>
+                    </div>
+                    <div className="prod-actions">
+                      {produto.controla_estoque && <button className="action-btn" type="button" onClick={() => abrirMovimentacao(produto)}>Entrada / saida</button>}
+                      <button className="action-btn" type="button" onClick={() => handleOpenEdit(produto)}><Edit2 size={16} /> Editar</button>
+                      <button className="action-btn" type="button" onClick={() => setDeleteTarget(produto)}><Trash2 size={16} /> Excluir</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state">Nenhum produto encontrado para esta seleção.</div>
+          )}
+        </TabsContent>
+
+        {PRODUCT_TABS.filter((tab) => !['todos', 'precificacao', 'opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao', 'lucro'].includes(tab.key)).map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
             {filteredProdutos.length ? (
               <div className="product-grid">
@@ -1181,6 +1444,127 @@ export default function Produtos() {
           </div>
         </TabsContent>
 
+        <TabsContent value="lucro">
+          <div style={{ display: 'grid', gap: 20 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(['hoje', 'semana', 'mes', 'tudo'] as const).map((periodo) => (
+                <button
+                  key={periodo}
+                  type="button"
+                  onClick={() => setPeriodoLucro(periodo)}
+                  className="tab-trigger"
+                  data-state={periodoLucro === periodo ? 'active' : undefined}
+                >
+                  {periodo === 'hoje' ? 'Hoje' : periodo === 'semana' ? '7 dias' : periodo === 'mes' ? '30 dias' : 'Tudo'}
+                </button>
+              ))}
+              <Button variant="outline" onClick={() => companyId && loadLucroPorProduto(companyId)} disabled={loadingLucro}>
+                {loadingLucro ? 'Atualizando...' : 'Atualizar'}
+              </Button>
+            </div>
+
+            <div className="kpi-grid">
+              <div className="kpi-card">
+                <div className="kpi-label">Receita total</div>
+                <div className="kpi-value">{produtosLucro.reduce((sum, p) => sum + p.receita_total, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Custo total (CMV)</div>
+                <div className="kpi-value" style={{ color: '#F5A623' }}>{produtosLucro.reduce((sum, p) => sum + p.custo_total, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Lucro real</div>
+                <div className="kpi-value" style={{ color: '#2ECC8F' }}>{produtosLucro.reduce((sum, p) => sum + p.lucro_total, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Margem media</div>
+                <div className="kpi-value">
+                  {produtosLucro.length > 0
+                    ? (produtosLucro.reduce((sum, p) => sum + p.margem_media_pct, 0) / produtosLucro.length).toFixed(1)
+                    : '0'}%
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <div style={{ padding: 18, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>Ranking de lucro por produto</div>
+                <div style={{ color: 'var(--text2)', marginTop: 4 }}>Produtos ordenados por contribuicao real de lucro no periodo.</div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface2)' }}>
+                      {['Produto', 'Qtd vendida', 'Receita', 'Custo (CMV)', 'Lucro', 'Margem'].map((header, index) => (
+                        <th key={header} style={{ padding: 12, textAlign: index === 0 ? 'left' : 'right', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {produtosLucro.map((produto, index) => (
+                      <tr key={produto.produto_id} style={{ borderTop: '1px solid var(--border)' }}>
+                        <td style={{ padding: 12, fontSize: 13, fontWeight: 700 }}>
+                          {index < 3 && <span style={{ marginRight: 6, color: 'var(--accent)' }}>#{index + 1}</span>}
+                          {produto.produto_nome}
+                          {produto.categoria && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>{produto.categoria}</div>}
+                        </td>
+                        <td style={{ padding: 12, textAlign: 'right', fontSize: 13 }}>{produto.quantidade_vendida}</td>
+                        <td style={{ padding: 12, textAlign: 'right', fontSize: 13 }}>{produto.receita_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                        <td style={{ padding: 12, textAlign: 'right', fontSize: 13, color: 'var(--text2)' }}>{produto.custo_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                        <td style={{ padding: 12, textAlign: 'right', fontSize: 13, fontWeight: 700, color: produto.lucro_total >= 0 ? '#2ECC8F' : '#EF4444' }}>
+                          {produto.lucro_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                        <td style={{ padding: 12, textAlign: 'right', fontSize: 13 }}>
+                          <span style={{
+                            padding: '3px 9px',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: produto.margem_media_pct >= 40 ? 'rgba(46,204,143,0.15)' : produto.margem_media_pct >= 20 ? 'rgba(245,166,35,0.15)' : 'rgba(239,68,68,0.15)',
+                            color: produto.margem_media_pct >= 40 ? '#2ECC8F' : produto.margem_media_pct >= 20 ? '#F5A623' : '#EF4444',
+                          }}>
+                            {produto.margem_media_pct.toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {produtosLucro.length === 0 && !loadingLucro && (
+                      <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text3)' }}>Nenhuma venda com custo registrado neste periodo.</td></tr>
+                    )}
+                    {loadingLucro && (
+                      <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text3)' }}>Carregando lucro por produto...</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+              {(['A', 'B', 'C'] as const).map((classe) => {
+                const produtosClasse = curvaABC.filter((produto) => produto.classe === classe);
+                const cor = classe === 'A' ? '#2ECC8F' : classe === 'B' ? '#F5A623' : '#EF4444';
+                const desc = classe === 'A' ? 'Geram 80% do lucro' : classe === 'B' ? 'Geram os 15% seguintes' : 'Baixa contribuicao';
+                return (
+                  <div key={classe} style={{ background: 'var(--surface)', border: `1px solid ${cor}40`, borderRadius: 'var(--radius)', padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${cor}20`, color: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>{classe}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>Classe {classe}</div>
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: cor }}>{produtosClasse.length}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text2)' }}>produtos - {desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 16, fontSize: 12, color: 'var(--text2)', lineHeight: 1.7, borderLeft: '3px solid var(--accent)' }}>
+              <strong style={{ color: 'var(--text)' }}>Classe A:</strong> produtos prioritarios, manter sempre em estoque.{' '}
+              <strong style={{ color: 'var(--text)' }}>Classe B:</strong> produtos relevantes para acompanhar.{' '}
+              <strong style={{ color: 'var(--text)' }}>Classe C:</strong> candidatos a reprecificacao ou retirada do cardapio.
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="opcoes">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
             <div>
@@ -1250,7 +1634,10 @@ export default function Produtos() {
                     id="categoria"
                     list="categoria-list"
                     value={formData.categoria}
-                    onChange={(event) => onChangeForm('categoria', event.target.value)}
+                    onChange={(event) => {
+                      onChangeForm('categoria', event.target.value);
+                      void aplicarMargemPadraoCategoria(event.target.value);
+                    }}
                     placeholder="Digite ou escolha uma categoria"
                   />
                   <datalist id="categoria-list">
@@ -1289,9 +1676,56 @@ export default function Produtos() {
                     <option value="insumo">Insumo</option>
                   </select>
                 </div>
-                <div>
-                  <Label htmlFor="preco">Preço sugerido</Label>
-                  <Input id="preco" type="number" step="0.01" min="0" value={formData.preco_sugerido} onChange={(event) => onChangeForm('preco_sugerido', event.target.value)} />
+                <div className="form-grid-full" style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 16, display: 'grid', gap: 12, border: '1px solid var(--border)' }}>
+                  <Label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Precificacao</Label>
+                  <div className="form-grid">
+                    <div>
+                      <Label htmlFor="custo" style={{ fontSize: 12, color: 'var(--text2)' }}>Custo unitario (R$)</Label>
+                      <Input id="custo" type="number" step="0.01" min="0" value={formData.custo_unitario} onChange={(event) => handleCustoChange(event.target.value)} placeholder="Ex: 12.50" />
+                    </div>
+                    <div>
+                      <Label htmlFor="margem" style={{ fontSize: 12, color: 'var(--text2)' }}>Margem desejada (%)</Label>
+                      <Input id="margem" type="number" step="1" min="0" max="95" value={formData.margem_pct} onChange={(event) => handleMargemChange(event.target.value)} placeholder="Ex: 60" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="preco" style={{ fontSize: 12, color: 'var(--text2)' }}>Preco de venda (R$)</Label>
+                    <Input
+                      id="preco"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.preco_sugerido}
+                      onChange={(event) => handlePrecoManualChange(event.target.value)}
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 16,
+                        borderColor: formData.modo_calculo === 'por_margem' ? 'var(--accent)' : 'var(--border)',
+                      }}
+                    />
+                  </div>
+                  {Number(formData.custo_unitario) > 0 && Number(formData.preco_sugerido) > 0 && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 14px',
+                      borderRadius: 10,
+                      background: calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)) >= 30 ? 'rgba(46,204,143,0.1)' : 'rgba(245,166,35,0.1)',
+                      border: `1px solid ${calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)) >= 30 ? 'rgba(46,204,143,0.25)' : 'rgba(245,166,35,0.25)'}`,
+                    }}>
+                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>Lucro por unidade</span>
+                      <span style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)) >= 30 ? '#2ECC8F' : '#F5A623',
+                      }}>
+                        {(Number(formData.preco_sugerido) - Number(formData.custo_unitario)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {' '}({calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)).toFixed(1)}% margem)
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="form-grid-full">
                   <Label htmlFor="descricao">Descrição</Label>
@@ -1336,10 +1770,6 @@ export default function Produtos() {
                           <option value="pct">pct</option>
                           <option value="pc">pc</option>
                         </select>
-                      </div>
-                      <div>
-                        <Label>Custo unitario</Label>
-                        <Input type="number" min="0" step="0.01" value={formData.custo_unitario} onChange={(e) => onChangeForm('custo_unitario', e.target.value)} />
                       </div>
                       <div>
                         <Label>Codigo interno</Label>
@@ -1592,6 +2022,13 @@ export default function Produtos() {
               <Button variant="ghost" onClick={() => setCategoryManagerOpen(false)}>Fechar</Button>
             </div>
             <div className="modal-body">
+              {companyId && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 16, background: 'var(--surface)' }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Margem padrao por categoria</div>
+                  <div style={{ color: 'var(--text2)', fontSize: 12, marginBottom: 12 }}>Usada como sugestao automatica ao selecionar a categoria no cadastro.</div>
+                  <GestorMargens companyId={companyId} categorias={categoryOptions.map((category) => category.nome)} />
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>Categorias</div>
                 <Button onClick={() => { setEditingCategory(null); setCategoryName(''); setCategoryDialogOpen(true); }}>＋ Nova categoria</Button>

@@ -9,27 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Users,
-  Upload,
   Printer,
-  MessageSquare,
-  UserPlus,
   Trash2,
   Building2,
   Pencil,
   Plus,
   UserCog,
-  Target,
   Shield,
-  Smartphone,
-  BarChart3,
-  FileText,
-  Send,
-  DollarSign,
   User
 } from "lucide-react";
-import { WhatsAppDashboard } from "@/components/whatsapp/WhatsAppDashboard";
-import { WhatsAppTemplatesManager } from "@/components/whatsapp/WhatsAppTemplatesManager";
-import { DisparoEmMassa } from "@/components/campanhas/DisparoEmMassa";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { WhatsAppQRCode } from "@/components/configuracoes/WhatsAppQRCode";
@@ -37,8 +25,6 @@ import { MetaApiConfig } from "@/components/configuracoes/MetaApiConfig";
 import { MetaIntegrationsConfig } from "@/components/configuracoes/MetaIntegrationsConfig";
 import { SubcontasManager } from "@/components/configuracoes/SubcontasManager";
 import ImpressorasConfig from "@/components/configuracoes/ImpressorasConfig";
-import { LeadAdsFormsConfig } from "@/components/configuracoes/LeadAdsFormsConfig";
-import { GmailConfig } from "@/components/configuracoes/GmailConfig";
 import { ProdutosServicosManager } from "@/components/configuracoes/ProdutosServicosManager";
 import { cleanAllConversationsHistory } from "@/utils/cleanConversationsHistory";
 // Webhooks tab removed
@@ -1114,44 +1100,6 @@ export default function Configuracoes() {
           <WhatsAppQRCode />
           {currentCompany?.id && <MetaApiConfig companyId={currentCompany.id} />}
           {currentCompany?.id && <MetaIntegrationsConfig companyId={currentCompany.id} />}
-          
-          {/* Gmail Integration */}
-          {currentCompany?.id && <GmailConfig companyId={currentCompany.id} />}
-
-          {/* Lead Ads Forms - Rastreamento de Tráfego Pago */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-orange-500" />
-                Lead Ads (Tráfego Pago)
-              </CardTitle>
-              <CardDescription>
-                Configure formulários de Lead Ads do Facebook/Instagram para receber leads automaticamente
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LeadAdsFormsConfig />
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-cyan-500" />
-                  Telegram
-                </CardTitle>
-                <CardDescription>Conecte seu bot do Telegram</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Token do Bot</Label>
-                  <Input placeholder="Cole o token do BotFather" />
-                </div>
-                <Button className="w-full">Conectar Telegram</Button>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="impressoras">

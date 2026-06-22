@@ -16,6 +16,7 @@ type Entregador = {
   company_id: string;
   nome: string;
   telefone: string | null;
+  foto_url?: string | null;
   veiculo: string;
   pct_comissao: number;
   pix_chave: string | null;
@@ -32,6 +33,7 @@ type Pedido = {
   status: PedidoStatus;
   total: number;
   created_at: string;
+  aceito_entregador_em?: string | null;
   entregador_id?: string | null;
   valor_comissao?: number | null;
 };
@@ -118,9 +120,25 @@ const buttonStyle = {
 } as const;
 
 const TRACKING_BASE_URL = "https://pediaiab.lovable.app";
+const DEFAULT_DELIVERY_MINUTES = 28;
+const ARRIVAL_NOTICE_PROGRESS = 0.88;
 
 function buildTrackingUrl(pedidoId?: string | null) {
   return pedidoId ? `${TRACKING_BASE_URL}/acompanhar/${pedidoId}` : "";
+}
+
+function buildRatingUrl(pedidoId?: string | null) {
+  const trackingUrl = buildTrackingUrl(pedidoId);
+  return trackingUrl ? `${trackingUrl}?avaliar=1` : "";
+}
+
+function deliveryProgress(pedido?: Pedido | null) {
+  if (!pedido || pedido.status === "entregue") return 1;
+  const startedAt = pedido.aceito_entregador_em || pedido.created_at;
+  const timestamp = new Date(startedAt).getTime();
+  if (!Number.isFinite(timestamp)) return 0;
+  const elapsedMinutes = Math.max(0, (Date.now() - timestamp) / 60000);
+  return Math.min(Math.max(elapsedMinutes / DEFAULT_DELIVERY_MINUTES, 0), 0.96);
 }
 
 export default function EntregadorApp() {
@@ -534,6 +552,101 @@ export default function EntregadorApp() {
     if (entregador) await loadPedidos(entregador);
   };
 
+  const enviarMensagemRastreio = async (pedido: Pedido, driver: Entregador) => {
+    const telefone = onlyDigits(pedido.cliente_telefone);
+    const link = buildTrackingUrl(pedido.id);
+    if (telefone.length < 10 || !link) return;
+
+    const mensagem = [
+      `Ola ${pedido.cliente_nome}, seu pedido #${pedido.codigo_pedido} saiu para entrega.`,
+      "",
+      `Entregador: ${driver.nome}`,
+      `Veiculo: ${driver.veiculo || "moto"}`,
+      `Avaliacao: ${Number(driver.avaliacao_media || 5).toFixed(1)}`,
+      "",
+      "Acompanhe a trajetoria da entrega em tempo real pelo link:",
+      link,
+      "",
+      "Para sua seguranca, confira o nome e a foto do entregador na pagina de rastreio.",
+    ].join("\n");
+
+    const { error } = await supabase.functions.invoke("enviar-whatsapp", {
+      body: {
+        company_id: pedido.company_id,
+        numero: telefone,
+        mensagem,
+        origem: "entregador-rastreio",
+      },
+    });
+    if (error) console.error("[EntregadorApp] erro ao enviar rastreio", error);
+  };
+
+  const enviarMensagemAvaliacao = async (pedido: Pedido, driver?: Entregador | null) => {
+    const telefone = onlyDigits(pedido.cliente_telefone);
+    const link = buildRatingUrl(pedido.id);
+    if (telefone.length < 10 || !link) return;
+
+    const nomeEntregador = driver?.nome || "nosso entregador";
+    const mensagem = [
+      `Seu pedido #${pedido.codigo_pedido} foi entregue.`,
+      "",
+      `Como foi a entrega com ${nomeEntregador}?`,
+      "Deixe uma nota para nos ajudar a manter a qualidade e seguranca das entregas:",
+      link,
+    ].join("\n");
+
+    const { error } = await supabase.functions.invoke("enviar-whatsapp", {
+      body: {
+        company_id: pedido.company_id,
+        numero: telefone,
+        mensagem,
+        origem: "entregador-avaliacao",
+      },
+    });
+    if (error) console.error("[EntregadorApp] erro ao enviar avaliacao", error);
+  };
+
+  const enviarMensagemChegando = async (pedido: Pedido, driver: Entregador) => {
+    const telefone = onlyDigits(pedido.cliente_telefone);
+    const link = buildTrackingUrl(pedido.id);
+    if (telefone.length < 10 || !link) return;
+
+    const mensagem = [
+      `${pedido.cliente_nome}, seu entregador esta chegando com o pedido #${pedido.codigo_pedido}.`,
+      "",
+      "Saia para receber sua entrega com seguranca.",
+      `Entregador: ${driver.nome}`,
+      `Veiculo: ${driver.veiculo || "moto"}`,
+      "",
+      "Acompanhe a chegada aqui:",
+      link,
+    ].join("\n");
+
+    const { error } = await supabase.functions.invoke("enviar-whatsapp", {
+      body: {
+        company_id: pedido.company_id,
+        numero: telefone,
+        mensagem,
+        origem: "entregador-chegando",
+      },
+    });
+    if (error) console.error("[EntregadorApp] erro ao enviar aviso de chegada", error);
+  };
+
+  useEffect(() => {
+    if (!entregador || !pedidoAtivo || pedidoAtivo.status !== "saiu_entrega") return;
+    if (deliveryProgress(pedidoAtivo) < ARRIVAL_NOTICE_PROGRESS) return;
+
+    const storageKey = `entregador_aviso_chegando_${pedidoAtivo.id}`;
+    if (localStorage.getItem(storageKey)) return;
+
+    localStorage.setItem(storageKey, "1");
+    enviarMensagemChegando(pedidoAtivo, entregador).catch((error) => {
+      console.error("[EntregadorApp] erro inesperado no aviso de chegada", error);
+      localStorage.removeItem(storageKey);
+    });
+  }, [entregador, pedidoAtivo, lastLocation?.created_at]);
+
   const pegarPedido = async (pedido: Pedido) => {
     if (!entregador) return;
     if (!entregador.online) {
@@ -580,6 +693,7 @@ export default function EntregadorApp() {
 
     setSaving(false);
     toast.success(`Pedido #${pedido.codigo_pedido} iniciado`);
+    await enviarMensagemRastreio(pedido, entregador);
     await loadPedidos(entregador);
   };
 
@@ -615,6 +729,7 @@ export default function EntregadorApp() {
     }
 
     toast.success("Entrega concluida");
+    await enviarMensagemAvaliacao(pedidoAtivo, entregador);
     if (entregador) await loadPedidos(entregador);
   };
 

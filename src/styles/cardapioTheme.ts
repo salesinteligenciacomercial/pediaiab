@@ -24,6 +24,7 @@ export const CARDAPIO_CSS = `
   background:linear-gradient(135deg,var(--fire3),var(--fire2));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
   letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}
+.c-logo-img{width:38px;height:38px;border-radius:12px;object-fit:cover;box-shadow:0 0 0 1px rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)}
 .c-header-actions{display:flex;gap:6px;align-items:center}
 .c-icon-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--border);
   display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);font-size:16px;
@@ -71,6 +72,9 @@ export const CARDAPIO_CSS = `
 
 .c-search-wrap{padding:12px 16px;background:var(--dark);border-bottom:1px solid var(--border);position:relative;z-index:1}
 .c-search-inner{max-width:600px;margin:0 auto;position:relative}
+.c-promo-banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:rgba(255,107,26,.08);border-bottom:1px solid rgba(255,180,100,.15);position:relative;z-index:1}
+.c-promo-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--text);font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.12)}
+.c-promo-badge.flash{background:rgba(255,171,0,.14);border-color:rgba(255,171,0,.24);color:var(--fire2)}
 .c-search-input{width:100%;background:var(--dark3);border:1.5px solid var(--border2);border-radius:100px;
   color:var(--text);font-family:var(--font);font-size:14px;padding:11px 18px 11px 42px;outline:none;transition:all .2s}
 .c-search-input:focus{border-color:var(--fire2);box-shadow:0 0 0 4px rgba(255,107,26,.12)}

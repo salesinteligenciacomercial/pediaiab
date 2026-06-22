@@ -511,19 +511,36 @@ export function PedidoChatModal({
       if (pErr) throw pErr;
       const pedidoData = pedido as any;
 
-      const itensPayload = cart.map((i) => ({
-        pedido_id: pedidoData.id,
-        company_id: companyId,
-        produto_id: String(i.product.id).split("__")[0], // extrai UUID base de pizzas compostas
-        produto_nome: i.product.nome,
-        quantidade: i.quantity,
-        valor_unitario: Number(i.product.preco_sugerido || 0),
-        valor_total: Number(i.product.preco_sugerido || 0) * i.quantity,
-        observacoes: i.observations || null,
-      }));
+      for (const item of cart) {
+        const produtoId = String(item.product.id).split("__")[0];
+        const valorUnitario = Number(item.product.preco_sugerido || 0);
+        const { error: iErr } = await supabase.rpc("registrar_item_pedido_com_custo" as any, {
+          p_pedido_id: pedidoData.id,
+          p_company_id: companyId,
+          p_produto_id: produtoId,
+          p_produto_nome: item.product.nome,
+          p_quantidade: item.quantity,
+          p_valor_unitario: valorUnitario,
+          p_observacoes: item.observations || null,
+        });
+        if (iErr) {
+          const msg = String(iErr.message || "");
+          const rpcNaoExiste = iErr.code === "PGRST202" || msg.includes("registrar_item_pedido_com_custo") || msg.includes("Could not find the function");
+          if (!rpcNaoExiste) throw iErr;
 
-      const { error: iErr } = await supabase.from("pedido_itens" as any).insert(itensPayload);
-      if (iErr) throw iErr;
+          const { error: insertErr } = await supabase.from("pedido_itens" as any).insert({
+            pedido_id: pedidoData.id,
+            company_id: companyId,
+            produto_id: produtoId,
+            produto_nome: item.product.nome,
+            quantidade: item.quantity,
+            valor_unitario: valorUnitario,
+            valor_total: valorUnitario * item.quantity,
+            observacoes: item.observations || null,
+          });
+          if (insertErr) throw insertErr;
+        }
+      }
 
       if (customer.endereco && customer.tipo_atendimento === "entrega") {
         await supabase.from("pedido_enderecos" as any).insert({

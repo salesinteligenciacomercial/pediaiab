@@ -307,19 +307,18 @@ serve(async (req) => {
 
       if (pedidoError) throw pedidoError;
 
-      const itemsPayload = body.items.map((item) => ({
-        pedido_id: pedido.id,
-        company_id: store.company_id,
-        produto_id: item.produto_id,
-        produto_nome: item.produto_nome,
-        quantidade: Number(item.quantidade || 1),
-        valor_unitario: Number(item.valor_unitario || 0),
-        valor_total: Number(item.valor_unitario || 0) * Number(item.quantidade || 1),
-        observacoes: item.observacoes || null,
-      }));
-
-      const { error: itemsError } = await supabase.from("pedido_itens").insert(itemsPayload);
-      if (itemsError) throw itemsError;
+      for (const item of body.items) {
+        const { error: itemError } = await supabase.rpc("registrar_item_pedido_com_custo", {
+          p_pedido_id: pedido.id,
+          p_company_id: store.company_id,
+          p_produto_id: item.produto_id || null,
+          p_produto_nome: item.produto_nome,
+          p_quantidade: Number(item.quantidade || 1),
+          p_valor_unitario: Number(item.valor_unitario || 0),
+          p_observacoes: item.observacoes || null,
+        });
+        if (itemError) throw itemError;
+      }
 
       if (body.customer.endereco) {
         await supabase.from("pedido_enderecos").insert({
