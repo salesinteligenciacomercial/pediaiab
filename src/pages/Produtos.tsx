@@ -1326,7 +1326,7 @@ export default function Produtos() {
           )}
         </TabsContent>
 
-        {PRODUCT_TABS.filter((tab) => !['todos', 'precificacao', 'opcoes', 'tamanhos', 'bordas', 'estoque', 'composicao', 'lucro'].includes(tab.key)).map((tab) => (
+        {PRODUCT_TABS.filter((tab) => !['todos', 'precificacao', 'opcoes', 'tamanhos', 'bordas', 'meio-categorias', 'estoque', 'composicao', 'lucro'].includes(tab.key)).map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
             {filteredProdutos.length ? (
               <div className="product-grid">
