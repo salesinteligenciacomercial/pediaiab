@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,33 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Copy, ExternalLink, Loader2, Store } from "lucide-react";
 import { MARKETPLACE_PATH, MARKETPLACE_TITLE } from "@/config/branding";
+
+const WEEKDAY_OPTIONS = [
+  { key: "segunda", label: "Segunda" },
+  { key: "terca", label: "Terça" },
+  { key: "quarta", label: "Quarta" },
+  { key: "quinta", label: "Quinta" },
+  { key: "sexta", label: "Sexta" },
+  { key: "sabado", label: "Sábado" },
+  { key: "domingo", label: "Domingo" },
+] as const;
+
+type WeekdayKey = (typeof WEEKDAY_OPTIONS)[number]["key"];
+type ScheduleMap = Record<WeekdayKey, string>;
+
+const parseHorarioFunc = (value: string | undefined): ScheduleMap => {
+  try {
+    const parsed = JSON.parse(value || "{}") as Record<string, unknown>;
+    return WEEKDAY_OPTIONS.reduce((acc, item) => ({
+      ...acc,
+      [item.key]: typeof parsed[item.key] === "string" ? (parsed[item.key] as string) : "",
+    }), {} as ScheduleMap);
+  } catch {
+    return WEEKDAY_OPTIONS.reduce((acc, item) => ({ ...acc, [item.key]: "" }), {} as ScheduleMap);
+  }
+};
+
+const formatScheduleJson = (schedule: ScheduleMap) => JSON.stringify(schedule, null, 2);
 
 type LojaConfig = {
   id?: string;
@@ -62,6 +89,7 @@ const EMPTY_CONFIG: LojaConfig = {
 export default function CardapioDigital() {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [config, setConfig] = useState<LojaConfig>(EMPTY_CONFIG);
+  const [schedule, setSchedule] = useState<ScheduleMap>(() => parseHorarioFunc(EMPTY_CONFIG.horario_funcionamento));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -77,15 +105,17 @@ export default function CardapioDigital() {
       if (error) throw error;
 
       if (data) {
+        const horarioJson = JSON.stringify((data as any).horario_funcionamento || {}, null, 2);
         setConfig({
           ...EMPTY_CONFIG,
           ...(data as any),
           pedido_minimo: String((data as any).pedido_minimo ?? 0),
           taxa_entrega: String((data as any).taxa_entrega ?? 0),
-          horario_funcionamento: JSON.stringify((data as any).horario_funcionamento || {}, null, 2),
+          horario_funcionamento: horarioJson,
           visivel_marketplace: (data as any).visivel_marketplace ?? true,
           categoria_marketplace: (data as any).categoria_marketplace || "restaurante",
         });
+        setSchedule(parseHorarioFunc(horarioJson));
       } else {
         const baseSlug = String(company?.name || "loja")
           .toLowerCase()
@@ -114,15 +144,6 @@ export default function CardapioDigital() {
     if (!companyId) return;
     setSaving(true);
     try {
-      let horarioJson = {};
-      try {
-        horarioJson = JSON.parse(config.horario_funcionamento || "{}");
-      } catch {
-        toast.error("Horário de funcionamento precisa ser um JSON válido");
-        setSaving(false);
-        return;
-      }
-
       const payload = {
         company_id: companyId,
         slug: config.slug.trim(),
@@ -139,7 +160,7 @@ export default function CardapioDigital() {
         taxa_entrega: Number(config.taxa_entrega || 0),
         aceita_retirada: config.aceita_retirada,
         aceita_entrega: config.aceita_entrega,
-        horario_funcionamento: horarioJson,
+        horario_funcionamento: schedule,
         mensagem_loja: config.mensagem_loja.trim() || null,
         impressao_automatica: config.impressao_automatica,
         print_bridge_url: config.print_bridge_url.trim() || null,
@@ -251,7 +272,28 @@ export default function CardapioDigital() {
             <div className="space-y-2"><Label>WhatsApp</Label><Input value={config.whatsapp_loja} onChange={(e) => setConfig({ ...config, whatsapp_loja: e.target.value })} /></div>
             <div className="space-y-2"><Label>Endereço</Label><Textarea rows={3} value={config.endereco_loja} onChange={(e) => setConfig({ ...config, endereco_loja: e.target.value })} /></div>
             <div className="space-y-2"><Label>Mensagem da loja</Label><Textarea rows={3} value={config.mensagem_loja} onChange={(e) => setConfig({ ...config, mensagem_loja: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Horário de funcionamento (JSON)</Label><Textarea rows={8} value={config.horario_funcionamento} onChange={(e) => setConfig({ ...config, horario_funcionamento: e.target.value })} /></div>
+            <div className="space-y-2">
+              <Label>Horário de funcionamento</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {WEEKDAY_OPTIONS.map((day) => (
+                  <div key={day.key} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{day.label}</span>
+                      <span className="text-xs text-slate-400">Ex: 18:00-23:00</span>
+                    </div>
+                    <Input
+                      value={schedule[day.key]}
+                      onChange={(e) => setSchedule({ ...schedule, [day.key]: e.target.value })}
+                      placeholder="18:00-23:00"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Deixe em branco para dia fechado. O valor será salvo como JSON na configuração.
+              </div>
+            </div>
+            <div className="space-y-2"><Label>Horário de funcionamento (JSON)</Label><Textarea rows={8} value={formatScheduleJson(schedule)} readOnly /></div>
             <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Aceita retirada</span><Switch checked={config.aceita_retirada} onCheckedChange={(v) => setConfig({ ...config, aceita_retirada: v })} /></div>
             <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Aceita entrega</span><Switch checked={config.aceita_entrega} onCheckedChange={(v) => setConfig({ ...config, aceita_entrega: v })} /></div>
             <div className="flex items-center justify-between border rounded-lg p-3"><span className="text-sm">Exibir no marketplace público</span><Switch checked={config.visivel_marketplace} onCheckedChange={(v) => setConfig({ ...config, visivel_marketplace: v })} /></div>

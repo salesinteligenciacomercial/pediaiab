@@ -48,9 +48,10 @@ type StoreConfig = {
   aceita_retirada?: boolean;
   aceita_entrega?: boolean;
   mensagem_loja?: string | null;
-  horario_funcionamento?: Record<string, string>;
+  horario_funcionamento?: Record<string, string> | string;
   horario_abertura?: string | null;
   aberto?: boolean;
+  categoria_marketplace?: string | null;
 };
 
 type CartItem = { product: Product; quantity: number; observations: string };
@@ -109,6 +110,75 @@ const CARDAPIO_ADDRESS_CSS = `
 .c-delivery-fixed strong{font-size:12px;color:#F5EAD8;text-align:right}
 @media(max-width:520px){.c-delivery-fixed{align-items:flex-start;flex-direction:column;gap:3px}.c-delivery-fixed strong{text-align:left}}
 `;
+
+const WEEKDAY_OPTIONS = [
+  { key: "domingo", label: "Domingo" },
+  { key: "segunda", label: "Segunda" },
+  { key: "terca", label: "Terça" },
+  { key: "quarta", label: "Quarta" },
+  { key: "quinta", label: "Quinta" },
+  { key: "sexta", label: "Sexta" },
+  { key: "sabado", label: "Sábado" },
+] as const;
+
+type WeekdayKey = (typeof WEEKDAY_OPTIONS)[number]["key"];
+
+type ScheduleMap = Record<WeekdayKey, string>;
+
+const parseHorarioFunc = (value: any): ScheduleMap => {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value || "{}");
+      return WEEKDAY_OPTIONS.reduce((acc, item) => ({
+        ...acc,
+        [item.key]: typeof parsed[item.key] === "string" ? parsed[item.key] : "",
+      }), {} as ScheduleMap);
+    } catch {
+      return WEEKDAY_OPTIONS.reduce((acc, item) => ({ ...acc, [item.key]: "" }), {} as ScheduleMap);
+    }
+  }
+
+  if (!value || typeof value !== "object") {
+    return WEEKDAY_OPTIONS.reduce((acc, item) => ({ ...acc, [item.key]: "" }), {} as ScheduleMap);
+  }
+
+  return WEEKDAY_OPTIONS.reduce((acc, item) => ({
+    ...acc,
+    [item.key]: typeof value[item.key] === "string" ? value[item.key] : "",
+  }), {} as ScheduleMap);
+};
+
+const normalizeRange = (value: string) => value.split("-").map((part) => part.trim()).join("-");
+
+const toMinutes = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+};
+
+const isOpenNow = (schedule: ScheduleMap, now = new Date()) => {
+  const dayKey: WeekdayKey = WEEKDAY_OPTIONS[now.getDay() === 0 ? 0 : now.getDay()].key;
+  const range = normalizeRange(schedule[dayKey] || "");
+  if (!range.includes("-")) return false;
+
+  const [start, end] = range.split("-").map((part) => part.trim());
+  const startMinutes = toMinutes(start);
+  const endMinutes = toMinutes(end);
+  if (startMinutes === null || endMinutes === null) return false;
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  if (endMinutes > startMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  }
+
+  return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+};
+
+const formatRangeLabel = (range: string) => {
+  const [start, end] = normalizeRange(range).split("-").map((part) => part.trim());
+  if (!start || !end) return "Fechado";
+  return `${start} às ${end}`;
+};
 
 export default function CardapioPublico() {
   const { slug } = useParams<{ slug: string }>();
@@ -578,7 +648,11 @@ export default function CardapioPublico() {
   }
 
   const whatsappNumber = (config.whatsapp_loja || config.telefone_loja || "").replace(/\D/g, "");
-  const aberto = config.aberto !== false;
+  const schedule = parseHorarioFunc(config.horario_funcionamento);
+  const aberto = isOpenNow(schedule);
+  const todayKey = WEEKDAY_OPTIONS[new Date().getDay()].key;
+  const todaySchedule = schedule[todayKey] || "";
+  const scheduleLabel = todaySchedule ? formatRangeLabel(todaySchedule) : "Fechado";
   const minimo = Number(config.pedido_minimo || 0);
   const taxa = Number(config.taxa_entrega || 0);
 
@@ -665,7 +739,7 @@ export default function CardapioPublico() {
         <div className="c-hero-emoji">🍕</div>
         <div className="c-hero-content">
           <div className="c-hero-badge">
-            <i /> {aberto ? "Aberto agora" : "Fechado"}{config.horario_funcionamento ? " · Até 23h" : ""}
+            <i /> {aberto ? "Aberto agora" : "Fechado"}{scheduleLabel ? ` · ${scheduleLabel}` : ""}
           </div>
           <h1 className="c-hero-title">
             Pizza que faz<br /><em>você sonhar</em>
