@@ -758,7 +758,7 @@ export default function KDS() {
     if (itensErr) throw itensErr;
 
     const subtotal = (itensData || []).reduce((sum: number, item: any) => sum + Number(item.valor_total || 0), 0);
-    const total = subtotal + Number(pedidoData?.taxa_entrega || 0) - Number(pedidoData?.desconto || 0);
+    const total = subtotal + Number((pedidoData as any)?.taxa_entrega || 0) - Number((pedidoData as any)?.desconto || 0);
 
     const { error: updateErr } = await supabase.from("pedidos" as any).update({ subtotal, total }).eq("id", pedidoId);
     if (updateErr) throw updateErr;
