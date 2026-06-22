@@ -5043,6 +5043,42 @@ export type Database = {
           },
         ]
       }
+      pizza_meio_categorias: {
+        Row: {
+          ativo: boolean
+          company_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          ordem: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          company_id: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          company_id?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pizza_tamanhos: {
         Row: {
           ativo: boolean
@@ -5665,6 +5701,7 @@ export type Database = {
           ordem_exibicao: number | null
           permite_meio_a_meio: boolean | null
           permite_observacao: boolean | null
+          pizza_meio_categoria_id: string | null
           preco_sugerido: number | null
           promocao_ativa: boolean | null
           promocao_fim: string | null
@@ -5702,6 +5739,7 @@ export type Database = {
           ordem_exibicao?: number | null
           permite_meio_a_meio?: boolean | null
           permite_observacao?: boolean | null
+          pizza_meio_categoria_id?: string | null
           preco_sugerido?: number | null
           promocao_ativa?: boolean | null
           promocao_fim?: string | null
@@ -5739,6 +5777,7 @@ export type Database = {
           ordem_exibicao?: number | null
           permite_meio_a_meio?: boolean | null
           permite_observacao?: boolean | null
+          pizza_meio_categoria_id?: string | null
           preco_sugerido?: number | null
           promocao_ativa?: boolean | null
           promocao_fim?: string | null
@@ -5757,6 +5796,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_servicos_pizza_meio_categoria_id_fkey"
+            columns: ["pizza_meio_categoria_id"]
+            isOneToOne: false
+            referencedRelation: "pizza_meio_categorias"
             referencedColumns: ["id"]
           },
         ]
