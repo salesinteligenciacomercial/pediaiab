@@ -42,6 +42,7 @@ type StoreConfig = {
   cor_primaria?: string | null;
   cor_secundaria?: string | null;
   telefone_loja?: string | null;
+  whatsapp_loja?: string | null;
   endereco_loja?: string | null;
   pedido_minimo?: number | null;
   taxa_entrega?: number | null;
