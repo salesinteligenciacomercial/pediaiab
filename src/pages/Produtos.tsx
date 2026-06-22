@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Package, ImagePlus, Trash2, Edit2 } from 'lucide-react';
 import { PizzaTamanhosManager } from '@/components/produtos/PizzaTamanhosManager';
 import { PizzaBordasManager } from '@/components/produtos/PizzaBordasManager';
+import { PizzaMeioCategoriasManager } from '@/components/produtos/PizzaMeioCategoriasManager';
 import { supabase } from '@/integrations/supabase/client';
 
 type TipoProduto = 'produto' | 'insumo' | 'combo' | 'adicional';
