@@ -1695,6 +1695,9 @@ export default function Produtos() {
         <TabsContent value="bordas">
           <PizzaBordasManager />
         </TabsContent>
+        <TabsContent value="meio-categorias">
+          <PizzaMeioCategoriasManager />
+        </TabsContent>
       </Tabs>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
