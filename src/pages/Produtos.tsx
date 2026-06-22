@@ -27,6 +27,7 @@ type Produto = {
   imagem_url: string | null;
   destaque_cardapio: boolean;
   permite_observacao: boolean;
+  permite_meio_a_meio?: boolean | null;
   estoque_atual: number | null;
   estoque_minimo: number | null;
   estoque_maximo?: number | null;
@@ -61,6 +62,7 @@ type ProdutoForm = {
   ativo_cardapio: boolean;
   destaque_cardapio: boolean;
   permite_observacao: boolean;
+  permite_meio_a_meio: boolean;
   estoque_atual: string;
   estoque_minimo: string;
   estoque_maximo: string;
@@ -183,7 +185,7 @@ body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,Arial,He
 .tab-trigger[data-state='active']{background:var(--accent);color:#fff;border-color:transparent}
 .filter-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
 .search-input{width:320px;min-width:220px;max-width:100%;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text)}
-.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
 .prod-card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 16px 30px rgba(0,0,0,0.12)}
 .prod-card.destaque{border-color:var(--accent);box-shadow:0 18px 40px rgba(255,107,53,0.18)}
 .prod-image-wrap{position:relative;height:160px;background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));display:flex;align-items:center;justify-content:center}
@@ -243,6 +245,7 @@ const EMPTY_FORM: ProdutoForm = {
   ativo_cardapio: true,
   destaque_cardapio: false,
   permite_observacao: true,
+  permite_meio_a_meio: false,
   estoque_atual: '',
   estoque_minimo: '',
   estoque_maximo: '',
@@ -264,67 +267,6 @@ const EMPTY_FORM: ProdutoForm = {
   promocao_nota: '',
 };
 
-function GestorMargens({ companyId, categorias }: { companyId: string; categorias: string[] }) {
-  const [margens, setMargens] = useState<Record<string, number>>({});
-
-  const loadMargens = useCallback(async () => {
-    const { data } = await (supabase.from('categoria_margens' as any) as any)
-      .select('categoria, margem_padrao_pct')
-      .eq('company_id', companyId);
-    if (!data) return;
-    const map: Record<string, number> = {};
-    data.forEach((item: any) => {
-      map[item.categoria] = Number(item.margem_padrao_pct || 0);
-    });
-    setMargens(map);
-  }, [companyId]);
-
-  useEffect(() => {
-    void loadMargens();
-  }, [loadMargens]);
-
-  const handleSalvar = useCallback(async (categoria: string, valor: number) => {
-    const margem = Math.min(95, Math.max(0, Number(valor) || 0));
-    const { error } = await (supabase.from('categoria_margens' as any) as any).upsert({
-      company_id: companyId,
-      categoria,
-      margem_padrao_pct: margem,
-    }, { onConflict: 'company_id,categoria' });
-
-    if (error) {
-      toast.error(`Erro ao salvar margem: ${error.message}`);
-      return;
-    }
-    setMargens((prev) => ({ ...prev, [categoria]: margem }));
-    toast.success(`Margem padrao de ${categoria} atualizada`);
-  }, [companyId]);
-
-  if (!categorias.length) {
-    return <div className="empty-state">Cadastre categorias para configurar margens padrao.</div>;
-  }
-
-  return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      {categorias.map((categoria) => (
-        <div key={categoria} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 13 }}>{categoria}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="number"
-              min="0"
-              max="95"
-              defaultValue={margens[categoria] ?? 50}
-              onBlur={(event) => void handleSalvar(categoria, Number(event.target.value))}
-              style={{ width: 64, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface3)', color: 'var(--text)', textAlign: 'right' }}
-            />
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>%</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -343,6 +285,8 @@ export default function Produtos() {
   const [editingOption, setEditingOption] = useState<Opcao | null>(null);
   const [optionForm, setOptionForm] = useState({ nome: '', preco_adicional: '0', ativo: true });
 
+  const [comboCategory, setComboCategory] = useState<string>('');
+  const [comboSubcategory, setComboSubcategory] = useState<string>('');
   const [comboProductId, setComboProductId] = useState<string>('');
   const [comboProductQty, setComboProductQty] = useState('1');
   const [comboProductObrigatorio, setComboProductObrigatorio] = useState(true);
@@ -363,6 +307,7 @@ export default function Produtos() {
   const [loadingLucro, setLoadingLucro] = useState(false);
 
   const [categoryItems, setCategoryItems] = useState<CategoryItem[]>([]);
+  const [categoryOrderLoaded, setCategoryOrderLoaded] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -541,10 +486,46 @@ export default function Produtos() {
         if (sub) map.get(item.nome)?.add(sub);
       });
     });
+    const orderedNames = [
+      ...categoryItems.map((item) => item.nome).filter((nome) => map.has(nome)),
+      ...Array.from(map.keys())
+        .filter((nome) => !categoryItems.some((item) => item.nome === nome))
+        .sort((a, b) => a.localeCompare(b)),
+    ];
+
+    return orderedNames.map((nome) => ({
+      nome,
+      subcategorias: Array.from(map.get(nome) ?? []).sort((a, b) => a.localeCompare(b)),
+    }));
+  }, [produtos, categoryItems]);
+
+  const comboCategoryOptions = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    produtos
+      .filter((p) => p.tipo_produto !== 'combo' && p.id !== editing?.id)
+      .forEach((produto) => {
+        const categoria = produto.categoria?.trim() || 'Sem categoria';
+        if (!map.has(categoria)) map.set(categoria, new Set());
+        const subcategoria = produto.subcategoria?.trim();
+        if (subcategoria) map.get(categoria)?.add(subcategoria);
+      });
+
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([nome, subSet]) => ({ nome, subcategorias: Array.from(subSet).sort((a, b) => a.localeCompare(b)) }));
-  }, [produtos, categoryItems]);
+  }, [produtos, editing?.id]);
+
+  const comboSubcategoryOptions = useMemo(() => {
+    return comboCategoryOptions.find((category) => category.nome === comboCategory)?.subcategorias ?? [];
+  }, [comboCategoryOptions, comboCategory]);
+
+  const comboProductOptions = useMemo(() => {
+    return produtos
+      .filter((p) => p.tipo_produto !== 'combo' && p.id !== editing?.id)
+      .filter((produto) => !comboCategory || (produto.categoria?.trim() || 'Sem categoria') === comboCategory)
+      .filter((produto) => !comboSubcategory || produto.subcategoria === comboSubcategory)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [produtos, editing?.id, comboCategory, comboSubcategory]);
 
   useEffect(() => {
     (async () => {
@@ -581,6 +562,27 @@ export default function Produtos() {
   }, [companyId, tipoTab, loadLucroPorProduto]);
 
   useEffect(() => {
+    if (!companyId) return;
+    const stored = window.localStorage.getItem(`produtos-category-order-${companyId}`);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setCategoryItems(parsed.filter((item: any) => typeof item?.nome === 'string'));
+        }
+      } catch (error) {
+        console.warn('[Produtos] erro ao carregar ordem de categorias', error);
+      }
+    }
+    setCategoryOrderLoaded(true);
+  }, [companyId]);
+
+  useEffect(() => {
+    if (!companyId || !categoryOrderLoaded) return;
+    window.localStorage.setItem(`produtos-category-order-${companyId}`, JSON.stringify(categoryItems));
+  }, [companyId, categoryItems, categoryOrderLoaded]);
+
+  useEffect(() => {
     if (!imageFile) {
       setImagePreview(editing?.imagem_url ?? '');
     }
@@ -597,6 +599,8 @@ export default function Produtos() {
   const handleOpenCreate = useCallback((tipo: TipoProduto) => {
     setEditing(null);
     setFormData({ ...EMPTY_FORM, tipo_produto: tipo, controla_estoque: tipo === 'insumo', unidade_medida: tipo === 'insumo' ? 'kg' : 'un', margem_pct: '50', modo_calculo: 'por_margem' });
+    setComboCategory('');
+    setComboSubcategory('');
     setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
@@ -622,6 +626,7 @@ export default function Produtos() {
       ativo_cardapio: produto.ativo_cardapio,
       destaque_cardapio: produto.destaque_cardapio,
       permite_observacao: produto.permite_observacao,
+      permite_meio_a_meio: !!produto.permite_meio_a_meio,
       estoque_atual: produto.estoque_atual?.toString() ?? '',
       estoque_minimo: produto.estoque_minimo?.toString() ?? '',
       estoque_maximo: produto.estoque_maximo?.toString() ?? '',
@@ -642,6 +647,11 @@ export default function Produtos() {
       promocao_flash: produto.promocao_flash,
       promocao_nota: produto.promocao_nota ?? '',
     });
+    setComboCategory('');
+    setComboSubcategory('');
+    setComboProductId('');
+    setComboProductQty('1');
+    setComboProductObrigatorio(true);
     setImageFile(null);
     setImagePreview(produto.imagem_url ?? '');
     setDialogOpen(true);
@@ -660,7 +670,7 @@ export default function Produtos() {
   }, []);
 
   const handleAddComboItem = useCallback(() => {
-    const selected = produtos.find((p) => p.id === comboProductId && p.tipo_produto !== 'combo');
+    const selected = comboProductOptions.find((p) => p.id === comboProductId);
     if (!selected) {
       toast.error('Selecione um produto válido para o combo');
       return;
@@ -684,7 +694,39 @@ export default function Produtos() {
     setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
-  }, [comboProductId, comboProductQty, comboProductObrigatorio, formData.combo_items, produtos]);
+  }, [comboProductId, comboProductQty, comboProductObrigatorio, formData.combo_items, comboProductOptions]);
+
+  const handleAddComboCategory = useCallback(() => {
+    if (!comboCategory) {
+      toast.error('Selecione uma categoria para adicionar');
+      return;
+    }
+
+    const selecionados = comboProductOptions.filter((produto) => (
+      !formData.combo_items.some((item) => item.produtoId === produto.id)
+    ));
+
+    if (!selecionados.length) {
+      toast.error('Todos os itens dessa categoria já foram adicionados');
+      return;
+    }
+
+    const quantidade = Number(comboProductQty) || 1;
+    const novosItens: ComboItem[] = selecionados.map((produto) => ({
+      id: `${Date.now()}-${produto.id}`,
+      produtoId: produto.id,
+      nome: produto.nome,
+      quantidade,
+      obrigatorio: comboProductObrigatorio,
+    }));
+
+    setFormData((prev) => ({
+      ...prev,
+      combo_items: [...prev.combo_items, ...novosItens],
+    }));
+    setComboProductId('');
+    toast.success(`${novosItens.length} itens adicionados ao combo`);
+  }, [comboCategory, comboProductOptions, comboProductQty, comboProductObrigatorio, formData.combo_items]);
 
   const handleRemoveComboItem = useCallback((itemId: string) => {
     setFormData((prev) => ({
@@ -782,6 +824,7 @@ export default function Produtos() {
       imagem_url,
       destaque_cardapio: formData.destaque_cardapio,
       permite_observacao: formData.permite_observacao,
+      permite_meio_a_meio: formData.permite_meio_a_meio,
       estoque_atual: formData.estoque_atual.trim() ? Number(formData.estoque_atual) : null,
       estoque_minimo: formData.estoque_minimo.trim() ? Number(formData.estoque_minimo) : null,
       unidade_medida: formData.unidade_medida.trim() || null,
@@ -847,6 +890,7 @@ export default function Produtos() {
       imagem_url,
       destaque_cardapio: formData.destaque_cardapio,
       permite_observacao: formData.permite_observacao,
+      permite_meio_a_meio: formData.permite_meio_a_meio,
       controla_estoque: formData.controla_estoque,
       estoque_atual: formData.estoque_atual.trim() ? Number(formData.estoque_atual) : null,
       estoque_minimo: formData.estoque_minimo.trim() ? Number(formData.estoque_minimo) : null,
@@ -1073,6 +1117,23 @@ export default function Produtos() {
     }
   }, [calcularPrecoPorMargem, companyId]);
 
+  const handleMoveCategory = useCallback((categoryNameToMove: string, direction: -1 | 1) => {
+    const current = categoryOptions.map((category) => ({
+      nome: category.nome,
+      subcategorias: [...category.subcategorias],
+    }));
+    const index = current.findIndex((category) => category.nome === categoryNameToMove);
+    const nextIndex = index + direction;
+
+    if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return;
+
+    const reordered = [...current];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(nextIndex, 0, moved);
+    setCategoryItems(reordered);
+    toast.success('Ordem das categorias atualizada');
+  }, [categoryOptions]);
+
   const onChangeForm = useCallback((key: keyof ProdutoForm, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   }, []);
@@ -1185,44 +1246,78 @@ export default function Produtos() {
 
         <TabsContent value="precificacao">
           {produtos.length ? (
-            <div className="product-grid">
-              {produtos.map((produto) => {
-                const custo = produto.custo_unitario ?? 0;
-                const preco = produto.preco_sugerido ?? 0;
-                const margem = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
-                return (
-                  <div className={`prod-card ${produto.destaque_cardapio ? 'destaque' : ''}`} key={produto.id}>
-                    <div className="prod-image-wrap">
-                      {produto.imagem_url ? (
-                        <img src={produto.imagem_url} alt={produto.nome} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
-                      ) : (
-                        <div className="image-placeholder"><Package size={42} /></div>
-                      )}
-                      <span className="badge">{produto.tipo_produto}</span>
-                    </div>
-                    <div className="prod-body">
-                      <div className="prod-name">{produto.nome}</div>
-                      <div className="prod-category">{[produto.categoria, produto.subcategoria].filter(Boolean).join(' / ')}</div>
-                      {produto.descricao && <div className="prod-desc">{produto.descricao}</div>}
-                    </div>
-                    <div className="prod-meta">
-                      <div>
-                        <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{preco > 0 ? preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem preço'}</div>
-                        <span>{custo > 0 ? `Custo: ${custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : 'Custo não informado'}</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text2)' }}>Margem</div>
-                        <div style={{ fontWeight: 700, color: margem >= 30 ? '#2ECC8F' : '#F5A623' }}>{preco > 0 ? `${margem.toFixed(1)}%` : '—'}</div>
-                      </div>
-                    </div>
-                    <div className="prod-actions">
-                      {produto.controla_estoque && <button className="action-btn" type="button" onClick={() => abrirMovimentacao(produto)}>Entrada / saida</button>}
-                      <button className="action-btn" type="button" onClick={() => handleOpenEdit(produto)}><Edit2 size={16} /> Editar</button>
-                      <button className="action-btn" type="button" onClick={() => setDeleteTarget(produto)}><Trash2 size={16} /> Excluir</button>
-                    </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: 18 }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 16 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Calculadora de Precificação</div>
+                <div style={{ color: 'var(--text2)', marginBottom: 12 }}>Digite custo e margem para obter preço sugerido, ou informe o preço manualmente.</div>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div>
+                    <Label htmlFor="custo_global" style={{ fontSize: 12, color: 'var(--text2)' }}>Custo unitário (R$)</Label>
+                    <Input id="custo_global" type="number" step="0.01" min="0" value={formData.custo_unitario} onChange={(event) => handleCustoChange(event.target.value)} placeholder="Ex: 12.50" />
                   </div>
-                );
-              })}
+                  <div>
+                    <Label htmlFor="margem_global" style={{ fontSize: 12, color: 'var(--text2)' }}>Margem desejada (%)</Label>
+                    <Input id="margem_global" type="number" step="1" min="0" max="95" value={formData.margem_pct} onChange={(event) => handleMargemChange(event.target.value)} placeholder="Ex: 60" />
+                  </div>
+                  <div>
+                    <Label htmlFor="preco_global" style={{ fontSize: 12, color: 'var(--text2)' }}>Preço de venda (R$)</Label>
+                    <Input id="preco_global" type="number" step="0.01" min="0" value={formData.preco_sugerido} onChange={(event) => handlePrecoManualChange(event.target.value)} style={{ fontWeight: 700, fontSize: 16 }} />
+                  </div>
+                  {Number(formData.custo_unitario) > 0 && Number(formData.preco_sugerido) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)) >= 30 ? 'rgba(46,204,143,0.1)' : 'rgba(245,166,35,0.1)', border: `1px solid ${calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)) >= 30 ? 'rgba(46,204,143,0.25)' : 'rgba(245,166,35,0.25)'}` }}>
+                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>Lucro por unidade</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)) >= 30 ? '#2ECC8F' : '#F5A623' }}>
+                        {(Number(formData.preco_sugerido) - Number(formData.custo_unitario)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {' '}({calcularMargemPorPreco(Number(formData.custo_unitario), Number(formData.preco_sugerido)).toFixed(1)}% margem)
+                      </span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button variant="outline" onClick={() => { setFormData((prev) => ({ ...prev, custo_unitario: '', preco_sugerido: '0', margem_pct: '50' })); }}>Limpar</Button>
+                    <Button onClick={() => { setFormData((prev) => ({ ...prev, modo_calculo: 'manual' })); toast.success('Valores aplicados localmente'); }}>Aplicar</Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="product-grid">
+                {produtos.map((produto) => {
+                  const custo = produto.custo_unitario ?? 0;
+                  const preco = produto.preco_sugerido ?? 0;
+                  const margem = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
+                  return (
+                    <div className={`prod-card ${produto.destaque_cardapio ? 'destaque' : ''}`} key={produto.id}>
+                      <div className="prod-image-wrap">
+                        {produto.imagem_url ? (
+                          <img src={produto.imagem_url} alt={produto.nome} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+                        ) : (
+                          <div className="image-placeholder"><Package size={42} /></div>
+                        )}
+                        <span className="badge">{produto.tipo_produto}</span>
+                      </div>
+                      <div className="prod-body">
+                        <div className="prod-name">{produto.nome}</div>
+                        <div className="prod-category">{[produto.categoria, produto.subcategoria].filter(Boolean).join(' / ')}</div>
+                        {produto.descricao && <div className="prod-desc">{produto.descricao}</div>}
+                      </div>
+                      <div className="prod-meta">
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{preco > 0 ? preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem preço'}</div>
+                          <span>{custo > 0 ? `Custo: ${custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : 'Custo não informado'}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 12, color: 'var(--text2)' }}>Margem</div>
+                          <div style={{ fontWeight: 700, color: margem >= 30 ? '#2ECC8F' : '#F5A623' }}>{preco > 0 ? `${margem.toFixed(1)}%` : '—'}</div>
+                        </div>
+                      </div>
+                      <div className="prod-actions">
+                        {produto.controla_estoque && <button className="action-btn" type="button" onClick={() => abrirMovimentacao(produto)}>Entrada / saida</button>}
+                        <button className="action-btn" type="button" onClick={() => handleOpenEdit(produto)}><Edit2 size={16} /> Editar</button>
+                        <button className="action-btn" type="button" onClick={() => setDeleteTarget(produto)}><Trash2 size={16} /> Excluir</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="empty-state">Nenhum produto encontrado para esta seleção.</div>
@@ -1795,24 +1890,72 @@ export default function Produtos() {
                     onChange={(event) => onChangeForm('destaque_cardapio', event.target.checked)}
                   />
                 </div>
+                {formData.tipo_produto === 'produto' && (
+                  <div className="form-grid-full" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                    <input
+                      id="permiteMeioAMeio"
+                      type="checkbox"
+                      checked={formData.permite_meio_a_meio}
+                      onChange={(event) => onChangeForm('permite_meio_a_meio', event.target.checked)}
+                    />
+                    <div>
+                      <Label htmlFor="permiteMeioAMeio">Produto meio/meio</Label>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>Opcional: use quando quiser destacar um item específico de pizza meio/meio.</div>
+                    </div>
+                  </div>
+                )}
                 {formData.tipo_produto === 'combo' && (
                   <div className="form-grid-full" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: 16, background: 'rgba(255,255,255,0.02)' }}>
                     <div style={{ fontWeight: 700, marginBottom: 12 }}>Itens do combo</div>
-                    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '2fr 80px 120px 120px' }}>
+                    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', alignItems: 'end' }}>
                       <div>
-                        <Label htmlFor="comboProduto">Produto</Label>
+                        <Label htmlFor="comboCategoria">Categoria</Label>
+                        <select
+                          id="comboCategoria"
+                          value={comboCategory}
+                          onChange={(event) => {
+                            setComboCategory(event.target.value);
+                            setComboSubcategory('');
+                            setComboProductId('');
+                          }}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+                        >
+                          <option value="">Todas</option>
+                          {comboCategoryOptions.map((category) => (
+                            <option key={category.nome} value={category.nome}>{category.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="comboSubcategoria">Subcategoria</Label>
+                        <select
+                          id="comboSubcategoria"
+                          value={comboSubcategory}
+                          onChange={(event) => {
+                            setComboSubcategory(event.target.value);
+                            setComboProductId('');
+                          }}
+                          disabled={!comboCategory || comboSubcategoryOptions.length === 0}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+                        >
+                          <option value="">Todas</option>
+                          {comboSubcategoryOptions.map((subcategoria) => (
+                            <option key={subcategoria} value={subcategoria}>{subcategoria}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="comboProduto">Sabor / item</Label>
                         <select
                           id="comboProduto"
                           value={comboProductId}
                           onChange={(event) => setComboProductId(event.target.value)}
                           style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
                         >
-                          <option value="">Selecione um produto</option>
-                          {produtos
-                            .filter((p) => p.tipo_produto !== 'combo' && p.id !== editing?.id)
-                            .map((produto) => (
-                              <option key={produto.id} value={produto.id}>{produto.nome}</option>
-                            ))}
+                          <option value="">Selecione um item</option>
+                          {comboProductOptions.map((produto) => (
+                            <option key={produto.id} value={produto.id}>{produto.nome}</option>
+                          ))}
                         </select>
                       </div>
                       <div>
@@ -1826,7 +1969,15 @@ export default function Produtos() {
                           <span style={{ fontSize: 12, color: 'var(--text2)' }}>Obrigatório</span>
                         </div>
                       </div>
-                      <Button type="button" onClick={handleAddComboItem} style={{ alignSelf: 'end' }}>Adicionar</Button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button type="button" onClick={handleAddComboItem} style={{ alignSelf: 'end' }}>Adicionar</Button>
+                        <Button type="button" variant="outline" onClick={handleAddComboCategory} style={{ alignSelf: 'end' }}>
+                          Adicionar categoria
+                        </Button>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)' }}>
+                      {comboProductOptions.length} item(ns) disponivel(is) no filtro selecionado.
                     </div>
                     {formData.combo_items.length > 0 ? (
                       <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
@@ -2022,20 +2173,13 @@ export default function Produtos() {
               <Button variant="ghost" onClick={() => setCategoryManagerOpen(false)}>Fechar</Button>
             </div>
             <div className="modal-body">
-              {companyId && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 16, background: 'var(--surface)' }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Margem padrao por categoria</div>
-                  <div style={{ color: 'var(--text2)', fontSize: 12, marginBottom: 12 }}>Usada como sugestao automatica ao selecionar a categoria no cadastro.</div>
-                  <GestorMargens companyId={companyId} categorias={categoryOptions.map((category) => category.nome)} />
-                </div>
-              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>Categorias</div>
                 <Button onClick={() => { setEditingCategory(null); setCategoryName(''); setCategoryDialogOpen(true); }}>＋ Nova categoria</Button>
               </div>
               {categoryOptions.length ? (
                 <div style={{ display: 'grid', gap: 16 }}>
-                  {categoryOptions.map((category) => (
+                  {categoryOptions.map((category, index) => (
                     <div key={category.nome} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, background: 'var(--surface2)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                         <div>
@@ -2043,6 +2187,8 @@ export default function Produtos() {
                           <div style={{ color: 'var(--text2)', fontSize: 13 }}>{category.subcategorias.length} subcategorias</div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <Button variant="outline" size="sm" disabled={index === 0} onClick={() => handleMoveCategory(category.nome, -1)}>Subir</Button>
+                          <Button variant="outline" size="sm" disabled={index === categoryOptions.length - 1} onClick={() => handleMoveCategory(category.nome, 1)}>Descer</Button>
                           <Button variant="outline" size="sm" onClick={() => { setEditingCategory(category.nome); setCategoryName(category.nome); setCategoryDialogOpen(true); }}>Editar</Button>
                           <Button variant="destructive" size="sm" onClick={() => {
                             setCategoryItems((prev) => prev.filter((item) => item.nome !== category.nome));
@@ -2133,7 +2279,7 @@ export default function Produtos() {
                       toast.error('Categoria já existe');
                       return;
                     }
-                    setCategoryItems((prev) => [...prev, { nome: trimmed, subcategorias: [] }].sort((a, b) => a.nome.localeCompare(b.nome)));
+                    setCategoryItems((prev) => [...prev, { nome: trimmed, subcategorias: [] }]);
                     toast.success('Categoria criada');
                   }
                   setCategoryDialogOpen(false);

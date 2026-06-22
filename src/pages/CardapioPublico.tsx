@@ -191,12 +191,16 @@ export default function CardapioPublico() {
   const [pizzaBordas, setPizzaBordas] = useState<Array<{ id: string; nome: string; descricao?: string | null; ordem?: number }>>([]);
   const [pizzaBordaPrecos, setPizzaBordaPrecos] = useState<Array<{ borda_id: string; tamanho_id: string; preco: number }>>([]);
   const [selectedBordaId, setSelectedBordaId] = useState<string>("");
+  const [selectedExtraSliceId, setSelectedExtraSliceId] = useState<string>("");
+  const [selectedExtraSliceQty, setSelectedExtraSliceQty] = useState<number>(1);
+  const [extraSliceSelections, setExtraSliceSelections] = useState<Array<{ flavorId: string; quantity: number }>>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedObs, setSelectedObs] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
   const [extraFlavors, setExtraFlavors] = useState<string[]>([]);
   const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedHalfSizeId, setSelectedHalfSizeId] = useState<string>("");
   const [flavorSearch, setFlavorSearch] = useState("");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -328,6 +332,11 @@ export default function CardapioPublico() {
     return !!product.permite_meio_a_meio || n.includes("pizza") || c.includes("pizza");
   };
 
+  const isHalfAndHalfMenuProduct = (product: Product) => {
+    const text = `${product.nome || ""} ${product.categoria || ""}`.toLowerCase();
+    return text.includes("meio") || text.includes("1/2") || text.includes("metade");
+  };
+
   const filteredProducts = useMemo(() => {
     if (!search.trim()) return products;
     const q = search.toLowerCase();
@@ -371,7 +380,13 @@ export default function CardapioPublico() {
     const type = (product.tipo_produto || "").toLowerCase();
     const category = (product.categoria || "").toLowerCase();
     const name = (product.nome || "").toLowerCase();
-    return type === "combo" || category.includes("combo") || name.includes("combo");
+    return type === "combo" || category.includes("combo") || name.includes("combo") || (product.combo_items || []).length > 0;
+  };
+
+  const isPromoCatalogProduct = (product: Product) => {
+    if (isPromotionActive(product)) return true;
+    const text = `${product.nome || ""} ${product.categoria || ""} ${product.promocao_nota || ""}`.toLowerCase();
+    return /promo|promocao|promoção|oferta|desconto|relampago|relâmpago|especial do dia/.test(text);
   };
 
   const isBonusOffer = (product: Product) => {
@@ -384,13 +399,21 @@ export default function CardapioPublico() {
     [filteredProducts]
   );
 
+  const halfAndHalfPizzas = useMemo(
+    () => {
+      const explicit = filteredProducts.filter((p) => isHalfAndHalfMenuProduct(p));
+      return explicit.length > 0 ? explicit : filteredProducts.filter((p) => isPizzaProduct(p));
+    },
+    [filteredProducts]
+  );
+
   const activePromotions = useMemo(
-    () => filteredProducts.filter((p) => isPromotionActive(p)),
+    () => filteredProducts.filter((p) => isPromoCatalogProduct(p)),
     [filteredProducts]
   );
 
   const flashPromotions = useMemo(
-    () => activePromotions.filter((p) => p.promocao_flash),
+    () => activePromotions.filter((p) => p.promocao_flash || /relampago|relâmpago|flash/.test(`${p.nome || ""} ${p.categoria || ""} ${p.promocao_nota || ""}`.toLowerCase())),
     [activePromotions]
   );
 
@@ -414,13 +437,13 @@ export default function CardapioPublico() {
 
   const promoSections = useMemo(
     () => [
-      { id: "combos", title: "Combos", subtitle: "Monte o pedido mais completo", label: "Combo", items: combos },
       { id: "promocoes", title: "Promocoes", subtitle: "Precos especiais por tempo limitado", label: "Promocao", items: activePromotions },
+      { id: "combos", title: "Combos", subtitle: "Monte o pedido mais completo", label: "Combo", items: combos },
       { id: "relampago", title: "Promocoes relampago", subtitle: "Ofertas rapidas para pedir agora", label: "Relampago", items: flashPromotions },
       { id: "oferta-dia", title: "Oferta do dia", subtitle: "Selecao especial de hoje", label: "Hoje", items: dayOffers },
       { id: "bonus", title: "Compre e ganhe", subtitle: "Itens com bonus, brinde ou vantagem", label: "Bonus", items: bonusOffers },
     ].filter((section) => section.items.length > 0),
-    [combos, activePromotions, flashPromotions, dayOffers, bonusOffers]
+    [activePromotions, combos, flashPromotions, dayOffers, bonusOffers]
   );
 
   // debounce search input to avoid filtering on every keystroke
@@ -463,11 +486,27 @@ export default function CardapioPublico() {
     return DEFAULT_SIZES.map((d) => ({ ...d, tamanhoId: "" }));
   }, [pizzaSizes]);
 
+  const halfAndHalfSizes = useMemo(
+    () => SIZE_OPTIONS.filter((size) => size.maxFlavors > 1).slice(0, 4),
+    [SIZE_OPTIONS]
+  );
+
+  const selectedHalfSize = useMemo(
+    () => halfAndHalfSizes.find((size) => size.id === selectedHalfSizeId),
+    [halfAndHalfSizes, selectedHalfSizeId]
+  );
+
+  const halfAndHalfBasePrice = useMemo(() => {
+    const prices = halfAndHalfPizzas.map((pizza) => displayPrice(pizza)).filter((price) => price > 0);
+    return prices.length ? Math.min(...prices) : 0;
+  }, [halfAndHalfPizzas]);
+
   useEffect(() => {
     if (!selectedProduct) return;
     setFlavorSearch("");
     if (isPizzaProduct(selectedProduct)) {
-      setSelectedSize(""); setExtraFlavors([]); setSelectedBordaId("");
+      setSelectedSize((current) => SIZE_OPTIONS.some((size) => size.id === current) ? current : "");
+      setExtraFlavors([]); setSelectedBordaId(""); setSelectedExtraSliceId(""); setSelectedExtraSliceQty(1); setExtraSliceSelections([]);
       return;
     }
     if (SIZE_OPTIONS.length > 0 && !SIZE_OPTIONS.find((s) => s.id === selectedSize)) {
@@ -483,6 +522,25 @@ export default function CardapioPublico() {
     return Number(p?.preco || 0);
   };
   const selectedBorda = pizzaBordas.find((b) => b.id === selectedBordaId);
+  const selectedExtraSliceFlavor = products.find((p) => p.id === selectedExtraSliceId);
+  const selectedExtraSlicePrice = selectedExtraSliceFlavor && selectedPizzaSize
+    ? Math.round((Number(selectedExtraSliceFlavor.preco_sugerido || 0) / selectedPizzaSize.slices) * 100) / 100
+    : 0;
+  const getExtraSlicePrice = (flavorId: string) => {
+    const flavor = products.find((p) => p.id === flavorId);
+    if (!flavor || !selectedPizzaSize) return 0;
+    return Math.round((Number(flavor.preco_sugerido || 0) / selectedPizzaSize.slices) * 100) / 100;
+  };
+  const totalExtraSlicePrice = selectedPizzaSize
+    ? extraSliceSelections.reduce((sum, sel) => sum + sel.quantity * getExtraSlicePrice(sel.flavorId), 0)
+    : 0;
+  const selectedExtraSliceDescription = extraSliceSelections
+    .map((sel) => {
+      const flavor = products.find((p) => p.id === sel.flavorId);
+      return flavor ? `${sel.quantity}x ${flavor.nome}` : null;
+    })
+    .filter(Boolean)
+    .join(", ");
 
   const computePizzaPrice = (mainProduct: Product, extraIds: string[], sizeMultiplier: number) => {
     const prices = [Number(mainProduct.preco_sugerido || 0)];
@@ -510,30 +568,32 @@ export default function CardapioPublico() {
       const flavorObjs = validExtras.map((id) => products.find((p) => p.id === id)).filter((p): p is Product => !!p);
       const basePrice = computePizzaPrice({ ...selectedProduct, preco_sugerido: displayPrice(selectedProduct) }, validExtras, selectedPizzaSize.multiplier);
       const bordaPrice = selectedBorda && selectedPizzaSize.tamanhoId ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId) : 0;
-      const finalPrice = Math.round((basePrice + bordaPrice) * 100) / 100;
+      const extraSlicePrice = selectedExtraSliceFlavor ? selectedExtraSlicePrice : 0;
+      const finalPrice = Math.round((basePrice + bordaPrice + extraSlicePrice) * 100) / 100;
       const allNames = [selectedProduct.nome, ...flavorObjs.map((f) => f.nome)];
       const totalFlavors = allNames.length;
       const fraction = totalFlavors === 2 ? "1/2" : totalFlavors === 3 ? "1/3" : totalFlavors === 4 ? "1/4" : "";
       const baseName = totalFlavors === 1
         ? `${selectedProduct.nome} (${selectedPizzaSize.label})`
         : `${allNames.map((n) => `${fraction} ${n}`).join(" / ")} (${selectedPizzaSize.label})`;
-      const composedName = selectedBorda ? `${baseName} - Borda ${selectedBorda.nome}` : baseName;
+      const sliceLabel = extraSliceSelections.length > 0
+        ? `+1 fatia ${selectedExtraSliceDescription}`
+        : "";
+      const composedName = [selectedBorda ? `${baseName} - Borda ${selectedBorda.nome}` : baseName, sliceLabel].filter(Boolean).join(" - ");
       productToAdd = {
         ...selectedProduct,
-        id: `${selectedProduct.id}__${selectedPizzaSize.id}__${validExtras.join("_")}__${selectedBorda?.id || "noborda"}`,
-        nome: composedName, preco_sugerido: finalPrice,
+        id: `${selectedProduct.id}__${selectedPizzaSize.id}__${validExtras.join("_")}__${selectedBorda?.id || "noborda"}__slices_${extraSliceSelections.map((sel) => `${sel.flavorId}x${sel.quantity}`).join("_")}`,
+        nome: composedName,
+        preco_sugerido: finalPrice,
       };
       if (totalFlavors > 1) obs = obs ? `${totalFlavors} sabores. ${obs}` : `${totalFlavors} sabores`;
       if (selectedBorda) obs = obs ? `Borda ${selectedBorda.nome}. ${obs}` : `Borda ${selectedBorda.nome}`;
+      if (selectedExtraSliceDescription) obs = obs ? `+1 fatia ${selectedExtraSliceDescription}. ${obs}` : `+1 fatia ${selectedExtraSliceDescription}`;
     }
 
-    setCart((prev) => {
-      const existing = prev.find((it) => it.product.id === productToAdd.id && it.observations === obs);
-      if (existing) return prev.map((it) => it === existing ? { ...it, quantity: it.quantity + selectedQty } : it);
-      return [...prev, { product: productToAdd, quantity: selectedQty, observations: obs.trim() }];
-    });
+    setCart((prev) => [...prev, { product: productToAdd, quantity: selectedQty, observations: obs.trim() }]);
     setSelectedProduct(null);
-    setSelectedObs(""); setSelectedQty(1); setExtraFlavors([]); setSelectedSize(""); setSelectedBordaId("");
+    setSelectedObs(""); setSelectedQty(1); setExtraFlavors([]); setSelectedSize(""); setSelectedBordaId(""); setSelectedExtraSliceId(""); setSelectedExtraSliceQty(1); setExtraSliceSelections([]);
     toast.success("Item adicionado ao carrinho");
   };
 
@@ -676,12 +736,39 @@ export default function CardapioPublico() {
     });
   };
 
+  const addExtraSliceSelection = () => {
+    if (!selectedExtraSliceId) {
+      toast.error("Selecione um sabor para a fatia extra");
+      return;
+    }
+    if (selectedExtraSliceQty < 1) {
+      toast.error("Quantidade inválida");
+      return;
+    }
+    setExtraSliceSelections((prev) => {
+      const existing = prev.find((item) => item.flavorId === selectedExtraSliceId);
+      if (existing) {
+        return prev.map((item) =>
+          item.flavorId === selectedExtraSliceId
+            ? { ...item, quantity: item.quantity + selectedExtraSliceQty }
+            : item
+        );
+      }
+      return [...prev, { flavorId: selectedExtraSliceId, quantity: selectedExtraSliceQty }];
+    });
+    setSelectedExtraSliceQty(1);
+  };
+
+  const removeExtraSliceSelection = (flavorId: string) => {
+    setExtraSliceSelections((prev) => prev.filter((item) => item.flavorId !== flavorId));
+  };
+
   const finalModalPrice = (() => {
     if (!selectedProduct) return 0;
     if (isPizzaProduct(selectedProduct) && selectedPizzaSize) {
       const base = computePizzaPrice({ ...selectedProduct, preco_sugerido: displayPrice(selectedProduct) }, selectedExtraIds, selectedPizzaSize.multiplier);
       const bordaPrice = selectedBorda && selectedPizzaSize.tamanhoId ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId) : 0;
-      return Math.round((base + bordaPrice) * 100) / 100;
+      return Math.round((base + bordaPrice + totalExtraSlicePrice) * 100) / 100;
     }
     return displayPrice(selectedProduct);
   })();
@@ -721,8 +808,10 @@ export default function CardapioPublico() {
         </div>
       </header>
 
-      {(topShown.length > 0 || discountOffers.length > 0 || activePromotions.length > 0 || flashPromotions.length > 0 || dayOffers.length > 0) && (
+      {(topShown.length > 0 || discountOffers.length > 0 || activePromotions.length > 0 || flashPromotions.length > 0 || dayOffers.length > 0 || halfAndHalfPizzas.length > 0 || combos.length > 0) && (
         <div className="c-promo-banner">
+          {halfAndHalfPizzas.length > 0 && <span className="c-promo-badge">1/2 + 1/2</span>}
+          {combos.length > 0 && <span className="c-promo-badge">Combos</span>}
           {topShown.length > 0 && <span className="c-promo-badge">🔥 Mais pedidos</span>}
           {discountOffers.length > 0 && <span className="c-promo-badge">💰 Descontos</span>}
           {activePromotions.length > 0 && <span className="c-promo-badge">💸 Promoções</span>}
@@ -790,6 +879,14 @@ export default function CardapioPublico() {
             onClick={() => scrollToSection("destaques")}
           >
             Mais pedidos
+          </button>
+        )}
+        {halfAndHalfPizzas.length > 0 && halfAndHalfSizes.length > 0 && (
+          <button
+            className={`c-pill ${activePill === "meio-meio" ? "active" : ""}`}
+            onClick={() => scrollToSection("meio-meio")}
+          >
+            1/2 + 1/2 <span className="c-pill-count">{halfAndHalfSizes.length}</span>
           </button>
         )}
         {promoSections.map((section) => (
@@ -875,6 +972,64 @@ export default function CardapioPublico() {
           </section>
         )}
 
+        {halfAndHalfPizzas.length > 0 && halfAndHalfSizes.length > 0 && (
+          <section id="c-sec-meio-meio" className="c-category-section c-offer-section c-fade-up">
+            <div className="c-section-header">
+              <h2 className="c-section-title">Pizzas meio/meio</h2>
+              <span className="c-section-sub">Escolha primeiro o tamanho</span>
+            </div>
+            <div className="c-sizes-grid" style={{ gridTemplateColumns: `repeat(${halfAndHalfSizes.length}, minmax(0, 1fr))` }}>
+              {halfAndHalfSizes.map((size) => {
+                const active = selectedHalfSizeId === size.id;
+                const price = halfAndHalfBasePrice > 0 ? Math.round(halfAndHalfBasePrice * size.multiplier * 100) / 100 : 0;
+                return (
+                  <button
+                    key={size.id}
+                    className={`c-size-btn ${active ? "active" : ""}`}
+                    onClick={() => setSelectedHalfSizeId(size.id)}
+                    title={size.descricao || ""}
+                  >
+                    <div className="c-size-name">{size.label}</div>
+                    <div className="c-size-info">{size.maxFlavors} sab - {size.slices} fat</div>
+                    <div className="c-size-price">{price > 0 ? formatBRL(price) : "Escolher"}</div>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedHalfSize ? (
+              <>
+                <div className="c-section-header" style={{ marginTop: 6 }}>
+                  <h3 className="c-section-title" style={{ fontSize: 17 }}>Escolha o primeiro sabor</h3>
+                  <span className="c-section-sub">{selectedHalfSize.label} - ate {selectedHalfSize.maxFlavors} sabores</span>
+                </div>
+                <div className="c-offer-grid">
+                  {halfAndHalfPizzas.map((p) => (
+                    <button
+                      key={`half-${selectedHalfSize.id}-${p.id}`}
+                      className="c-offer-card"
+                      onClick={() => {
+                        setSelectedSize(selectedHalfSize.id);
+                        setSelectedProduct(p);
+                      }}
+                    >
+                      <div className="c-offer-top">
+                        <span className="c-offer-badge">1/2 + 1/2</span>
+                      </div>
+                      <div className="c-offer-name">{p.nome}</div>
+                      <div className="c-offer-desc">{p.descricao || p.descricao_curta || "Depois escolha os demais sabores."}</div>
+                      <div className="c-offer-price-row">
+                        <span className="c-offer-price">{formatBRL(Math.round(displayPrice(p) * selectedHalfSize.multiplier * 100) / 100)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ color: "var(--text2)", fontSize: 13 }}>Selecione um tamanho para ver todos os sabores.</div>
+            )}
+          </section>
+        )}
+
         {promoSections.map((section) => (
           <section key={section.id} id={`c-sec-${section.id}`} className="c-category-section c-offer-section c-fade-up">
             <div className="c-section-header">
@@ -882,14 +1037,20 @@ export default function CardapioPublico() {
               <span className="c-section-sub">{section.subtitle}</span>
             </div>
             <div className="c-offer-grid">
-              {section.items.slice(0, 8).map((p) => (
+              {section.items.map((p) => (
                 <button key={`${section.id}-${p.id}`} className="c-offer-card" onClick={() => setSelectedProduct(p)}>
                   <div className="c-offer-top">
                     <span className="c-offer-badge">{section.label}</span>
+                    {isComboProduct(p) && section.id !== "combos" && <span className="c-offer-badge">Combo</span>}
+                    {isPizzaProduct(p) && section.id !== "meio-meio" && <span className="c-offer-badge">1/2 + 1/2</span>}
                     {p.promocao_flash && <span className="c-offer-badge flash">Relampago</span>}
                   </div>
                   <div className="c-offer-name">{p.nome}</div>
-                  <div className="c-offer-desc">{p.promocao_nota || p.descricao || p.descricao_curta || "Oferta especial por tempo limitado."}</div>
+                  <div className="c-offer-desc">
+                    {section.id === "meio-meio"
+                      ? "Monte com tamanho, borda e sabores adicionais."
+                      : p.promocao_nota || p.descricao || p.descricao_curta || "Oferta especial por tempo limitado."}
+                  </div>
                   <div className="c-offer-price-row">
                     {isPromotionActive(p) && Number(p.promocao_preco || 0) > 0 && (
                       <span className="c-price-old">{formatBRL(p.preco_sugerido)}</span>
@@ -1076,6 +1237,77 @@ export default function CardapioPublico() {
                         )}
                       </div>
                     </>
+                  )}
+
+                  {selectedPizzaSize && (
+                    <div style={{ marginTop: 18, padding: 14, borderRadius: 14, background: "rgba(255,140,0,0.08)", border: "2px solid rgba(255,140,0,0.25)" }}>
+                      <div className="c-sub2" style={{ color: "#FF8C00", marginBottom: 12, fontSize: 14, fontWeight: 700, textTransform: "uppercase" }}>✨ Extra +1 Fatia</div>
+                      <div style={{ display: "grid", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 10 }}>
+                          <select
+                            value={selectedExtraSliceId}
+                            onChange={(e) => setSelectedExtraSliceId(e.target.value)}
+                            style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "2px solid rgba(255,140,0,0.3)", background: "rgba(255,140,0,0.12)", color: "white", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+                          >
+                            <option value="" style={{ background: "#1a1a1a", color: "white" }}>Selecione sabor</option>
+                            {availableFlavorsBase.map((f) => {
+                              const price = selectedPizzaSize ? Math.round((Number(f.preco_sugerido || 0) / selectedPizzaSize.slices) * 100) / 100 : 0;
+                              return (
+                                <option key={f.id} value={f.id} style={{ background: "#1a1a1a", color: "white" }}>{`${f.nome} (+R$ ${price.toFixed(2)})`}</option>
+                              );
+                            })}
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={selectedExtraSliceQty}
+                            onChange={(e) => setSelectedExtraSliceQty(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+                            style={{ width: "100%", padding: "12px 10px", borderRadius: 10, border: "2px solid rgba(255,140,0,0.3)", background: "rgba(255,140,0,0.12)", color: "white", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer" }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="c-add-btn"
+                          style={{ width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, background: "linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%)", border: "none" }}
+                          onClick={addExtraSliceSelection}
+                          disabled={!selectedExtraSliceId}
+                        >
+                          ➕ Adicionar Fatia Extra
+                        </button>
+                        {selectedExtraSliceFlavor && (
+                          <div style={{ padding: 10, borderRadius: 10, background: "rgba(255,140,0,0.15)", border: "1px solid rgba(255,140,0,0.2)", color: "#FFB84D", fontSize: 12, fontWeight: 500 }}>
+                            {selectedExtraSliceQty} fatia(s) × {formatBRL(selectedExtraSlicePrice)} = <strong>{formatBRL(selectedExtraSlicePrice * selectedExtraSliceQty)}</strong>
+                          </div>
+                        )}
+                        {extraSliceSelections.length > 0 && (
+                          <div style={{ marginTop: 4, padding: 14, borderRadius: 12, background: "rgba(255,140,0,0.15)", border: "2px solid rgba(255,140,0,0.3)" }}>
+                            <div style={{ color: "#FF8C00", fontSize: 13, fontWeight: 700, marginBottom: 10, textTransform: "uppercase" }}>📍 Fatias Extras Selecionadas</div>
+                            <div style={{ display: "grid", gap: 10 }}>
+                              {extraSliceSelections.map((selection) => {
+                                const flavor = products.find((p) => p.id === selection.flavorId);
+                                const price = getExtraSlicePrice(selection.flavorId);
+                                return (
+                                  <div key={selection.flavorId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, background: "rgba(255,140,0,0.08)", border: "1px solid rgba(255,140,0,0.2)" }}>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 700, color: "white", fontSize: 13 }}>🍕 {selection.quantity}x {flavor?.nome || "Sabor"}</div>
+                                      <div style={{ color: "#FFB84D", fontSize: 12, marginTop: 3 }}>{formatBRL(price)} cada = <strong>{formatBRL(price * selection.quantity)}</strong></div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeExtraSliceSelection(selection.flavorId)}
+                                      style={{ width: 32, height: 32, borderRadius: 8, border: "2px solid rgba(255,100,100,0.4)", background: "rgba(255,100,100,0.1)", color: "#FF6464", fontSize: 16, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {selectedPizzaSize && pizzaBordas.length > 0 && (
