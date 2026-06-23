@@ -78,6 +78,9 @@ const PAGE_SIZE = 1000;
 const brl = (value: number) =>
   Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] || char));
+
 const shortBrl = (value: number) =>
   Number(value || 0).toLocaleString("pt-BR", {
     style: "currency",
@@ -152,6 +155,85 @@ type MesaComputed = {
   pessoas: number;
   identificacao: string;
 };
+
+function abrirJanelaImpressaoMesa(mesa: Mesa) {
+  const printWindow = window.open("", "_blank", "width=420,height=720");
+  if (!printWindow) {
+    toast.error("Permita pop-ups para emitir a nota da mesa.");
+    return null;
+  }
+
+  printWindow.document.write(`
+    <html>
+      <head><title>Mesa ${escapeHtml(mesa.numero)}</title></head>
+      <body style="font-family: Arial, sans-serif; padding: 24px">
+        <strong>Preparando nota da Mesa ${escapeHtml(mesa.numero)}...</strong>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  return printWindow;
+}
+
+function buildNotaMesaHtml(info: MesaComputed, formaPagamento?: string) {
+  const itensHtml = info.items.map((item) => `
+    <tr>
+      <td>
+        <strong>${Number(item.quantidade || 0)}x</strong> ${escapeHtml(item.produto_nome || "")}
+        ${item.observacoes ? `<div class="obs">Obs: ${escapeHtml(item.observacoes)}</div>` : ""}
+      </td>
+      <td class="right">${brl(Number(item.valor_total || 0))}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <html>
+      <head>
+        <title>Mesa ${escapeHtml(info.mesa.numero)}</title>
+        <style>
+          @page { size: 80mm auto; margin: 4mm; }
+          * { box-sizing: border-box; }
+          body { margin: 0; color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 11px; }
+          h1 { margin: 0 0 4px; text-align: center; font-size: 18px; letter-spacing: 1px; }
+          .pedido { text-align: center; font-weight: 800; font-size: 16px; }
+          .muted { text-align: center; color: #444; margin: 2px 0 8px; }
+          p { margin: 4px 0; }
+          hr { border: 0; border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          td { padding: 6px 0; border-bottom: 1px dashed #999; vertical-align: top; }
+          .right { text-align: right; white-space: nowrap; padding-left: 8px; }
+          .obs { margin-top: 2px; font-size: 10px; font-weight: 700; }
+          .totals { margin-top: 8px; }
+          .totals div { display: flex; justify-content: space-between; padding: 2px 0; }
+          .grand { border-top: 1px solid #000; margin-top: 4px; padding-top: 6px !important; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(APP_NAME)}</h1>
+        <div class="pedido">MESA ${escapeHtml(info.mesa.numero)}</div>
+        <div class="muted">${new Date().toLocaleString("pt-BR")}</div>
+        <hr />
+        <p><strong>Pessoas:</strong> ${info.pessoas}</p>
+        <p><strong>Aberta ha:</strong> ${fmtTempo(info.tempo)}</p>
+        ${info.identificacao ? `<p><strong>Identificacao:</strong> ${escapeHtml(info.identificacao)}</p>` : ""}
+        <table><tbody>${itensHtml || "<tr><td>Nenhum item encontrado</td><td></td></tr>"}</tbody></table>
+        <div class="totals">
+          <div><span>Subtotal</span><strong>${brl(info.total)}</strong></div>
+          <div><span>Servico (10%)</span><strong>${brl(info.service)}</strong></div>
+          <div class="grand"><span>Total</span><strong>${brl(info.finalTotal)}</strong></div>
+          ${formaPagamento ? `<div><span>Pagamento</span><strong>${escapeHtml(formaPagamento)}</strong></div>` : ""}
+        </div>
+        <script>setTimeout(function(){ window.print(); }, 200);</script>
+      </body>
+    </html>
+  `;
+}
+
+function emitirNotaMesa(printWindow: Window, info: MesaComputed, formaPagamento?: string) {
+  printWindow.document.open();
+  printWindow.document.write(buildNotaMesaHtml(info, formaPagamento));
+  printWindow.document.close();
+}
 
 export default function MesasView({ companyId }: { companyId: string }) {
   const [mesas, setMesas] = useState<Mesa[]>([]);
@@ -480,12 +562,21 @@ export default function MesasView({ companyId }: { companyId: string }) {
   const fecharMesa = async (mesa: Mesa, formaPagamento: string) => {
     const open = (mesaPedidos[mesa.id] || []).filter((p) => OPEN_STATUSES.includes(p.status));
     if (!open.length) return toast.error("Nenhuma comanda aberta nesta mesa");
+    const info = mesasComputed.find((item) => item.mesa.id === mesa.id);
+    if (!info) return toast.error("Nao foi possivel carregar a comanda da mesa");
+    const printWindow = abrirJanelaImpressaoMesa(mesa);
+    if (!printWindow) return;
+
     const { error } = await supabase.from("pedidos")
       .update({ status: "entregue", status_pagamento: "pago", forma_pagamento: formaPagamento })
       .in("id", open.map((p) => p.id));
-    if (error) return toast.error(`Erro ao fechar conta: ${error.message}`);
+    if (error) {
+      printWindow.close();
+      return toast.error(`Erro ao fechar conta: ${error.message}`);
+    }
 
     await supabase.from("mesas").update({ status: "livre" }).eq("id", mesa.id);
+    emitirNotaMesa(printWindow, info, formaPagamento);
     toast.success(`Conta da Mesa ${mesa.numero} fechada`);
     setShowFecharMesa(null);
     setSelectedMesaId(null);
@@ -525,16 +616,9 @@ export default function MesasView({ companyId }: { companyId: string }) {
   };
 
   const imprimirComanda = (info: MesaComputed) => {
-    const html = `
-      <html><head><title>Mesa ${info.mesa.numero}</title><style>
-      body{font-family:Arial,sans-serif;padding:24px} h1{font-size:20px} table{width:100%;border-collapse:collapse}td{padding:6px;border-bottom:1px solid #ddd}.total{font-size:18px;font-weight:700;text-align:right;margin-top:16px}
-      </style></head><body><h1>${APP_NAME} - Mesa ${info.mesa.numero}</h1><p>${info.pessoas} pessoa(s) - ${fmtTempo(info.tempo)}</p><table>${info.items
-        .map((item) => `<tr><td>${item.quantidade}x ${item.produto_nome}</td><td style="text-align:right">${brl(Number(item.valor_total || 0))}</td></tr>`)
-        .join("")}</table><div class="total">Total: ${brl(info.finalTotal)}</div><script>window.print();window.close();</script></body></html>`;
-    const printWindow = window.open("", "_blank", "width=420,height=640");
-    if (!printWindow) return toast.error("Permita pop-ups para imprimir");
-    printWindow.document.write(html);
-    printWindow.document.close();
+    const printWindow = abrirJanelaImpressaoMesa(info.mesa);
+    if (!printWindow) return;
+    emitirNotaMesa(printWindow, info);
   };
 
   if (loading) {

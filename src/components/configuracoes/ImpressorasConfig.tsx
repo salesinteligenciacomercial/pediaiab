@@ -31,6 +31,15 @@ type PrinterConfig = {
   show_logo: boolean;
   show_qrcode: boolean;
   footer_message: string;
+  order_copy_title?: string;
+  kitchen_copy_title?: string;
+  print_order_copy?: boolean;
+  print_kitchen_copy?: boolean;
+  show_customer_phone?: boolean;
+  show_delivery_address?: boolean;
+  show_payment?: boolean;
+  show_prices_on_kitchen?: boolean;
+  print_density?: number;
 };
 
 type Pedido = any;
@@ -104,6 +113,51 @@ function buildTesteCupom(store: StoreInfo, config: PrinterConfig) {
 }
 
 // Hook de Web Serial com detecção de portas
+function escapeHtml(text: string) {
+  return text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
+}
+
+function printTesteViaWindows(store: StoreInfo, config: PrinterConfig) {
+  const receiptText = generatePreviewText(store, config);
+  const width = config.paper_width === '58mm' ? '58mm' : '80mm';
+  const win = window.open('', '_blank', 'width=420,height=640');
+
+  if (!win) {
+    toast.error('O navegador bloqueou a janela de impressao.');
+    return;
+  }
+
+  win.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>Cupom de teste</title>
+        <style>
+          @page { size: ${width} auto; margin: 3mm; }
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            background: #fff;
+            color: #000;
+            font-family: "Courier New", monospace;
+            font-size: ${config.paper_width === '58mm' ? '10px' : '11px'};
+            line-height: 1.25;
+          }
+          pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+        </style>
+      </head>
+      <body><pre>${escapeHtml(receiptText)}</pre></body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
 function useSerialPrinter() {
   const portRef = useRef<any | null>(null);
   const writerRef = useRef<any | null>(null);
@@ -200,7 +254,23 @@ export default function ImpressorasConfig() {
   const [printing, setPrinting] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [store, setStore] = useState<StoreInfo>({ nome_loja: 'Rosh Pizzaria', endereco_loja: '', telefone_loja: '' });
-  const [config, setConfig] = useState<PrinterConfig>({ auto_print: false, print_copies: 1, paper_width: '80mm', show_logo: false, show_qrcode: false, footer_message: 'Obrigado pela preferencia! Volte sempre!' });
+  const [config, setConfig] = useState<PrinterConfig>({
+    auto_print: false,
+    print_copies: 2,
+    paper_width: '80mm',
+    show_logo: false,
+    show_qrcode: false,
+    footer_message: 'Obrigado pela preferencia! Volte sempre!',
+    order_copy_title: 'PEDIDO',
+    kitchen_copy_title: 'COZINHA',
+    print_order_copy: true,
+    print_kitchen_copy: true,
+    show_customer_phone: true,
+    show_delivery_address: true,
+    show_payment: true,
+    show_prices_on_kitchen: false,
+    print_density: 2,
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -310,13 +380,13 @@ export default function ImpressorasConfig() {
             </div>
           ) : (
             <div className="text-xs text-neutral-500 p-3 bg-neutral-50 rounded-md">
-              Nenhuma porta detectada. Conecte a impressora via USB e clique em "Detectar".
+              Nenhuma porta serial detectada. Se a impressora aparece no Windows como USB/TMUSB, use "Teste pelo Windows" ou instale o driver de porta COM/serial do fabricante.
             </div>
           )}
         </div>
 
         {/* Botões de Ação */}
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-wrap gap-3 pt-2">
           {status !== 'connected' ? (
             <>
               <Button 
@@ -336,9 +406,13 @@ export default function ImpressorasConfig() {
             </>
           )}
           <Button variant="outline" onClick={async () => { setPrinting(true); try { const bytes = buildTesteCupom(store, config); const ok = await print(bytes); if (ok) toast.success('Cupom de teste impresso!'); } finally { setPrinting(false); } }} disabled={status !== 'connected' || printing} className="gap-2">{printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Imprimir teste</Button>
+          <Button variant="outline" onClick={() => printTesteViaWindows(store, config)} className="gap-2">
+            <Printer className="h-4 w-4" />
+            Teste pelo Windows
+          </Button>
         </div>
         
-        <div className="text-xs text-neutral-400 space-y-1"><p>• Conecte a impressora Bematech/Epson via USB</p><p>• Clique em "Detectar" para encontrar a porta</p><p>• Selecione a porta e clique em "Conectar impressora"</p><p>• Certifique-se de que o driver está instalado no Windows</p></div>
+        <div className="text-xs text-neutral-400 space-y-1"><p>• Web Serial detecta apenas impressoras expostas como porta COM/serial.</p><p>• Impressoras instaladas como USB/TMUSB aparecem no Windows, mas não aparecem no pop-up serial do Chrome.</p><p>• Para TMUSB/USB, use "Teste pelo Windows" e selecione a impressora no diálogo de impressão.</p><p>• Para conexão direta sem diálogo, instale o driver Virtual COM/Serial do fabricante.</p></div>
       </div>
 
       <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
@@ -347,7 +421,67 @@ export default function ImpressorasConfig() {
         {config.auto_print && status !== 'connected' && (<div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700"><AlertTriangle className="h-4 w-4 flex-shrink-0" />Conecte a impressora para ativar a impressão automática</div>)}
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-5">
+      <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-5 shadow-sm">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Settings2 className="h-5 w-5 text-neutral-500" />
+            <h3 className="font-semibold text-neutral-950">Modelo da nota</h3>
+          </div>
+          <Badge variant="outline" className="w-fit border-orange-200 bg-orange-50 text-orange-700">Pedido + cozinha</Badge>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-neutral-700">Largura do papel</Label>
+            <Select value={config.paper_width} onValueChange={(v) => setConfig((c) => ({ ...c, paper_width: v as any }))}>
+              <SelectTrigger className="border-neutral-300 bg-neutral-950 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="80mm">80mm (padrão restaurante)</SelectItem><SelectItem value="58mm">58mm (compacta)</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-neutral-700">Densidade da impressão</Label>
+            <Select value={String(config.print_density || 2)} onValueChange={(v) => setConfig((c) => ({ ...c, print_density: Number(v) }))}>
+              <SelectTrigger className="border-neutral-300 bg-neutral-950 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="1">Compacta</SelectItem><SelectItem value="2">Padrão</SelectItem><SelectItem value="3">Grande</SelectItem></SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div><div className="text-sm font-semibold text-neutral-900">Nota do pedido</div><div className="text-xs text-neutral-500">Via com cliente, entrega e pagamento.</div></div>
+              <Switch checked={config.print_order_copy !== false} onCheckedChange={(v) => setConfig((c) => ({ ...c, print_order_copy: v }))} />
+            </div>
+            <div className="space-y-1.5"><Label className="text-xs font-medium text-neutral-600">Título da via</Label><input value={config.order_copy_title || ''} onChange={(e) => setConfig((c) => ({ ...c, order_copy_title: e.target.value.toUpperCase() }))} maxLength={24} className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-950 outline-none focus:ring-2 focus:ring-orange-200" /></div>
+            <label className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm text-neutral-700"><span>Telefone do cliente</span><Switch checked={config.show_customer_phone !== false} onCheckedChange={(v) => setConfig((c) => ({ ...c, show_customer_phone: v }))} /></label>
+            <label className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm text-neutral-700"><span>Endereço de entrega</span><Switch checked={config.show_delivery_address !== false} onCheckedChange={(v) => setConfig((c) => ({ ...c, show_delivery_address: v }))} /></label>
+            <label className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm text-neutral-700"><span>Pagamento e totais</span><Switch checked={config.show_payment !== false} onCheckedChange={(v) => setConfig((c) => ({ ...c, show_payment: v }))} /></label>
+          </div>
+
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div><div className="text-sm font-semibold text-neutral-900">Via da cozinha</div><div className="text-xs text-neutral-500">Via limpa para preparo dos itens.</div></div>
+              <Switch checked={config.print_kitchen_copy !== false} onCheckedChange={(v) => setConfig((c) => ({ ...c, print_kitchen_copy: v }))} />
+            </div>
+            <div className="space-y-1.5"><Label className="text-xs font-medium text-neutral-600">Título da via</Label><input value={config.kitchen_copy_title || ''} onChange={(e) => setConfig((c) => ({ ...c, kitchen_copy_title: e.target.value.toUpperCase() }))} maxLength={24} className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-950 outline-none focus:ring-2 focus:ring-orange-200" /></div>
+            <label className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm text-neutral-700"><span>Mostrar preços na cozinha</span><Switch checked={!!config.show_prices_on_kitchen} onCheckedChange={(v) => setConfig((c) => ({ ...c, show_prices_on_kitchen: v }))} /></label>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium text-neutral-700">Mensagem de rodapé</Label>
+          <input type="text" value={config.footer_message} onChange={(e) => setConfig((c) => ({ ...c, footer_message: e.target.value }))} maxLength={80} placeholder="Ex: Obrigado pela preferencia! Volte sempre!" className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-950 outline-none focus:ring-2 focus:ring-orange-200" />
+          <p className="text-xs text-neutral-500">{config.footer_message.length}/80 caracteres</p>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-1.5"><Label className="text-sm font-medium text-neutral-700">Preview da nota do pedido</Label><div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4 font-mono text-[11px] text-neutral-800 leading-5 whitespace-pre-wrap overflow-x-auto" style={{ maxWidth: config.paper_width === '58mm' ? '280px' : '380px' }}>{generatePreviewText(store, config, 'pedido')}</div></div>
+          <div className="space-y-1.5"><Label className="text-sm font-medium text-neutral-700">Preview da cozinha</Label><div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4 font-mono text-[11px] text-neutral-800 leading-5 whitespace-pre-wrap overflow-x-auto" style={{ maxWidth: config.paper_width === '58mm' ? '280px' : '380px' }}>{generatePreviewText(store, config, 'cozinha')}</div></div>
+        </div>
+      </div>
+
+      <div className="hidden">
         <div className="flex items-center gap-2"><Settings2 className="h-5 w-5 text-neutral-500" /><h3 className="font-semibold text-neutral-900">Configurações do cupom</h3></div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5"><Label className="text-sm">Largura do papel</Label><Select value={config.paper_width} onValueChange={(v) => setConfig((c) => ({ ...c, paper_width: v as any }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="80mm">80mm (padrão restaurante)</SelectItem><SelectItem value="58mm">58mm (compacta)</SelectItem></SelectContent></Select></div>
@@ -362,12 +496,42 @@ export default function ImpressorasConfig() {
   );
 }
 
-function generatePreviewText(store: StoreInfo, config: PrinterConfig): string {
+function generatePreviewText(store: StoreInfo, config: PrinterConfig, copy: 'pedido' | 'cozinha' = 'pedido'): string {
   const COLS = config.paper_width === '58mm' ? 32 : 48;
   const sep = '-'.repeat(COLS);
   const sep2 = '='.repeat(COLS);
   const center = (text: string) => { const pad = Math.max(0, Math.floor((COLS - text.length) / 2)); return ' '.repeat(pad) + text; };
   const c2 = (l: string, r: string) => { const max = COLS - r.length; const left = l.length > max ? l.slice(0, max - 1) + '.' : l; return left + ' '.repeat(Math.max(0, COLS - left.length - r.length)) + r; };
-  const lines: string[] = [ center(store.nome_loja.toUpperCase()), store.endereco_loja ? center(store.endereco_loja) : '', store.telefone_loja ? center(`Tel: ${store.telefone_loja}`) : '', '', sep, 'PEDIDO #TESTE-001', new Date().toLocaleString('pt-BR'), 'ENTREGA', '', 'CLIENTE', 'Cliente Teste', '(87) 99999-9999', 'Rua Exemplo, 123 - Centro', sep, c2('ITEM', 'TOTAL'), sep, c2('1x Pizza Grande Frango', 'R$ 45,00'), c2('1x Coca-Cola 2L', 'R$ 10,00'), sep, ' '.repeat(COLS - 'Subtotal: R$ 55,00'.length) + 'Subtotal: R$ 55,00', ' '.repeat(COLS - 'Taxa entrega: R$ 5,00'.length) + 'Taxa entrega: R$ 5,00', ' '.repeat(COLS - 'TOTAL: R$ 60,00'.length) + 'TOTAL: R$ 60,00', '', 'Pagamento: PIX', sep2, center(config.footer_message || 'Obrigado! Volte sempre!'), '' ].filter(l => l !== null);
+  const title = copy === 'cozinha' ? (config.kitchen_copy_title || 'COZINHA') : (config.order_copy_title || 'PEDIDO');
+  const showPrices = copy === 'pedido' || !!config.show_prices_on_kitchen;
+  const lines: string[] = [
+    center(store.nome_loja.toUpperCase()),
+    store.endereco_loja ? center(store.endereco_loja) : '',
+    store.telefone_loja ? center(`Tel: ${store.telefone_loja}`) : '',
+    '',
+    sep,
+    center(title.toUpperCase()),
+    'Pedido #TESTE-001',
+    new Date().toLocaleString('pt-BR'),
+    '',
+    'CLIENTE',
+    'Cliente Teste',
+    copy === 'pedido' && config.show_customer_phone !== false ? '(87) 99999-9999' : '',
+    copy === 'pedido' && config.show_delivery_address !== false ? 'Rua Exemplo, 123 - Centro' : '',
+    sep,
+    showPrices ? c2('ITEM', 'TOTAL') : 'ITEM',
+    sep,
+    showPrices ? c2('1x Pizza Grande Frango', 'R$ 45,00') : '1x Pizza Grande Frango',
+    showPrices ? c2('1x Coca-Cola 2L', 'R$ 10,00') : '1x Coca-Cola 2L',
+    'Obs: Sem cebola',
+    sep,
+    copy === 'pedido' && config.show_payment !== false ? ' '.repeat(COLS - 'Subtotal: R$ 55,00'.length) + 'Subtotal: R$ 55,00' : '',
+    copy === 'pedido' && config.show_payment !== false ? ' '.repeat(COLS - 'Taxa entrega: R$ 5,00'.length) + 'Taxa entrega: R$ 5,00' : '',
+    copy === 'pedido' && config.show_payment !== false ? ' '.repeat(COLS - 'TOTAL: R$ 60,00'.length) + 'TOTAL: R$ 60,00' : '',
+    copy === 'pedido' && config.show_payment !== false ? 'Pagamento: PIX' : '',
+    sep2,
+    center(config.footer_message || 'Obrigado! Volte sempre!'),
+    '',
+  ].filter(Boolean);
   return lines.join('\n');
 }

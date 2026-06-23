@@ -1,0 +1,11 @@
+warnings
+  One of the glob patterns doesn't match any files. Please remove or fix the following: {
+  "globDirectory": "C:/Users/Douglas/Documents/eu/pediaiab/dev-dist",
+  "globPattern": "**/*.{js,css,html,ico,png,svg,webp,woff2}",
+  "globIgnores": [
+    "**/node_modules/**/*",
+    "sw.js",
+    "workbox-*.js"
+  ]
+}
+

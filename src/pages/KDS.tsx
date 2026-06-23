@@ -18,7 +18,11 @@ type Pedido = {
   tipo_atendimento: string;
   mesa_id: string | null;
   status: PedidoStatus;
+  subtotal?: number | null;
   total: number;
+  desconto?: number | null;
+  taxa_entrega?: number | null;
+  forma_pagamento?: string | null;
   observacoes: string | null;
   created_at: string;
   entregador_id?: string | null;
@@ -32,7 +36,42 @@ type PedidoItem = {
   pedido_id: string;
   produto_nome: string;
   quantidade: number;
+  valor_unitario?: number | null;
+  valor_total?: number | null;
   observacoes: string | null;
+};
+
+type PedidoEndereco = {
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  complemento: string | null;
+  referencia: string | null;
+  cidade: string | null;
+};
+
+type NotaConfig = {
+  order_copy_title?: string;
+  kitchen_copy_title?: string;
+  print_order_copy?: boolean;
+  print_kitchen_copy?: boolean;
+  show_customer_phone?: boolean;
+  show_delivery_address?: boolean;
+  show_payment?: boolean;
+  show_prices_on_kitchen?: boolean;
+  footer_message?: string;
+};
+
+const DEFAULT_NOTA_CONFIG: NotaConfig = {
+  order_copy_title: "PEDIDO",
+  kitchen_copy_title: "COZINHA",
+  print_order_copy: true,
+  print_kitchen_copy: true,
+  show_customer_phone: true,
+  show_delivery_address: true,
+  show_payment: true,
+  show_prices_on_kitchen: false,
+  footer_message: "Obrigado pela preferencia! Volte sempre!",
 };
 
 type Entregador = {
@@ -94,6 +133,155 @@ function getUrgency(createdAt: string, status: PedidoStatus): "normal" | "warnin
 }
 
 // ─── PedidoCard Component ─────────────────────────────────────────────────────
+
+function brl(value: number | null | undefined): string {
+  return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] || char));
+}
+
+function formatPedidoDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("pt-BR");
+  } catch {
+    return iso;
+  }
+}
+
+function formatEndereco(endereco: PedidoEndereco | null): string[] {
+  if (!endereco) return [];
+  const primeiraLinha = [endereco.logradouro, endereco.numero].filter(Boolean).join(", ");
+  const segundaLinha = [endereco.bairro, endereco.cidade].filter(Boolean).join(" - ");
+  return [primeiraLinha, endereco.complemento, segundaLinha, endereco.referencia ? `Ref: ${endereco.referencia}` : ""].filter(Boolean) as string[];
+}
+
+function abrirJanelaVia(pedido: Pedido, titulo: string): Window | null {
+  const printWindow = window.open("", "_blank", "width=420,height=720");
+  if (!printWindow) return null;
+
+  printWindow.document.write(`
+    <html>
+      <head><title>${escapeHtml(titulo)} ${escapeHtml(pedido.codigo_pedido)}</title></head>
+      <body style="font-family: Arial, sans-serif; padding: 24px">
+        <strong>Preparando ${escapeHtml(titulo.toLowerCase())} do pedido ${escapeHtml(pedido.codigo_pedido)}...</strong>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  return printWindow;
+}
+
+function abrirJanelasImpressaoAceite(pedido: Pedido, notaConfig: NotaConfig): { pedido?: Window; cozinha?: Window } | null {
+  const shouldPrintPedido = notaConfig.print_order_copy !== false;
+  const shouldPrintCozinha = notaConfig.print_kitchen_copy !== false;
+  const pedidoWindow = shouldPrintPedido ? abrirJanelaVia(pedido, notaConfig.order_copy_title || "PEDIDO") : undefined;
+  const cozinhaWindow = shouldPrintCozinha ? abrirJanelaVia(pedido, notaConfig.kitchen_copy_title || "COZINHA") : undefined;
+
+  if ((shouldPrintPedido && !pedidoWindow) || (shouldPrintCozinha && !cozinhaWindow)) {
+    pedidoWindow?.close();
+    cozinhaWindow?.close();
+    toast.error("Permita pop-ups para emitir as vias configuradas da nota.");
+    return null;
+  }
+
+  return { pedido: pedidoWindow, cozinha: cozinhaWindow };
+}
+
+function buildViaHtml(kind: "pedido" | "cozinha", titulo: string, pedido: Pedido, itens: PedidoItem[], endereco: PedidoEndereco | null, notaConfig: NotaConfig): string {
+  const enderecoLines = formatEndereco(endereco);
+  const showPedido = kind === "pedido";
+  const showPrice = showPedido || !!notaConfig.show_prices_on_kitchen;
+  const itensHtml = itens.map((item) => `
+    <tr>
+      <td>
+        <strong>${Number(item.quantidade || 0)}x</strong> ${escapeHtml(item.produto_nome || "")}
+        ${item.observacoes ? `<div class="obs">Obs: ${escapeHtml(item.observacoes)}</div>` : ""}
+      </td>
+      ${showPrice ? `<td class="right">${brl(item.valor_total)}</td>` : ""}
+    </tr>
+  `).join("");
+
+  return `
+    <section class="via">
+      <h1>${escapeHtml(titulo)}</h1>
+      <div class="pedido">#${escapeHtml(pedido.codigo_pedido)}</div>
+      <div class="muted">${formatPedidoDate(pedido.created_at)}</div>
+      <hr />
+      <p><strong>Cliente:</strong> ${escapeHtml(pedido.cliente_nome || "")}</p>
+      ${pedido.cliente_telefone && showPedido && notaConfig.show_customer_phone !== false ? `<p><strong>Telefone:</strong> ${escapeHtml(pedido.cliente_telefone)}</p>` : ""}
+      <p><strong>Tipo:</strong> ${escapeHtml(pedido.tipo_atendimento || "")}</p>
+      ${showPedido && notaConfig.show_delivery_address !== false && enderecoLines.length ? `<div class="box"><strong>Endereco</strong>${enderecoLines.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}</div>` : ""}
+      ${pedido.observacoes ? `<div class="box"><strong>Obs. pedido</strong><div>${escapeHtml(pedido.observacoes)}</div></div>` : ""}
+      <table>
+        <tbody>${itensHtml || `<tr><td>Nenhum item encontrado</td>${showPrice ? "<td></td>" : ""}</tr>`}</tbody>
+      </table>
+      ${showPedido && notaConfig.show_payment !== false ? `
+        <div class="totals">
+          <div><span>Subtotal</span><strong>${brl(pedido.subtotal)}</strong></div>
+          <div><span>Taxa entrega</span><strong>${brl(pedido.taxa_entrega)}</strong></div>
+          <div><span>Desconto</span><strong>${brl(pedido.desconto)}</strong></div>
+          <div class="grand"><span>Total</span><strong>${brl(pedido.total)}</strong></div>
+          ${pedido.forma_pagamento ? `<div><span>Pagamento</span><strong>${escapeHtml(pedido.forma_pagamento)}</strong></div>` : ""}
+        </div>
+      ` : ""}
+      ${notaConfig.footer_message ? `<hr /><div class="muted">${escapeHtml(notaConfig.footer_message)}</div>` : ""}
+    </section>
+  `;
+}
+
+function escreverViaPedido(printWindow: Window, kind: "pedido" | "cozinha", titulo: string, pedido: Pedido, itens: PedidoItem[], endereco: PedidoEndereco | null, notaConfig: NotaConfig) {
+  printWindow.document.open();
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>${escapeHtml(titulo)} ${escapeHtml(pedido.codigo_pedido)}</title>
+        <style>
+          @page { size: 80mm auto; margin: 4mm; }
+          * { box-sizing: border-box; }
+          body { margin: 0; color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 11px; }
+          .via { padding: 0 0 8px; }
+          h1 { margin: 0 0 4px; text-align: center; font-size: 18px; letter-spacing: 1px; }
+          .pedido { text-align: center; font-weight: 800; font-size: 16px; }
+          .muted { text-align: center; color: #444; margin: 2px 0 8px; }
+          p { margin: 4px 0; }
+          hr { border: 0; border-top: 1px dashed #000; margin: 8px 0; }
+          .box { border: 1px dashed #000; padding: 6px; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          td { padding: 6px 0; border-bottom: 1px dashed #999; vertical-align: top; }
+          .right { text-align: right; white-space: nowrap; padding-left: 8px; }
+          .obs { margin-top: 2px; font-size: 10px; font-weight: 700; }
+          .totals { margin-top: 8px; }
+          .totals div { display: flex; justify-content: space-between; padding: 2px 0; }
+          .grand { border-top: 1px solid #000; margin-top: 4px; padding-top: 6px !important; font-size: 14px; }
+        </style>
+      </head>
+      <body>${buildViaHtml(kind, titulo, pedido, itens, endereco, notaConfig)}<script>setTimeout(function(){ window.print(); }, 200);</script></body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+async function emitirViasAceite(printWindows: { pedido?: Window; cozinha?: Window } | null, pedido: Pedido, notaConfig: NotaConfig) {
+  if (!printWindows) return;
+
+  const [{ data: itens }, { data: endereco }] = await Promise.all([
+    (supabase.from("pedido_itens" as any) as any)
+      .select("id, pedido_id, produto_nome, quantidade, valor_unitario, valor_total, observacoes")
+      .eq("pedido_id", pedido.id),
+    (supabase.from("pedido_enderecos" as any) as any)
+      .select("logradouro, numero, bairro, complemento, referencia, cidade")
+      .eq("pedido_id", pedido.id)
+      .maybeSingle(),
+  ]);
+
+  const pedidoItens = (itens || []) as PedidoItem[];
+  const pedidoEndereco = endereco as PedidoEndereco | null;
+  if (printWindows.pedido) escreverViaPedido(printWindows.pedido, "pedido", notaConfig.order_copy_title || "PEDIDO", pedido, pedidoItens, pedidoEndereco, notaConfig);
+  if (printWindows.cozinha) escreverViaPedido(printWindows.cozinha, "cozinha", notaConfig.kitchen_copy_title || "COZINHA", pedido, pedidoItens, pedidoEndereco, notaConfig);
+  toast.success(`Nota do pedido e via da cozinha emitidas para #${pedido.codigo_pedido}`);
+}
 
 async function darBaixaEstoquePedido(pedidoId: string, companyId: string) {
   const { data: itens } = await (supabase.from("pedido_itens" as any) as any)
@@ -598,6 +786,7 @@ export default function KDS() {
   const [editObservations, setEditObservations] = useState<string>("");
   const [isSavingOrderEdit, setIsSavingOrderEdit] = useState(false);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [notaConfig, setNotaConfig] = useState<NotaConfig>(DEFAULT_NOTA_CONFIG);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("kds_sound_enabled") !== "false";
@@ -709,6 +898,20 @@ export default function KDS() {
     }
 
     if (data) setProdutos(data);
+  }, []);
+
+  const loadNotaConfig = useCallback(async (cid: string) => {
+    const { data, error } = await (supabase.from("loja_configuracoes" as any) as any)
+      .select("impressora_config")
+      .eq("company_id", cid)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[KDS] erro ao carregar configuracao de nota", error);
+      return;
+    }
+
+    setNotaConfig({ ...DEFAULT_NOTA_CONFIG, ...((data as any)?.impressora_config || {}) });
   }, []);
 
   const registrarItemPedido = async (
@@ -872,10 +1075,10 @@ export default function KDS() {
       const { data: cid } = await supabase.rpc("get_my_company_id");
       if (!cid) return;
       setCompanyId(cid);
-      await Promise.all([load(cid), loadEntregadores(cid), loadProdutos(cid)]);
+      await Promise.all([load(cid), loadEntregadores(cid), loadProdutos(cid), loadNotaConfig(cid)]);
       setLoading(false);
     })();
-  }, [load, loadEntregadores, loadProdutos]);
+  }, [load, loadEntregadores, loadProdutos, loadNotaConfig]);
 
   // Realtime subscription
   useEffect(() => {
@@ -972,6 +1175,9 @@ export default function KDS() {
     const idx = flow.indexOf(pedido.status);
     if (idx < 0 || idx >= flow.length - 1) return;
     const nextStatus = flow[idx + 1];
+    const shouldEmitirVias = pedido.status === "novo" && nextStatus === "aceito";
+    const printWindows = shouldEmitirVias ? abrirJanelasImpressaoAceite(pedido, notaConfig) : null;
+    if (shouldEmitirVias && !printWindows) return;
 
     // Optimistic update
     setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, status: nextStatus } : p)));
@@ -985,6 +1191,8 @@ export default function KDS() {
       toast.error(`Erro ao avançar: ${error.message}`);
       // Revert
       setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, status: pedido.status } : p)));
+      printWindows?.pedido?.close();
+      printWindows?.cozinha?.close();
       return;
     }
 
@@ -994,6 +1202,15 @@ export default function KDS() {
       tipo: "status_changed",
       descricao: `KDS: status alterado para ${nextStatus}`,
     });
+
+    if (shouldEmitirVias) {
+      try {
+        await emitirViasAceite(printWindows, { ...pedido, status: nextStatus }, notaConfig);
+      } catch (printErr) {
+        console.error("[KDS] erro ao emitir vias do pedido", printErr);
+        toast.error("Pedido aceito, mas houve erro ao emitir as vias");
+      }
+    }
 
     // 📲 Notificar cliente via WhatsApp sobre avanço de status
     if (nextStatus === "entregue") {
@@ -1034,7 +1251,7 @@ export default function KDS() {
     } catch (msgErr) {
       console.error("[KDS] erro ao notificar cliente:", msgErr);
     }
-  }, []);
+  }, [notaConfig]);
 
   const pedidosByStatus = KDS_STATUSES.reduce((acc, s) => {
     acc[s] = pedidos.filter((p) => p.status === s);
