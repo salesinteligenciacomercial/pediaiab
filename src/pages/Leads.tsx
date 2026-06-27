@@ -410,15 +410,16 @@ title: "Clientes excluídos",
   const carregarCompanyIdELeads = async () => {
     try {
       const {
-        data: auth
-      } = await supabase.auth.getUser();
-      const userId = auth?.user?.id;
+        data: { session }
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
       if (!userId) {
         toast({
           variant: "destructive",
           title: "Erro de autenticação",
           description: "Você precisa estar autenticado para gerenciar clientes."
         });
+        navigate("/auth");
         return;
       }
       const {

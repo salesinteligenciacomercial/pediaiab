@@ -98,6 +98,7 @@ type ComboItem = {
   nome: string;
   quantidade: number;
   obrigatorio: boolean;
+  tamanhoId?: string;
 };
 
 type Movimentacao = {
@@ -292,6 +293,8 @@ export default function Produtos() {
   const [comboProductId, setComboProductId] = useState<string>('');
   const [comboProductQty, setComboProductQty] = useState('1');
   const [comboProductObrigatorio, setComboProductObrigatorio] = useState(true);
+  const [comboProductSizeId, setComboProductSizeId] = useState<string>('');
+  const [pizzaSizes, setPizzaSizes] = useState<Array<{ id: string; nome: string }>>([]);
 
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
@@ -529,6 +532,13 @@ export default function Produtos() {
       .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [produtos, editing?.id, comboCategory, comboSubcategory]);
 
+  const isPizzaProduct = useCallback((produto?: Produto | null) => {
+    if (!produto) return false;
+    const nome = produto.nome?.toLowerCase() || '';
+    const categoria = produto.categoria?.toLowerCase() || '';
+    return nome.includes('pizza') || categoria.includes('pizza') || !!produto.permite_meio_a_meio;
+  }, []);
+
   useEffect(() => {
     (async () => {
       const { data: cid, error } = await supabase.rpc('get_my_company_id');
@@ -562,6 +572,21 @@ export default function Produtos() {
   useEffect(() => {
     if (companyId && tipoTab === 'lucro') loadLucroPorProduto(companyId);
   }, [companyId, tipoTab, loadLucroPorProduto]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    (async () => {
+      const { data, error } = await (supabase.from('pizza_tamanhos' as any) as any)
+        .select('id,nome')
+        .eq('company_id', companyId)
+        .eq('ativo', true)
+        .order('ordem');
+
+      if (!error && Array.isArray(data)) {
+        setPizzaSizes(data.map((size: any) => ({ id: size.id, nome: size.nome })));
+      }
+    })();
+  }, [companyId]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -606,6 +631,7 @@ export default function Produtos() {
     setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
+    setComboProductSizeId('');
     setImageFile(null);
     setImagePreview('');
     setDialogOpen(true);
@@ -654,6 +680,7 @@ export default function Produtos() {
     setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
+    setComboProductSizeId('');
     setImageFile(null);
     setImagePreview(produto.imagem_url ?? '');
     setDialogOpen(true);
@@ -688,6 +715,7 @@ export default function Produtos() {
       nome: selected.nome,
       quantidade,
       obrigatorio: comboProductObrigatorio,
+      tamanhoId: comboProductSizeId && isPizzaProduct(selected) ? comboProductSizeId : undefined,
     };
     setFormData((prev) => ({
       ...prev,
@@ -696,7 +724,8 @@ export default function Produtos() {
     setComboProductId('');
     setComboProductQty('1');
     setComboProductObrigatorio(true);
-  }, [comboProductId, comboProductQty, comboProductObrigatorio, formData.combo_items, comboProductOptions]);
+    setComboProductSizeId('');
+  }, [comboProductId, comboProductQty, comboProductObrigatorio, comboProductSizeId, formData.combo_items, comboProductOptions]);
 
   const handleAddComboCategory = useCallback(() => {
     if (!comboCategory) {
@@ -709,7 +738,7 @@ export default function Produtos() {
     ));
 
     if (!selecionados.length) {
-      toast.error('Todos os itens dessa categoria já foram adicionados');
+      toast.error('Todos os itens desse filtro já foram adicionados');
       return;
     }
 
@@ -720,6 +749,7 @@ export default function Produtos() {
       nome: produto.nome,
       quantidade,
       obrigatorio: comboProductObrigatorio,
+      tamanhoId: isPizzaProduct(produto) ? comboProductSizeId || undefined : undefined,
     }));
 
     setFormData((prev) => ({
@@ -727,8 +757,9 @@ export default function Produtos() {
       combo_items: [...prev.combo_items, ...novosItens],
     }));
     setComboProductId('');
+    setComboProductSizeId('');
     toast.success(`${novosItens.length} itens adicionados ao combo`);
-  }, [comboCategory, comboProductOptions, comboProductQty, comboProductObrigatorio, formData.combo_items]);
+  }, [comboCategory, comboProductOptions, comboProductQty, comboProductObrigatorio, comboProductSizeId, formData.combo_items]);
 
   const handleRemoveComboItem = useCallback((itemId: string) => {
     setFormData((prev) => ({
@@ -902,6 +933,7 @@ export default function Produtos() {
       fornecedor_nome: formData.fornecedor_nome.trim() || null,
       fornecedor_contato: formData.fornecedor_contato.trim() || null,
       codigo_interno: formData.codigo_interno.trim() || null,
+      combo_items: formData.tipo_produto === 'combo' ? formData.combo_items : [],
       combo_min_selecoes: formData.tipo_produto === 'combo' ? (Number(formData.combo_min_selecoes) || null) : null,
       combo_max_selecoes: formData.tipo_produto === 'combo' ? (Number(formData.combo_max_selecoes) || null) : null,
       promocao_ativa: formData.promocao_ativa,
@@ -1964,6 +1996,23 @@ export default function Produtos() {
                         </select>
                       </div>
                       <div>
+                        <Label htmlFor="comboTamanho">Tamanho</Label>
+                        <select
+                          id="comboTamanho"
+                          value={comboProductSizeId}
+                          onChange={(event) => setComboProductSizeId(event.target.value)}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}
+                        >
+                          <option value="">Nenhum</option>
+                          {pizzaSizes.map((size) => (
+                            <option key={size.id} value={size.id}>{size.nome}</option>
+                          ))}
+                        </select>
+                        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+                          Selecione apenas para pizzas; será aplicado aos itens adicionados.
+                        </div>
+                      </div>
+                      <div>
                         <Label htmlFor="comboQuantidade">Qtd.</Label>
                         <Input id="comboQuantidade" type="number" min="1" value={comboProductQty} onChange={(event) => setComboProductQty(event.target.value)} />
                       </div>
@@ -1989,7 +2038,9 @@ export default function Produtos() {
                         {formData.combo_items.map((item) => (
                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 14, background: 'var(--surface)' }}>
                             <div>
-                              <div style={{ fontWeight: 600 }}>{item.nome}</div>
+                              <div style={{ fontWeight: 600 }}>
+                                {item.nome}{item.tamanhoId ? ` (${pizzaSizes.find((size) => size.id === item.tamanhoId)?.nome || item.tamanhoId})` : ''}
+                              </div>
                               <div style={{ fontSize: 12, color: 'var(--text2)' }}>{item.quantidade}x • {item.obrigatorio ? 'Obrigatório' : 'Opcional'}</div>
                             </div>
                             <Button variant="outline" size="sm" onClick={() => handleRemoveComboItem(item.id)}>Remover</Button>

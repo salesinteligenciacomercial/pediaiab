@@ -17,6 +17,7 @@ type Product = {
   imagem_url?: string | null;
   destaque_cardapio?: boolean;
   permite_meio_a_meio?: boolean;
+  tipo_produto?: string | null;
 };
 
 type CartItem = {
@@ -266,7 +267,36 @@ export function PedidoChatModal({
     if (!product) return false;
     const nome = (product.nome || "").toLowerCase();
     const categoria = (product.categoria || "").toLowerCase();
-    return !!product.permite_meio_a_meio || nome.includes("pizza") || categoria.includes("pizza");
+    const descricao = (product.descricao || "").toLowerCase();
+    const descricaoCurta = (product.descricao_curta || "").toLowerCase();
+    return !!product.permite_meio_a_meio ||
+      product.tipo_produto === "pizza" ||
+      nome.includes("pizza") ||
+      categoria.includes("pizza") ||
+      descricao.includes("pizza") ||
+      descricaoCurta.includes("pizza");
+  };
+
+  const isPromotionActive = (product: Product) => {
+    if (!product.promocao_ativa) return false;
+    const promoPrice = Number((product as any).promocao_preco || 0);
+    if (promoPrice <= 0 && !(product as any).promocao_nota) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = (product as any).promocao_inicio ? new Date(`${(product as any).promocao_inicio}T00:00:00`) : null;
+    const end = (product as any).promocao_fim ? new Date(`${(product as any).promocao_fim}T23:59:59`) : null;
+
+    if (start && today < start) return false;
+    if (end && today > end) return false;
+    return true;
+  };
+
+  const displayPrice = (product: Product) => {
+    if (isPromotionActive(product) && Number((product as any).promocao_preco || 0) > 0) {
+      return Number((product as any).promocao_preco);
+    }
+    return Number(product.preco_sugerido || 0);
   };
 
   const selectedPizzaSize = selectedSize
@@ -330,13 +360,14 @@ export function PedidoChatModal({
       setSelectedBordaId("");
       return;
     }
-    // Não-pizza: adiciona direto
+    // Não-pizza: adiciona direto com preço promocional quando aplicável
+    const productToAdd = { ...product, preco_sugerido: displayPrice(product) };
     setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id && !i.observations);
+      const existing = prev.find((i) => i.product.id === productToAdd.id && !i.observations);
       if (existing) {
         return prev.map((i) => (i === existing ? { ...i, quantity: i.quantity + 1 } : i));
       }
-      return [...prev, { product, quantity: 1, observations: "" }];
+      return [...prev, { product: productToAdd, quantity: 1, observations: "" }];
     });
     toast.success(`${product.nome} adicionado`);
   };
@@ -357,7 +388,8 @@ export function PedidoChatModal({
       const flavorObjs = validExtras
         .map((id) => products.find((p) => p.id === id))
         .filter((p): p is Product => !!p);
-      const basePrice = computePizzaPrice(selectedProduct, validExtras, selectedPizzaSize.multiplier);
+      const pizzaProduct = { ...selectedProduct, preco_sugerido: displayPrice(selectedProduct) };
+      const basePrice = computePizzaPrice(pizzaProduct, validExtras, selectedPizzaSize.multiplier);
       const bordaPrice =
         selectedBorda && selectedPizzaSize.tamanhoId
           ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId)
@@ -447,14 +479,15 @@ export function PedidoChatModal({
   const finalModalPrice = (() => {
     if (!selectedProduct) return 0;
     if (isPizzaProduct(selectedProduct) && selectedPizzaSize) {
-      const base = computePizzaPrice(selectedProduct, selectedExtraIds, selectedPizzaSize.multiplier);
+      const pizzaProduct = { ...selectedProduct, preco_sugerido: displayPrice(selectedProduct) };
+      const base = computePizzaPrice(pizzaProduct, selectedExtraIds, selectedPizzaSize.multiplier);
       const bordaPrice =
         selectedBorda && selectedPizzaSize.tamanhoId
           ? getBordaPriceForSize(selectedBorda.id, selectedPizzaSize.tamanhoId)
           : 0;
       return Math.round((base + bordaPrice) * 100) / 100;
     }
-    return Number(selectedProduct.preco_sugerido || 0);
+    return displayPrice(selectedProduct);
   })();
 
   useEffect(() => {
@@ -1078,7 +1111,7 @@ export function PedidoChatModal({
                       <div className="c-sub2">📏 Escolha o tamanho</div>
                       <div className="c-sizes-grid">
                         {SIZE_OPTIONS.map((s) => {
-                          const price = computePizzaPrice(selectedProduct, [], s.multiplier);
+                          const price = computePizzaPrice({ ...selectedProduct, preco_sugerido: displayPrice(selectedProduct) }, [], s.multiplier);
                           const active = selectedSize === s.id;
                           return (
                             <button

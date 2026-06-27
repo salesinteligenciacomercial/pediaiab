@@ -3,46 +3,30 @@
 > vite --port 4000 --strictPort
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1017[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1041[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4000[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.244:[1m4000[22m/[39m
-
-PWA v1.3.0
-mode      generateSW
-precache  1 entries (0.00 KiB)
-files generated
-  dev-dist/sw.js.map
-  dev-dist/sw.js
-  dev-dist/workbox-73bde303.js.map
-  dev-dist/workbox-73bde303.js
-[2m14:31:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:31:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:32:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:32:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:32:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:32:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:33:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m14:38:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:39:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:40:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:40:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:41:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:49:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
-[2m14:49:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/MesasView.tsx, /src/index.css[22m
-[2m14:49:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:55:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:55:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m14:55:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:02:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m15:02:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m15:03:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m15:04:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m15:04:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:04:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:04:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:04:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:05:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:05:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
-[2m15:05:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
-[2m15:05:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/configuracoes/ImpressorasConfig.tsx, /src/index.css[22m
+[2m20:03:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:03:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:10:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:10:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:11:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:12:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:12:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:12:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:13:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:23:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:23:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/KDS.tsx, /src/index.css[22m
+[2m20:32:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Leads.tsx, /src/index.css[22m
+[2m20:37:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/pedidos/RelatorioPedidosView.tsx, /src/index.css[22m
+[2m20:43:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m20:44:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m20:56:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m20:56:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/conversas/PedidoChatModal.tsx, /src/index.css[22m
+[2m20:59:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m
+[2m20:59:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/conversas/PedidoChatModal.tsx, /src/index.css[22m
+[2m21:10:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m21:10:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Produtos.tsx, /src/index.css[22m
+[2m21:10:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/conversas/PedidoChatModal.tsx, /src/index.css[22m
+[2m21:11:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/CardapioPublico.tsx, /src/index.css[22m

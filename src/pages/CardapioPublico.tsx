@@ -328,9 +328,16 @@ export default function CardapioPublico() {
 
   const isPizzaProduct = (product?: Product | null) => {
     if (!product) return false;
-    const n = (product.nome || "").toLowerCase();
-    const c = (product.categoria || "").toLowerCase();
-    return !!product.permite_meio_a_meio || n.includes("pizza") || c.includes("pizza");
+    const nome = (product.nome || "").toLowerCase();
+    const categoria = (product.categoria || "").toLowerCase();
+    const descricao = (product.descricao || "").toLowerCase();
+    const descricaoCurta = (product.descricao_curta || "").toLowerCase();
+    return !!product.permite_meio_a_meio ||
+      product.tipo_produto === "pizza" ||
+      nome.includes("pizza") ||
+      categoria.includes("pizza") ||
+      descricao.includes("pizza") ||
+      descricaoCurta.includes("pizza");
   };
 
   const isHalfAndHalfMenuProduct = (product: Product) => {
@@ -506,15 +513,20 @@ export default function CardapioPublico() {
     if (!selectedProduct) return;
     setFlavorSearch("");
     if (isPizzaProduct(selectedProduct)) {
-      setSelectedSize((current) => SIZE_OPTIONS.some((size) => size.id === current) ? current : "");
-      setExtraFlavors([]); setSelectedBordaId(""); setSelectedExtraSliceId(""); setSelectedExtraSliceQty(1); setExtraSliceSelections([]);
+      if (SIZE_OPTIONS.length > 0 && !SIZE_OPTIONS.find((s) => s.id === selectedSize)) {
+        setSelectedSize(SIZE_OPTIONS[Math.min(1, SIZE_OPTIONS.length - 1)].id);
+      }
+      setExtraFlavors([]);
+      setSelectedBordaId("");
+      setSelectedExtraSliceId("");
+      setSelectedExtraSliceQty(1);
+      setExtraSliceSelections([]);
       return;
     }
-    if (SIZE_OPTIONS.length > 0 && !SIZE_OPTIONS.find((s) => s.id === selectedSize)) {
-      setSelectedSize(SIZE_OPTIONS[Math.min(1, SIZE_OPTIONS.length - 1)].id);
+    if (selectedSize && !SIZE_OPTIONS.find((s) => s.id === selectedSize)) {
+      setSelectedSize("");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProduct]);
+  }, [selectedProduct, selectedSize, SIZE_OPTIONS]);
 
   const selectedPizzaSize = selectedSize ? SIZE_OPTIONS.find((s) => s.id === selectedSize) : undefined;
 

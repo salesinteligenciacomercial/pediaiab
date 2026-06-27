@@ -1,12 +1,13 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import MesasView from "@/components/pedidos/MesasView";
+import RelatorioPedidosView from "@/components/pedidos/RelatorioPedidosView";
 import { PedidoChatModal } from "@/components/conversas/PedidoChatModal";
 import { toast } from "sonner";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type PedidoStatus = "novo" | "aceito" | "em_producao" | "pronto" | "saiu_entrega" | "entregue" | "cancelado";
+type ActiveTab = "delivery" | "mesas" | "relatorios";
+type CanalFiltro = "todos" | "cardapio" | "whatsapp" | "instagram" | "atendimento" | "manual";
 
 type Pedido = {
   id: string;
@@ -14,21 +15,19 @@ type Pedido = {
   codigo_pedido: string;
   cliente_nome: string;
   cliente_telefone?: string | null;
-  canal: string;
-  tipo_atendimento: string;
+  canal: string | null;
+  tipo_atendimento: string | null;
   mesa_id: string | null;
   status: PedidoStatus;
   subtotal?: number | null;
-  total: number;
+  total: number | null;
   desconto?: number | null;
   taxa_entrega?: number | null;
   forma_pagamento?: string | null;
+  status_pagamento?: string | null;
   observacoes: string | null;
   created_at: string;
   entregador_id?: string | null;
-  valor_comissao?: number | null;
-  aceito_entregador_em?: string | null;
-  entregue_em?: string | null;
 };
 
 type PedidoItem = {
@@ -36,1782 +35,634 @@ type PedidoItem = {
   pedido_id: string;
   produto_nome: string;
   quantidade: number;
-  valor_unitario?: number | null;
   valor_total?: number | null;
   observacoes: string | null;
 };
 
-type PedidoEndereco = {
-  logradouro: string | null;
-  numero: string | null;
-  bairro: string | null;
-  complemento: string | null;
-  referencia: string | null;
-  cidade: string | null;
-};
+const KDS_STATUSES: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto", "saiu_entrega", "entregue"];
+const PAGE_SIZE = 1000;
 
-type NotaConfig = {
-  order_copy_title?: string;
-  kitchen_copy_title?: string;
-  print_order_copy?: boolean;
-  print_kitchen_copy?: boolean;
-  show_customer_phone?: boolean;
-  show_delivery_address?: boolean;
-  show_payment?: boolean;
-  show_prices_on_kitchen?: boolean;
-  footer_message?: string;
-};
+const CANAL_FILTERS: Array<{ value: CanalFiltro; label: string; matches?: string[] }> = [
+  { value: "todos", label: "Todos os canais" },
+  { value: "cardapio", label: "Cardapio Digital", matches: ["cardapio"] },
+  { value: "whatsapp", label: "WhatsApp", matches: ["whatsapp"] },
+  { value: "instagram", label: "Instagram", matches: ["instagram"] },
+  { value: "atendimento", label: "Chat", matches: ["atendimento", "chat"] },
+  { value: "manual", label: "Manual / Balcao", matches: ["interno", "balcao", "manual", "telefone"] },
+];
 
-const DEFAULT_NOTA_CONFIG: NotaConfig = {
-  order_copy_title: "PEDIDO",
-  kitchen_copy_title: "COZINHA",
-  print_order_copy: true,
-  print_kitchen_copy: true,
-  show_customer_phone: true,
-  show_delivery_address: true,
-  show_payment: true,
-  show_prices_on_kitchen: false,
-  footer_message: "Obrigado pela preferencia! Volte sempre!",
+const STATUS_CONFIG: Record<PedidoStatus, { label: string; color: string; bg: string; border: string }> = {
+  novo: { label: "Novos", color: "#4A9EFF", bg: "#071025", border: "#213647" },
+  aceito: { label: "Aceitos", color: "#F5A623", bg: "#1C1500", border: "#78430A" },
+  em_producao: { label: "Em producao", color: "#FF5C00", bg: "#1A0A00", border: "#7C2D12" },
+  pronto: { label: "Prontos", color: "#2ECC8F", bg: "#001A08", border: "#14532D" },
+  saiu_entrega: { label: "Em entrega", color: "#B980FF", bg: "#12071A", border: "#3B2544" },
+  entregue: { label: "Entregues", color: "#7A798A", bg: "#0F0F11", border: "#1F1F23" },
+  cancelado: { label: "Cancelados", color: "#EF4444", bg: "#1A0B0B", border: "#7F1D1D" },
 };
 
 type Entregador = {
   id: string;
-  company_id: string;
   nome: string;
-  telefone: string | null;
-  veiculo: string;
-  status: string;
-  pct_comissao: number;
-  pix_chave: string | null;
-  avaliacao_media: number;
-  online: boolean;
-};
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const KDS_STATUSES: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto", "saiu_entrega", "entregue"];
-const TRACKING_BASE_URL = "https://pediaiab.lovable.app";
-
-function buildTrackingUrl(pedidoId?: string | null) {
-  return pedidoId ? `${TRACKING_BASE_URL}/acompanhar/${pedidoId}` : "";
-}
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; glow: string }> = {
-  novo:        { label: "Novos",       color: "#4A9EFF", bg: "#071025", border: "#213647", glow: "rgba(74,158,255,0.14)" },
-  aceito:      { label: "Aceitos",     color: "#F5A623", bg: "#1C1500", border: "#78430A", glow: "rgba(245,166,35,0.18)" },
-  em_producao: { label: "Em Produção", color: "#FF5C00", bg: "#1A0A00", border: "#7C2D12", glow: "rgba(255,92,0,0.20)" },
-  pronto:      { label: "Prontos",     color: "#2ECC8F", bg: "#001A08", border: "#14532D", glow: "rgba(46,204,143,0.18)" },
-  saiu_entrega: { label: "Em Entrega", color: "#B980FF", bg: "#12071A", border: "#3B2544", glow: "rgba(185,128,255,0.12)" },
-  entregue:    { label: "Entregues",   color: "#7A798A", bg: "#0F0F11", border: "#1F1F23", glow: "rgba(122,121,138,0.06)" },
+  telefone?: string | null;
+  veiculo?: string | null;
+  online?: boolean;
+  avaliacao_media?: number | null;
+  status?: string | null;
+  pct_comissao?: number | null;
 };
 
 const CANAL_LABEL: Record<string, string> = {
-  cardapio:    "📱 Cardápio",
-  whatsapp:    "💬 WhatsApp",
-  instagram:   "📸 Instagram",
-  atendimento: "🖥️ Chat",
-  interno:     "🏠 Balcão",
+  cardapio: "Cardapio",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  atendimento: "Chat",
+  interno: "Balcao",
+  balcao: "Balcao",
+  telefone: "Telefone",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getElapsed(createdAt: string): string {
-  const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
-  if (diff < 60) return `${diff}s`;
-  const m = Math.floor(diff / 60);
-  if (m < 60) return `${m}min`;
-  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
-}
-
-function getUrgency(createdAt: string, status: PedidoStatus): "normal" | "warning" | "urgent" {
-  const minutes = (Date.now() - new Date(createdAt).getTime()) / 60000;
-  if (status === "aceito" && minutes > 5) return "urgent";
-  if (status === "em_producao" && minutes > 20) return "urgent";
-  if (status === "em_producao" && minutes > 15) return "warning";
-  if (status === "aceito" && minutes > 3) return "warning";
-  return "normal";
-}
-
-// ─── PedidoCard Component ─────────────────────────────────────────────────────
-
-function brl(value: number | null | undefined): string {
+function brl(value: number | null | undefined) {
   return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] || char));
+function elapsedLabel(createdAt: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+  if (minutes < 60) return `${minutes}min`;
+  return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
 }
 
-function formatPedidoDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("pt-BR");
-  } catch {
-    return iso;
-  }
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function formatEndereco(endereco: PedidoEndereco | null): string[] {
-  if (!endereco) return [];
-  const primeiraLinha = [endereco.logradouro, endereco.numero].filter(Boolean).join(", ");
-  const segundaLinha = [endereco.bairro, endereco.cidade].filter(Boolean).join(" - ");
-  return [primeiraLinha, endereco.complemento, segundaLinha, endereco.referencia ? `Ref: ${endereco.referencia}` : ""].filter(Boolean) as string[];
+function minutesSince(createdAt: string) {
+  return Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
 }
 
-function abrirJanelaVia(pedido: Pedido, titulo: string): Window | null {
-  const printWindow = window.open("", "_blank", "width=420,height=720");
-  if (!printWindow) return null;
-
-  printWindow.document.write(`
-    <html>
-      <head><title>${escapeHtml(titulo)} ${escapeHtml(pedido.codigo_pedido)}</title></head>
-      <body style="font-family: Arial, sans-serif; padding: 24px">
-        <strong>Preparando ${escapeHtml(titulo.toLowerCase())} do pedido ${escapeHtml(pedido.codigo_pedido)}...</strong>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-  return printWindow;
+function getUrgency(createdAt: string, status: PedidoStatus): "normal" | "warning" | "urgent" {
+  const minutes = minutesSince(createdAt);
+  if (status === "novo" && minutes >= 10) return "urgent";
+  if (status === "aceito" && minutes >= 12) return "urgent";
+  if (status === "em_producao" && minutes >= 25) return "urgent";
+  if (status === "pronto" && minutes >= 35) return "urgent";
+  if (status === "novo" && minutes >= 6) return "warning";
+  if (status === "aceito" && minutes >= 8) return "warning";
+  if (status === "em_producao" && minutes >= 18) return "warning";
+  return "normal";
 }
 
-function abrirJanelasImpressaoAceite(pedido: Pedido, notaConfig: NotaConfig): { pedido?: Window; cozinha?: Window } | null {
-  const shouldPrintPedido = notaConfig.print_order_copy !== false;
-  const shouldPrintCozinha = notaConfig.print_kitchen_copy !== false;
-  const pedidoWindow = shouldPrintPedido ? abrirJanelaVia(pedido, notaConfig.order_copy_title || "PEDIDO") : undefined;
-  const cozinhaWindow = shouldPrintCozinha ? abrirJanelaVia(pedido, notaConfig.kitchen_copy_title || "COZINHA") : undefined;
-
-  if ((shouldPrintPedido && !pedidoWindow) || (shouldPrintCozinha && !cozinhaWindow)) {
-    pedidoWindow?.close();
-    cozinhaWindow?.close();
-    toast.error("Permita pop-ups para emitir as vias configuradas da nota.");
-    return null;
-  }
-
-  return { pedido: pedidoWindow, cozinha: cozinhaWindow };
+function atendimentoLabel(pedido: Pedido) {
+  const value = (pedido.tipo_atendimento || "").toLowerCase();
+  if (value.includes("retirada")) return "Retirada";
+  if (value.includes("balcao") || value.includes("balc")) return "Balcao";
+  if (value.includes("delivery") || value.includes("entrega")) return "Delivery";
+  return pedido.mesa_id ? "Mesa" : "Delivery";
 }
 
-function buildViaHtml(kind: "pedido" | "cozinha", titulo: string, pedido: Pedido, itens: PedidoItem[], endereco: PedidoEndereco | null, notaConfig: NotaConfig): string {
-  const enderecoLines = formatEndereco(endereco);
-  const showPedido = kind === "pedido";
-  const showPrice = showPedido || !!notaConfig.show_prices_on_kitchen;
-  const itensHtml = itens.map((item) => `
-    <tr>
-      <td>
-        <strong>${Number(item.quantidade || 0)}x</strong> ${escapeHtml(item.produto_nome || "")}
-        ${item.observacoes ? `<div class="obs">Obs: ${escapeHtml(item.observacoes)}</div>` : ""}
-      </td>
-      ${showPrice ? `<td class="right">${brl(item.valor_total)}</td>` : ""}
-    </tr>
-  `).join("");
-
-  return `
-    <section class="via">
-      <h1>${escapeHtml(titulo)}</h1>
-      <div class="pedido">#${escapeHtml(pedido.codigo_pedido)}</div>
-      <div class="muted">${formatPedidoDate(pedido.created_at)}</div>
-      <hr />
-      <p><strong>Cliente:</strong> ${escapeHtml(pedido.cliente_nome || "")}</p>
-      ${pedido.cliente_telefone && showPedido && notaConfig.show_customer_phone !== false ? `<p><strong>Telefone:</strong> ${escapeHtml(pedido.cliente_telefone)}</p>` : ""}
-      <p><strong>Tipo:</strong> ${escapeHtml(pedido.tipo_atendimento || "")}</p>
-      ${showPedido && notaConfig.show_delivery_address !== false && enderecoLines.length ? `<div class="box"><strong>Endereco</strong>${enderecoLines.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}</div>` : ""}
-      ${pedido.observacoes ? `<div class="box"><strong>Obs. pedido</strong><div>${escapeHtml(pedido.observacoes)}</div></div>` : ""}
-      <table>
-        <tbody>${itensHtml || `<tr><td>Nenhum item encontrado</td>${showPrice ? "<td></td>" : ""}</tr>`}</tbody>
-      </table>
-      ${showPedido && notaConfig.show_payment !== false ? `
-        <div class="totals">
-          <div><span>Subtotal</span><strong>${brl(pedido.subtotal)}</strong></div>
-          <div><span>Taxa entrega</span><strong>${brl(pedido.taxa_entrega)}</strong></div>
-          <div><span>Desconto</span><strong>${brl(pedido.desconto)}</strong></div>
-          <div class="grand"><span>Total</span><strong>${brl(pedido.total)}</strong></div>
-          ${pedido.forma_pagamento ? `<div><span>Pagamento</span><strong>${escapeHtml(pedido.forma_pagamento)}</strong></div>` : ""}
-        </div>
-      ` : ""}
-      ${notaConfig.footer_message ? `<hr /><div class="muted">${escapeHtml(notaConfig.footer_message)}</div>` : ""}
-    </section>
-  `;
-}
-
-function escreverViaPedido(printWindow: Window, kind: "pedido" | "cozinha", titulo: string, pedido: Pedido, itens: PedidoItem[], endereco: PedidoEndereco | null, notaConfig: NotaConfig) {
-  printWindow.document.open();
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>${escapeHtml(titulo)} ${escapeHtml(pedido.codigo_pedido)}</title>
-        <style>
-          @page { size: 80mm auto; margin: 4mm; }
-          * { box-sizing: border-box; }
-          body { margin: 0; color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 11px; }
-          .via { padding: 0 0 8px; }
-          h1 { margin: 0 0 4px; text-align: center; font-size: 18px; letter-spacing: 1px; }
-          .pedido { text-align: center; font-weight: 800; font-size: 16px; }
-          .muted { text-align: center; color: #444; margin: 2px 0 8px; }
-          p { margin: 4px 0; }
-          hr { border: 0; border-top: 1px dashed #000; margin: 8px 0; }
-          .box { border: 1px dashed #000; padding: 6px; margin: 8px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-          td { padding: 6px 0; border-bottom: 1px dashed #999; vertical-align: top; }
-          .right { text-align: right; white-space: nowrap; padding-left: 8px; }
-          .obs { margin-top: 2px; font-size: 10px; font-weight: 700; }
-          .totals { margin-top: 8px; }
-          .totals div { display: flex; justify-content: space-between; padding: 2px 0; }
-          .grand { border-top: 1px solid #000; margin-top: 4px; padding-top: 6px !important; font-size: 14px; }
-        </style>
-      </head>
-      <body>${buildViaHtml(kind, titulo, pedido, itens, endereco, notaConfig)}<script>setTimeout(function(){ window.print(); }, 200);</script></body>
-    </html>
-  `);
-  printWindow.document.close();
-}
-
-async function emitirViasAceite(printWindows: { pedido?: Window; cozinha?: Window } | null, pedido: Pedido, notaConfig: NotaConfig) {
-  if (!printWindows) return;
-
-  const [{ data: itens }, { data: endereco }] = await Promise.all([
-    (supabase.from("pedido_itens" as any) as any)
-      .select("id, pedido_id, produto_nome, quantidade, valor_unitario, valor_total, observacoes")
-      .eq("pedido_id", pedido.id),
-    (supabase.from("pedido_enderecos" as any) as any)
-      .select("logradouro, numero, bairro, complemento, referencia, cidade")
-      .eq("pedido_id", pedido.id)
-      .maybeSingle(),
-  ]);
-
-  const pedidoItens = (itens || []) as PedidoItem[];
-  const pedidoEndereco = endereco as PedidoEndereco | null;
-  if (printWindows.pedido) escreverViaPedido(printWindows.pedido, "pedido", notaConfig.order_copy_title || "PEDIDO", pedido, pedidoItens, pedidoEndereco, notaConfig);
-  if (printWindows.cozinha) escreverViaPedido(printWindows.cozinha, "cozinha", notaConfig.kitchen_copy_title || "COZINHA", pedido, pedidoItens, pedidoEndereco, notaConfig);
-  toast.success(`Nota do pedido e via da cozinha emitidas para #${pedido.codigo_pedido}`);
-}
-
-async function darBaixaEstoquePedido(pedidoId: string, companyId: string) {
-  const { data: itens } = await (supabase.from("pedido_itens" as any) as any)
-    .select("produto_id, produto_nome, quantidade")
-    .eq("pedido_id", pedidoId);
-
-  for (const item of (itens || [])) {
-    let produtoId = item.produto_id as string | null;
-    let controlaEstoque = false;
-
-    if (produtoId) {
-      const { data: produto } = await (supabase.from("produtos_servicos" as any) as any)
-        .select("id, controla_estoque")
-        .eq("company_id", companyId)
-        .eq("id", produtoId)
-        .maybeSingle();
-      controlaEstoque = !!produto?.controla_estoque;
-    } else {
-      const { data: produtos } = await (supabase.from("produtos_servicos" as any) as any)
-        .select("id, controla_estoque")
-        .eq("company_id", companyId)
-        .ilike("nome", item.produto_nome)
-        .limit(1);
-      produtoId = produtos?.[0]?.id ?? null;
-      controlaEstoque = !!produtos?.[0]?.controla_estoque;
-    }
-
-    if (!produtoId || !controlaEstoque) continue;
-
-    const { data: composicoes } = await (supabase.from("produto_composicoes" as any) as any)
-      .select("insumo_id, quantidade")
-      .eq("produto_id", produtoId);
-
-    if (composicoes?.length) {
-      for (const comp of composicoes) {
-        await supabase.rpc("registrar_movimentacao_estoque" as any, {
-          p_company_id: companyId,
-          p_produto_id: comp.insumo_id,
-          p_tipo: "saida",
-          p_quantidade: Number(comp.quantidade || 0) * Number(item.quantidade || 1),
-          p_motivo: "venda",
-          p_pedido_id: pedidoId,
-          p_observacao: `Baixa automatica do pedido ${pedidoId}`,
-        });
-      }
-    } else {
-      await supabase.rpc("registrar_movimentacao_estoque" as any, {
-        p_company_id: companyId,
-        p_produto_id: produtoId,
-        p_tipo: "saida",
-        p_quantidade: Number(item.quantidade || 1),
-        p_motivo: "venda",
-        p_pedido_id: pedidoId,
-        p_observacao: `Baixa automatica do pedido ${pedidoId}`,
-      });
-    }
-  }
-}
-
-function PedidoCard({
-  pedido,
-  itensByPedido,
-  onAdvance,
-  onEdit,
-  onAddItem,
-  onDelete,
-  isNew,
-  entregadoresList,
-}: {
-  pedido: Pedido;
-  itensByPedido: Record<string, PedidoItem[]>;
-  onAdvance: (pedido: Pedido) => void;
-  onEdit: (pedido: Pedido) => void;
-  onAddItem: (pedido: Pedido) => void;
-  onDelete: (pedidoId: string) => void;
-  isNew: boolean;
-  entregadoresList: Entregador[];
-}) {
-  const itens = itensByPedido[pedido.id] || [];
-  const cfg = STATUS_CONFIG[pedido.status];
-  const urgency = getUrgency(pedido.created_at, pedido.status);
-  const [elapsed, setElapsed] = useState(getElapsed(pedido.created_at));
-
-  useEffect(() => {
-    const t = setInterval(() => setElapsed(getElapsed(pedido.created_at)), 10000);
-    return () => clearInterval(t);
-  }, [pedido.created_at]);
-
-  const nextLabel: Record<PedidoStatus, string> = {
-    novo:        "✓ Aceitar Pedido",
-    aceito:      "▶ Iniciar Produção",
-    em_producao: "✓ Pronto",
-    pronto:      "✓ Entregue",
-    saiu_entrega: "", entregue: "", cancelado: "",
-  };
-
-  return (
-    <div
-      style={{
-        background: cfg.bg,
-        border: `1.5px solid ${urgency === "urgent" ? "#EF4444" : urgency === "warning" ? "#F59E0B" : cfg.border}`,
-        borderRadius: 12,
-        padding: "14px 16px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        boxShadow: urgency === "urgent"
-          ? "0 0 20px rgba(239,68,68,0.3), inset 0 0 30px rgba(239,68,68,0.05)"
-          : `0 0 16px ${cfg.glow}, inset 0 0 20px rgba(0,0,0,0.3)`,
-        animation: isNew ? "cardPop 0.4s cubic-bezier(0.34,1.56,0.64,1)" : undefined,
-        transition: "box-shadow 0.3s ease",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Top glow strip */}
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 2,
-        background: urgency === "urgent"
-          ? "linear-gradient(90deg, transparent, #EF4444, transparent)"
-          : `linear-gradient(90deg, transparent, ${cfg.color}, transparent)`,
-        opacity: urgency === "urgent" ? 1 : 0.7,
-      }} />
-
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 18,
-              fontWeight: 700,
-              color: cfg.color,
-              letterSpacing: "-0.5px",
-            }}>
-              #{pedido.codigo_pedido}
-            </span>
-            {urgency === "urgent" && (
-              <span style={{
-                background: "#EF4444",
-                color: "#fff",
-                fontSize: 9,
-                fontWeight: 700,
-                padding: "2px 6px",
-                borderRadius: 4,
-                letterSpacing: "0.5px",
-                animation: "urgentPulse 1s ease-in-out infinite",
-              }}>
-                URGENTE
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
-            {pedido.cliente_nome}
-          </div>
-        </div>
-
-        <div style={{ textAlign: "right" }}>
-          <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 20,
-            fontWeight: 700,
-            color: urgency === "urgent" ? "#EF4444" : urgency === "warning" ? "#F59E0B" : "#6B7280",
-            lineHeight: 1,
-          }}>
-            {elapsed}
-          </div>
-          <div style={{ fontSize: 10, color: "#6B7280", marginTop: 2 }}>tempo</div>
-        </div>
-      </div>
-
-      {/* Canal + tipo */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <span style={{
-          fontSize: 11, padding: "2px 8px", borderRadius: 20,
-          background: "rgba(255,255,255,0.06)", color: "#9CA3AF",
-          border: "0.5px solid rgba(255,255,255,0.1)",
-        }}>
-          {CANAL_LABEL[pedido.canal] || pedido.canal}
-        </span>
-        <span style={{
-          fontSize: 11, padding: "2px 8px", borderRadius: 20,
-          background: "rgba(255,255,255,0.06)", color: "#9CA3AF",
-          border: "0.5px solid rgba(255,255,255,0.1)",
-        }}>
-          {pedido.tipo_atendimento === "mesa" ? `🪑 Mesa` :
-           pedido.tipo_atendimento === "entrega" ? "🛵 Delivery" :
-           pedido.tipo_atendimento === "retirada" ? "🏃 Retirada" : pedido.tipo_atendimento}
-        </span>
-      </div>
-
-      {/* Itens */}
-      <div style={{
-        background: "rgba(0,0,0,0.3)",
-        border: "0.5px solid rgba(255,255,255,0.06)",
-        borderRadius: 8,
-        padding: "8px 10px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}>
-        {itens.length === 0 ? (
-          <span style={{ fontSize: 12, color: "#6B7280" }}>Carregando itens...</span>
-        ) : itens.map((item) => (
-          <div key={item.id}>
-            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-              <span style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 15,
-                fontWeight: 700,
-                color: cfg.color,
-                minWidth: 24,
-              }}>
-                {item.quantidade}×
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#E5E7EB" }}>
-                {item.produto_nome}
-              </span>
-            </div>
-            {item.observacoes && (
-              <div style={{
-                marginLeft: 32, fontSize: 11, color: "#F59E0B",
-                fontStyle: "italic", marginTop: 2,
-              }}>
-                ⚠ {item.observacoes}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Observações do pedido */}
-      {pedido.observacoes && (
-        <div style={{
-          fontSize: 11, color: "#F59E0B", fontStyle: "italic",
-          background: "rgba(245,158,11,0.08)",
-          border: "0.5px solid rgba(245,158,11,0.2)",
-          borderRadius: 6, padding: "5px 8px",
-        }}>
-          📝 {pedido.observacoes}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          onClick={() => onEdit(pedido)}
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            color: "#E5E7EB",
-            borderRadius: 8,
-            padding: "8px 10px",
-            fontSize: 11,
-            cursor: "pointer",
-            flex: 1,
-          }}
-        >
-          ✏️ Editar
-        </button>
-        <button
-          onClick={() => onAddItem(pedido)}
-          style={{
-            background: "rgba(34,197,94,0.14)",
-            border: "1px solid #22C55E",
-            color: "#A7F3D0",
-            borderRadius: 8,
-            padding: "8px 10px",
-            fontSize: 11,
-            cursor: "pointer",
-            flex: 1,
-          }}
-        >
-          + Produto
-        </button>
-        <button
-          onClick={() => onDelete(pedido.id)}
-          style={{
-            background: "rgba(239,68,68,0.12)",
-            border: "1px solid #EF4444",
-            color: "#FCA5A5",
-            borderRadius: 8,
-            padding: "8px 10px",
-            fontSize: 11,
-            cursor: "pointer",
-            flex: 1,
-          }}
-        >
-          🗑️ Excluir
-        </button>
-      </div>
-
-      {pedido.status === "saiu_entrega" && pedido.entregador_id && (() => {
-        const ent = entregadoresList.find((e) => e.id === pedido.entregador_id);
-        return ent ? (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "#1e0a2e", borderRadius: 6, padding: "5px 8px",
-          }}>
-            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#B980FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#12071A", fontWeight: 700 }}>
-              {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-            </div>
-            <span style={{ color: "#B980FF", fontSize: 9 }}>{ent.nome}</span>
-          </div>
-        ) : null;
-      })()}
-
-      {/* Action button */}
-      {pedido.status === "pronto" && pedido.tipo_atendimento === "entrega" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{
-            background: "#0d2012", border: "0.5px solid #14532d",
-            borderRadius: 6, padding: "4px 8px",
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-          }}>
-            <span style={{ color: "#4ade80", fontSize: 8 }}>Aguarda entregador</span>
-          </div>
-          <button onClick={() => onAdvance(pedido)} style={{
-            background: "#2ECC8F", color: "#001A08",
-            border: "none", borderRadius: 8, padding: "8px",
-            fontSize: 11, fontWeight: 600, cursor: "pointer", width: "100%",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          }}>
-            Atribuir entregador
-          </button>
-        </div>
-      ) : nextLabel[pedido.status] && (
-        <button
-          onClick={() => onAdvance(pedido)}
-          style={{
-            marginTop: 2,
-            padding: "9px 0",
-            background: pedido.status === "pronto"
-              ? "rgba(34,197,94,0.15)"
-              : pedido.status === "em_producao"
-              ? "rgba(249,115,22,0.15)"
-              : "rgba(245,158,11,0.15)",
-            border: `1px solid ${cfg.color}`,
-            borderRadius: 8,
-            color: cfg.color,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            letterSpacing: "0.3px",
-            transition: "background 0.15s, transform 0.1s",
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = `rgba(255,255,255,0.1)`)}
-          onMouseLeave={(e) => (e.currentTarget.style.background =
-            pedido.status === "pronto" ? "rgba(34,197,94,0.15)"
-            : pedido.status === "em_producao" ? "rgba(249,115,22,0.15)"
-            : "rgba(245,158,11,0.15)"
-          )}
-          onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
-          onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        >
-          {nextLabel[pedido.status]}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ─── Column Component ──────────────────────────────────────────────────────────
-
-function KDSColumn({
-  status,
-  pedidos,
-  itensByPedido,
-  newIds,
-  onAdvance,
-  onEdit,
-  onAddItem,
-  onDelete,
-  entregadoresList,
-}: {
-  status: PedidoStatus;
-  pedidos: Pedido[];
-  itensByPedido: Record<string, PedidoItem[]>;
-  newIds: Set<string>;
-  onAdvance: (pedido: Pedido) => void;
-  onEdit: (pedido: Pedido) => void;
-  onAddItem: (pedido: Pedido) => void;
-  onDelete: (pedidoId: string) => void;
-  entregadoresList: Entregador[];
-}) {
-  const cfg = STATUS_CONFIG[status];
-
-  return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: 0,
-      minWidth: 0,
-      flex: 1,
-    }}>
-      {/* Column header */}
-      <div style={{
-        padding: "10px 16px",
-        marginBottom: 12,
-        borderRadius: 10,
-        background: `linear-gradient(135deg, ${cfg.bg}, rgba(0,0,0,0.5))`,
-        border: `1px solid ${cfg.border}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: "50%",
-            background: cfg.color,
-            boxShadow: `0 0 8px ${cfg.color}`,
-          }} />
-          <span style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 13,
-            fontWeight: 700,
-            color: cfg.color,
-            letterSpacing: "0.5px",
-            textTransform: "uppercase",
-          }}>
-            {cfg.label}
-          </span>
-        </div>
-        <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 16,
-          fontWeight: 700,
-          color: cfg.color,
-          background: `rgba(0,0,0,0.4)`,
-          padding: "2px 10px",
-          borderRadius: 6,
-          border: `0.5px solid ${cfg.border}`,
-        }}>
-          {pedidos.length}
-        </span>
-      </div>
-
-      {/* Cards */}
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        overflowY: "auto",
-        flex: 1,
-        paddingRight: 4,
-      }}>
-        {pedidos.length === 0 ? (
-          <div style={{
-            textAlign: "center",
-            padding: "40px 16px",
-            color: "#374151",
-            fontSize: 13,
-            border: "1px dashed #1F2937",
-            borderRadius: 12,
-          }}>
-            Nenhum pedido
-          </div>
-        ) : (
-          pedidos.map((p) => (
-            <PedidoCard
-              key={p.id}
-              pedido={p}
-              itensByPedido={itensByPedido}
-              onAdvance={onAdvance}
-              onEdit={onEdit}
-              onAddItem={onAddItem}
-              onDelete={onDelete}
-              isNew={newIds.has(p.id)}
-              entregadoresList={entregadoresList}
-            />
-          ))
-        )}
-
-      </div>
-    </div>
-  );
-}
-
-// ─── Main KDS Component ───────────────────────────────────────────────────────
+const NEXT_STATUS: Partial<Record<PedidoStatus, { status: PedidoStatus; label: string }>> = {
+  novo: { status: "aceito", label: "Aceitar pedido" },
+  aceito: { status: "em_producao", label: "Iniciar preparo" },
+  em_producao: { status: "pronto", label: "Marcar pronto" },
+  pronto: { status: "entregue", label: "Finalizar" },
+  saiu_entrega: { status: "entregue", label: "Concluir entrega" },
+};
 
 export default function KDS() {
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("delivery");
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [itensByPedido, setItensByPedido] = useState<Record<string, PedidoItem[]>>({});
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [newIds, setNewIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"delivery" | "mesas">("delivery");
-  const [entregadores, setEntregadores] = useState<Entregador[]>([]);
-  const [pedidoParaAtribuir, setPedidoParaAtribuir] = useState<Pedido | null>(null);
-  const [entregadorSelecionado, setEntregadorSelecionado] = useState<string | null>(null);
-  const [atribuindo, setAtribuindo] = useState(false);
   const [novoPedidoOpen, setNovoPedidoOpen] = useState(false);
-  const [produtos, setProdutos] = useState<Array<{ id: string; nome: string; preco_sugerido: number | null }>>([]);
-  const [addItemOrderId, setAddItemOrderId] = useState<string | null>(null);
-  const [selectedAddProductId, setSelectedAddProductId] = useState<string>("");
-  const [addItemQuantity, setAddItemQuantity] = useState<number>(1);
-  const [addItemObservations, setAddItemObservations] = useState<string>("");
-  const [isAddingItem, setIsAddingItem] = useState(false);
-  const [editOrderId, setEditOrderId] = useState<string | null>(null);
-  const [editCustomerName, setEditCustomerName] = useState<string>("");
-  const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
-  const [editObservations, setEditObservations] = useState<string>("");
-  const [isSavingOrderEdit, setIsSavingOrderEdit] = useState(false);
-  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
-  const [notaConfig, setNotaConfig] = useState<NotaConfig>(DEFAULT_NOTA_CONFIG);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("kds_sound_enabled") !== "false";
-  });
-  const audioRef = useRef<AudioContext | null>(null);
+  const [savingPedidoId, setSavingPedidoId] = useState<string | null>(null);
+  const [editPedido, setEditPedido] = useState<Pedido | null>(null);
+  const [editClienteNome, setEditClienteNome] = useState("");
+  const [editClienteTelefone, setEditClienteTelefone] = useState("");
+  const [editObservacoes, setEditObservacoes] = useState("");
+  const [canalFiltro, setCanalFiltro] = useState<CanalFiltro>("todos");
 
-  // Play beep sound when new pedido arrives
-  const playBeep = useCallback(() => {
-    if (!soundEnabled) return;
-    try {
-      if (!audioRef.current) {
-        audioRef.current = new AudioContext();
-      }
-      const ctx = audioRef.current;
-      // double-beep for stronger alert
-      [0, 0.18].forEach((offset) => {
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(1000, ctx.currentTime + offset);
-        oscillator.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + offset + 0.15);
-        gainNode.gain.setValueAtTime(0.5, ctx.currentTime + offset);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.4);
-        oscillator.start(ctx.currentTime + offset);
-        oscillator.stop(ctx.currentTime + offset + 0.4);
-      });
-    } catch {
-      // AudioContext blocked until user interaction — fine
-    }
-  }, [soundEnabled]);
+  // Entregadores / Atribuir entrega
+  const [entregadores, setEntregadores] = useState<Entregador[]>([]);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [pedidoToAssign, setPedidoToAssign] = useState<Pedido | null>(null);
+  const [selectedEntregadorId, setSelectedEntregadorId] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
 
-  // Persist sound preference
-  useEffect(() => {
-    try { localStorage.setItem("kds_sound_enabled", String(soundEnabled)); } catch {}
-  }, [soundEnabled]);
-
-  // Load data
-  const load = useCallback(async (cid: string) => {
-    const [pedidosRes, itensRes] = await Promise.all([
-      (supabase.from("pedidos" as any) as any)
-        .select("*")
-        .eq("company_id", cid)
-        .in("status", KDS_STATUSES)
-        .order("created_at", { ascending: true }),
-      (supabase.from("pedido_itens" as any) as any)
-        .select("*")
-        .eq("company_id", cid),
-    ]);
-
-    if (!pedidosRes.error) {
-      const incoming: Pedido[] = pedidosRes.data || [];
-      setPedidos((prev) => {
-        const prevIds = new Set(prev.map((p: Pedido) => p.id));
-        const fresh = incoming.filter((p: Pedido) => !prevIds.has(p.id));
-        if (fresh.length > 0) {
-          playBeep();
-          setNewIds((ids) => {
-            const next = new Set(ids);
-            fresh.forEach((p: Pedido) => next.add(p.id));
-            setTimeout(() => setNewIds((s) => {
-              const n = new Set(s);
-              fresh.forEach((p: Pedido) => n.delete(p.id));
-              return n;
-            }), 1000);
-            return next;
-          });
-        }
-        return incoming;
-      });
-    }
-
-    if (!itensRes.error) {
-      const grouped: Record<string, PedidoItem[]> = {};
-      for (const item of (itensRes.data || [])) {
-        if (!grouped[item.pedido_id]) grouped[item.pedido_id] = [];
-        grouped[item.pedido_id].push(item);
-      }
-      setItensByPedido(grouped);
-    }
-  }, [playBeep]);
-
-  const loadEntregadores = useCallback(async (cid: string) => {
+  const loadEntregadores = useCallback(async (cid?: string) => {
+    const company = cid || companyId;
+    if (!company) return;
     const { data, error } = await (supabase.from("entregadores" as any) as any)
-      .select("*")
-      .eq("company_id", cid)
+      .select("id, nome, telefone, online, avaliacao_media")
+      .eq("company_id", company)
       .eq("status", "ativo")
       .order("nome");
-
     if (error) {
       console.error("[KDS] erro ao carregar entregadores", error);
       return;
     }
-
-    if (data) setEntregadores(data);
-  }, []);
-
-  const loadProdutos = useCallback(async (cid: string) => {
-    const { data, error } = await (supabase.from("produtos_servicos" as any) as any)
-      .select("id, nome, preco_sugerido")
-      .eq("company_id", cid)
-      .eq("ativo", true)
-      .order("nome");
-
-    if (error) {
-      console.error("[KDS] erro ao carregar produtos", error);
-      return;
-    }
-
-    if (data) setProdutos(data);
-  }, []);
-
-  const loadNotaConfig = useCallback(async (cid: string) => {
-    const { data, error } = await (supabase.from("loja_configuracoes" as any) as any)
-      .select("impressora_config")
-      .eq("company_id", cid)
-      .maybeSingle();
-
-    if (error) {
-      console.error("[KDS] erro ao carregar configuracao de nota", error);
-      return;
-    }
-
-    setNotaConfig({ ...DEFAULT_NOTA_CONFIG, ...((data as any)?.impressora_config || {}) });
-  }, []);
-
-  const registrarItemPedido = async (
-    pedidoId: string,
-    produtoId: string | undefined,
-    produtoNome: string,
-    quantidade: number,
-    valorUnitario: number,
-    observacoes?: string | null
-  ) => {
-    const { error } = await supabase.rpc("registrar_item_pedido_com_custo" as any, {
-      p_pedido_id: pedidoId,
-      p_company_id: companyId,
-      p_produto_id: produtoId || null,
-      p_produto_nome: produtoNome,
-      p_quantidade: quantidade,
-      p_valor_unitario: valorUnitario,
-      p_observacoes: observacoes || null,
-    });
-
-    if (error) {
-      const msg = String(error.message || "");
-      const rpcNaoExiste = error.code === "PGRST202" || msg.includes("registrar_item_pedido_com_custo") || msg.includes("Could not find the function");
-      if (!rpcNaoExiste) throw error;
-
-      const { error: insertError } = await supabase.from("pedido_itens" as any).insert({
-        pedido_id: pedidoId,
-        company_id: companyId,
-        produto_id: produtoId || null,
-        produto_nome: produtoNome,
-        quantidade,
-        valor_unitario: valorUnitario,
-        valor_total: valorUnitario * quantidade,
-        observacoes: observacoes || null,
-      });
-      if (insertError) throw insertError;
-    }
-  };
-
-  const atualizarTotalPedido = async (pedidoId: string) => {
-    const [{ data: pedidoData, error: pedidoErr }, { data: itensData, error: itensErr }] = await Promise.all([
-      supabase.from("pedidos" as any).select("taxa_entrega, desconto").eq("id", pedidoId).single(),
-      supabase.from("pedido_itens" as any).select("valor_total").eq("pedido_id", pedidoId),
-    ]);
-
-    if (pedidoErr) throw pedidoErr;
-    if (itensErr) throw itensErr;
-
-    const subtotal = (itensData || []).reduce((sum: number, item: any) => sum + Number(item.valor_total || 0), 0);
-    const total = subtotal + Number((pedidoData as any)?.taxa_entrega || 0) - Number((pedidoData as any)?.desconto || 0);
-
-    const { error: updateErr } = await supabase.from("pedidos" as any).update({ subtotal, total }).eq("id", pedidoId);
-    if (updateErr) throw updateErr;
-  };
-
-  const abrirEdicaoPedido = useCallback((pedido: Pedido) => {
-    setEditOrderId(pedido.id);
-    setEditCustomerName(pedido.cliente_nome);
-    setEditCustomerPhone(pedido.cliente_telefone || "");
-    setEditObservations(pedido.observacoes || "");
-  }, []);
-
-  const handleAtualizarPedido = useCallback(async () => {
-    if (!editOrderId || !companyId) return;
-    setIsSavingOrderEdit(true);
-
-    const { error } = await (supabase.from("pedidos" as any) as any)
-      .update({
-        cliente_nome: editCustomerName.trim(),
-        cliente_telefone: editCustomerPhone.trim(),
-        observacoes: editObservations.trim() || null,
-      })
-      .eq("id", editOrderId);
-
-    if (error) {
-      toast.error(`Erro ao atualizar pedido: ${error.message}`);
-      setIsSavingOrderEdit(false);
-      return;
-    }
-
-    await (supabase.from("pedido_eventos" as any) as any).insert({
-      pedido_id: editOrderId,
-      company_id: companyId,
-      tipo: "pedido_editado",
-      descricao: "Pedido atualizado via KDS",
-    });
-
-    setEditOrderId(null);
-    setIsSavingOrderEdit(false);
-    await load(companyId);
-    toast.success("Pedido atualizado");
-  }, [editOrderId, editCustomerName, editCustomerPhone, editObservations, companyId, load]);
-
-  const handleAdicionarItemPedido = useCallback(async () => {
-    if (!addItemOrderId || !companyId) return;
-    const produto = produtos.find((p) => p.id === selectedAddProductId);
-    if (!produto) return toast.error("Selecione um produto");
-    if (addItemQuantity <= 0) return toast.error("Informe quantidade válida");
-
-    setIsAddingItem(true);
-    try {
-      await registrarItemPedido(
-        addItemOrderId,
-        produto.id,
-        produto.nome,
-        addItemQuantity,
-        Number(produto.preco_sugerido || 0),
-        addItemObservations.trim() || null
-      );
-      await atualizarTotalPedido(addItemOrderId);
-      await (supabase.from("pedido_eventos" as any) as any).insert({
-        pedido_id: addItemOrderId,
-        company_id: companyId,
-        tipo: "item_adicionado",
-        descricao: `Item adicionado via KDS: ${addItemQuantity}× ${produto.nome}`,
-      });
-      setAddItemOrderId(null);
-      setSelectedAddProductId("");
-      setAddItemQuantity(1);
-      setAddItemObservations("");
-      await load(companyId);
-      toast.success("Item adicionado ao pedido");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || "Erro ao adicionar item");
-    } finally {
-      setIsAddingItem(false);
-    }
-  }, [addItemOrderId, companyId, selectedAddProductId, addItemQuantity, addItemObservations, produtos, registrarItemPedido, load]);
-
-  const abrirAdicaoItemPedido = useCallback((pedido: Pedido) => {
-    setAddItemOrderId(pedido.id);
-    setSelectedAddProductId("");
-    setAddItemQuantity(1);
-    setAddItemObservations("");
-  }, []);
-
-  const handleExcluirPedido = useCallback(async (pedidoId: string) => {
-    if (!companyId) return;
-    if (!confirm("Tem certeza que deseja excluir este pedido?")) return;
-    setIsDeletingOrder(true);
-
-    const { error } = await (supabase.from("pedidos" as any) as any)
-      .delete()
-      .eq("id", pedidoId);
-
-    if (error) {
-      toast.error(`Erro ao excluir pedido: ${error.message}`);
-      setIsDeletingOrder(false);
-      return;
-    }
-
-    setPedidos((prev) => prev.filter((p) => p.id !== pedidoId));
-    setIsDeletingOrder(false);
-    toast.success("Pedido excluído");
+    setEntregadores(data || []);
   }, [companyId]);
 
-  // Bootstrap
-  useEffect(() => {
-    (async () => {
-      const { data: cid } = await supabase.rpc("get_my_company_id");
-      if (!cid) return;
-      setCompanyId(cid);
-      await Promise.all([load(cid), loadEntregadores(cid), loadProdutos(cid), loadNotaConfig(cid)]);
-      setLoading(false);
-    })();
-  }, [load, loadEntregadores, loadProdutos, loadNotaConfig]);
+  const loadPedidos = useCallback(async (cid: string) => {
+    const all: Pedido[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await (supabase.from("pedidos" as any) as any)
+        .select("id, company_id, codigo_pedido, cliente_nome, cliente_telefone, canal, tipo_atendimento, mesa_id, status, entregador_id, subtotal, total, desconto, taxa_entrega, forma_pagamento, status_pagamento, observacoes, created_at")
+        .eq("company_id", cid)
+        .in("status", KDS_STATUSES)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
 
-  // Realtime subscription
+      if (error) throw error;
+      all.push(...((data || []) as Pedido[]));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+
+    setPedidos(all);
+
+    const ids = all.map((pedido) => pedido.id);
+    if (!ids.length) {
+      setItensByPedido({});
+      return;
+    }
+
+    const itens: PedidoItem[] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data, error } = await (supabase.from("pedido_itens" as any) as any)
+        .select("id, pedido_id, produto_nome, quantidade, valor_total, observacoes")
+        .in("pedido_id", ids.slice(i, i + 100))
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      itens.push(...((data || []) as PedidoItem[]));
+    }
+
+    setItensByPedido(
+      itens.reduce<Record<string, PedidoItem[]>>((acc, item) => {
+        if (!acc[item.pedido_id]) acc[item.pedido_id] = [];
+        acc[item.pedido_id].push(item);
+        return acc;
+      }, {})
+    );
+  }, []);
+
+  function openAssignModal(pedido: Pedido) {
+    setPedidoToAssign(pedido);
+    setSelectedEntregadorId(null);
+    loadEntregadores(pedido.company_id);
+    setAssignModalOpen(true);
+  }
+
+  const handleAssignEntregador = useCallback(async () => {
+    if (!pedidoToAssign || !selectedEntregadorId) return;
+    if (!companyId) return;
+    setAssigning(true);
+    const { error } = await (supabase.from("pedidos" as any) as any)
+      .update({ entregador_id: selectedEntregadorId, aceito_entregador_em: new Date().toISOString() })
+      .eq("id", pedidoToAssign.id);
+    if (error) {
+      console.error("[KDS] erro ao atribuir entregador", error);
+      toast.error("Erro ao atribuir entregador");
+      setAssigning(false);
+      return;
+    }
+    setAssignModalOpen(false);
+    setPedidoToAssign(null);
+    setAssigning(false);
+    await loadPedidos(companyId);
+    toast.success("Entregador atribuído");
+  }, [pedidoToAssign, selectedEntregadorId, companyId, loadPedidos]);
+
+  const deliveryPedidos = useMemo(
+    () => pedidos.filter((pedido) => !pedido.mesa_id && KDS_STATUSES.includes(pedido.status)),
+    [pedidos]
+  );
+
+  const deliveryPedidosFiltrados = useMemo(() => {
+    if (canalFiltro === "todos") return deliveryPedidos;
+    const filtro = CANAL_FILTERS.find((item) => item.value === canalFiltro);
+    const matches = filtro?.matches || [];
+    return deliveryPedidos.filter((pedido) => matches.includes((pedido.canal || "").toLowerCase()));
+  }, [canalFiltro, deliveryPedidos]);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: cid, error } = await supabase.rpc("get_my_company_id");
+      if (error) throw error;
+      if (!cid) {
+        setCompanyId(null);
+        setPedidos([]);
+        return;
+      }
+      setCompanyId(cid as string);
+      await loadPedidos(cid as string);
+    } catch (error) {
+      console.error("[KDS] erro ao carregar pedidos", error);
+      toast.error("Nao foi possivel carregar a gestao de pedidos.");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadPedidos]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (companyId) loadEntregadores(companyId);
+  }, [companyId, loadEntregadores]);
+
   useEffect(() => {
     if (!companyId) return;
     const channel = supabase
       .channel(`kds-pedidos-${companyId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pedidos", filter: `company_id=eq.${companyId}` },
-        () => load(companyId)
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pedido_itens" },
-        () => load(companyId)
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "entregadores", filter: `company_id=eq.${companyId}` },
-        () => loadEntregadores(companyId)
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `company_id=eq.${companyId}` }, () => loadPedidos(companyId))
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedido_itens", filter: `company_id=eq.${companyId}` }, () => loadPedidos(companyId))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [companyId, load, loadEntregadores]);
 
-  const handleAtribuirEntregador = useCallback(async () => {
-    if (!pedidoParaAtribuir || !entregadorSelecionado || !companyId) return;
-    setAtribuindo(true);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [companyId, loadPedidos]);
 
-    const entregador = entregadores.find((e) => e.id === entregadorSelecionado);
-    const valorComissao = pedidoParaAtribuir.total * ((entregador?.pct_comissao ?? 10) / 100);
-
-    const { error } = await (supabase.from("pedidos" as any) as any)
-      .update({
-        entregador_id: entregadorSelecionado,
-        status: "saiu_entrega",
-        valor_comissao: valorComissao,
-        aceito_entregador_em: new Date().toISOString(),
-      })
-      .eq("id", pedidoParaAtribuir.id);
-
-    if (error) {
-      toast.error("Erro ao atribuir entregador");
-      setAtribuindo(false);
-      return;
-    }
-
-    await (supabase.from("pedido_eventos" as any) as any).insert({
-      pedido_id: pedidoParaAtribuir.id,
-      company_id: companyId,
-      tipo: "entregador_atribuido",
-      descricao: `Entregador ${entregador?.nome} atribuido. Comissao: R$${valorComissao.toFixed(2)}`,
-    });
-
-    const telLimpo = String(pedidoParaAtribuir.cliente_telefone || "").replace(/\D/g, "");
-    if (telLimpo.length >= 10) {
-      await supabase.functions.invoke("enviar-whatsapp", {
-        body: {
-          company_id: companyId,
-          numero: telLimpo,
-          mensagem: [
-            `Ola ${pedidoParaAtribuir.cliente_nome}, seu pedido #${pedidoParaAtribuir.codigo_pedido} saiu para entrega.`,
-            "",
-            `Entregador: ${entregador?.nome || "entregador"}`,
-            `Veiculo: ${entregador?.veiculo || "moto"}`,
-            `Avaliacao: ${Number(entregador?.avaliacao_media || 5).toFixed(1)}`,
-            "",
-            "Acompanhe a trajetoria da entrega em tempo real pelo link:",
-            buildTrackingUrl(pedidoParaAtribuir.id),
-            "",
-            "Para sua seguranca, confira o nome e a foto do entregador na pagina de rastreio.",
-          ].join("\n"),
-          origem: "kds-entregador",
-        },
-      });
-    }
-
-    toast.success(`${entregador?.nome} atribuido ao pedido #${pedidoParaAtribuir.codigo_pedido}`);
-    setPedidoParaAtribuir(null);
-    setEntregadorSelecionado(null);
-    setAtribuindo(false);
-    await load(companyId);
-  }, [pedidoParaAtribuir, entregadorSelecionado, entregadores, companyId, load]);
-
-  // Advance status
-  const handleAdvance = useCallback(async (pedido: Pedido) => {
-    if (pedido.status === "pronto" && pedido.tipo_atendimento === "entrega") {
-      setPedidoParaAtribuir(pedido);
-      setEntregadorSelecionado(null);
-      return;
-    }
-
-    const flow: PedidoStatus[] = ["novo", "aceito", "em_producao", "pronto", "entregue"];
-    const idx = flow.indexOf(pedido.status);
-    if (idx < 0 || idx >= flow.length - 1) return;
-    const nextStatus = flow[idx + 1];
-    const shouldEmitirVias = pedido.status === "novo" && nextStatus === "aceito";
-    const printWindows = shouldEmitirVias ? abrirJanelasImpressaoAceite(pedido, notaConfig) : null;
-    if (shouldEmitirVias && !printWindows) return;
-
-    // Optimistic update
-    setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, status: nextStatus } : p)));
-
-    const { error } = await (supabase.from("pedidos" as any) as any)
-      .update({ status: nextStatus })
-      .eq("id", pedido.id);
-
-    if (error) {
-      console.error("[KDS] erro ao avançar pedido", error);
-      toast.error(`Erro ao avançar: ${error.message}`);
-      // Revert
-      setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, status: pedido.status } : p)));
-      printWindows?.pedido?.close();
-      printWindows?.cozinha?.close();
-      return;
-    }
-
-    await (supabase.from("pedido_eventos" as any) as any).insert({
-      pedido_id: pedido.id,
-      company_id: pedido.company_id,
-      tipo: "status_changed",
-      descricao: `KDS: status alterado para ${nextStatus}`,
-    });
-
-    if (shouldEmitirVias) {
-      try {
-        await emitirViasAceite(printWindows, { ...pedido, status: nextStatus }, notaConfig);
-      } catch (printErr) {
-        console.error("[KDS] erro ao emitir vias do pedido", printErr);
-        toast.error("Pedido aceito, mas houve erro ao emitir as vias");
-      }
-    }
-
-    // 📲 Notificar cliente via WhatsApp sobre avanço de status
-    if (nextStatus === "entregue") {
-      try {
-        await darBaixaEstoquePedido(pedido.id, pedido.company_id);
-      } catch (stockErr) {
-        console.error("[KDS] erro ao dar baixa no estoque", stockErr);
-        toast.error("Pedido entregue, mas houve erro na baixa de estoque");
-      }
-    }
-
+  const atualizarStatusPedido = async (pedido: Pedido, nextStatus: PedidoStatus) => {
     try {
-      const telLimpo = String(pedido.cliente_telefone || "").replace(/\D/g, "");
-      if (telLimpo.length >= 10) {
-        const statusMsg: Record<PedidoStatus, string> = {
-          novo: "",
-          aceito: `✅ *Pedido aceito!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* foi aceito e entrará na fila de produção em breve. 🍕`,
-          em_producao: `👨‍🍳 *Pedido em produção!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* já está sendo preparado com carinho. 🔥`,
-          pronto: pedido.tipo_atendimento === "entrega"
-            ? `📦 *Pedido pronto!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* está pronto e logo sairá para entrega. 🛵`
-            : `📦 *Pedido pronto!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* está pronto para retirada. 🏠`,
-          saiu_entrega: `🛵 *Saiu para entrega!*\n\nOlá ${pedido.cliente_nome}, seu pedido *${pedido.codigo_pedido}* saiu para entrega e logo chegará até você. 🚀`,
-          entregue: `🎉 *Pedido entregue!*\n\nOlá ${pedido.cliente_nome}, esperamos que aproveite seu pedido *${pedido.codigo_pedido}*. Obrigado pela preferência! 🧡`,
-          cancelado: "",
-        };
-        const mensagem = statusMsg[nextStatus];
-        if (mensagem) {
-          await supabase.functions.invoke("enviar-whatsapp", {
-            body: {
-              company_id: pedido.company_id,
-              numero: telLimpo,
-              mensagem,
-              origem: "kds-status",
-            },
-          });
-        }
-      }
-    } catch (msgErr) {
-      console.error("[KDS] erro ao notificar cliente:", msgErr);
+      setSavingPedidoId(pedido.id);
+      const patch: Record<string, unknown> = { status: nextStatus };
+      if (nextStatus === "entregue") patch.status_pagamento = pedido.status_pagamento || "pago";
+
+      const { error } = await (supabase.from("pedidos" as any) as any)
+        .update(patch)
+        .eq("id", pedido.id)
+        .eq("company_id", pedido.company_id);
+
+      if (error) throw error;
+      toast.success(`Pedido #${pedido.codigo_pedido} atualizado`);
+      if (companyId) await loadPedidos(companyId);
+    } catch (error) {
+      console.error("[KDS] erro ao atualizar pedido", error);
+      toast.error("Nao foi possivel atualizar o pedido.");
+    } finally {
+      setSavingPedidoId(null);
     }
-  }, [notaConfig]);
+  };
 
-  const pedidosByStatus = KDS_STATUSES.reduce((acc, s) => {
-    acc[s] = pedidos.filter((p) => p.status === s);
-    return acc;
-  }, {} as Record<PedidoStatus, Pedido[]>);
+  const cancelarPedido = async (pedido: Pedido) => {
+    if (!window.confirm(`Cancelar o pedido #${pedido.codigo_pedido}?`)) return;
+    await atualizarStatusPedido(pedido, "cancelado");
+  };
 
-  const totalAtivos = pedidos.length;
-  const novosCount = pedidosByStatus["novo"]?.length || 0;
+  const abrirEdicaoPedido = (pedido: Pedido) => {
+    setEditPedido(pedido);
+    setEditClienteNome(pedido.cliente_nome || "");
+    setEditClienteTelefone(pedido.cliente_telefone || "");
+    setEditObservacoes(pedido.observacoes || "");
+  };
 
-  // Repeat alert beep every 6s while there are pending "novo" pedidos
-  useEffect(() => {
-    if (!soundEnabled || novosCount === 0) return;
-    const id = setInterval(() => playBeep(), 6000);
-    return () => clearInterval(id);
-  }, [soundEnabled, novosCount, playBeep]);
+  const salvarEdicaoPedido = async () => {
+    if (!editPedido) return;
+    try {
+      setSavingPedidoId(editPedido.id);
+      const { error } = await (supabase.from("pedidos" as any) as any)
+        .update({
+          cliente_nome: editClienteNome.trim() || "Cliente sem nome",
+          cliente_telefone: editClienteTelefone.trim(),
+          observacoes: editObservacoes.trim() || null,
+        })
+        .eq("id", editPedido.id)
+        .eq("company_id", editPedido.company_id);
 
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+      if (error) throw error;
+      toast.success(`Pedido #${editPedido.codigo_pedido} editado`);
+      setEditPedido(null);
+      if (companyId) await loadPedidos(companyId);
+    } catch (error) {
+      console.error("[KDS] erro ao editar pedido", error);
+      toast.error("Nao foi possivel editar o pedido.");
+    } finally {
+      setSavingPedidoId(null);
+    }
+  };
 
-        * { box-sizing: border-box; }
+  const renderDelivery = () => {
+    if (loading) return <div className="kds-empty">Carregando pedidos...</div>;
+    if (!deliveryPedidos.length) {
+      return (
+        <div className="kds-empty">
+          <strong>Nenhum pedido de delivery ou balcao em andamento</strong>
+          <span>Novos pedidos aparecem aqui automaticamente.</span>
+        </div>
+      );
+    }
 
-        body, html { margin: 0; padding: 0; }
+    return (
+      <>
+        <div className="kds-channel-filters">
+          {CANAL_FILTERS.map((filtro) => {
+            const count = filtro.value === "todos"
+              ? deliveryPedidos.length
+              : deliveryPedidos.filter((pedido) => (filtro.matches || []).includes((pedido.canal || "").toLowerCase())).length;
 
-        .kds-root {
-          min-height: 100vh;
-          background: #0A0A0A;
-          color: #E5E7EB;
-          font-family: ui-sans-serif, system-ui, sans-serif;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
-        .kds-columns {
-          flex: 1;
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 12px;
-          padding: 0 16px 16px;
-          overflow: hidden;
-        }
-
-        /* Tabs & filters */
-        .kds-tabs { display:flex; gap:8px; padding:14px 16px; align-items:center }
-        .kds-tab { padding:8px 12px; border-radius:10px; background:transparent; color:#9CA3AF; border:1px solid transparent; cursor:pointer }
-        .kds-tab.active { background:#0f1724; border-color:#1F2937; color:#E5E7EB }
-        .kds-filterbar { display:flex; justify-content:space-between; align-items:center; padding:0 16px 12px }
-        .kds-chips { display:flex; gap:8px; flex-wrap:wrap }
-        .kds-chip { padding:6px 12px; border-radius:20px; background:#0f1113; border:1px solid #1F2937; color:#9CA3AF; cursor:pointer }
-        .kds-chip.active { background: rgba(255,92,0,0.12); border-color: rgba(255,92,0,0.35); color: #FF8C42 }
-
-        @keyframes cardPop {
-          0%   { transform: scale(0.85); opacity: 0; }
-          70%  { transform: scale(1.04); }
-          100% { transform: scale(1);    opacity: 1; }
-        }
-
-        @keyframes urgentPulse {
-          0%, 100% { opacity: 1; }
-          50%      { opacity: 0.5; }
-        }
-
-        @keyframes kdsBellPulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(249,115,22,0.45); }
-          50%      { transform: scale(1.08); box-shadow: 0 0 26px rgba(249,115,22,0.85); }
-        }
-
-
-        @keyframes scanline {
-          0%   { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
-        }
-
-        .kds-new-order-banner {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          background: linear-gradient(90deg, rgba(244,63,94,0.16), rgba(245,158,11,0.12));
-          border: 1px solid rgba(245,158,11,0.28);
-          color: #F8FAFC;
-          padding: 12px 16px;
-          border-radius: 14px;
-          margin: 0 16px 12px;
-          animation: pulseOrder 1.6s ease-in-out infinite;
-        }
-
-        .kds-new-order-banner strong {
-          color: #FFEDD5;
-        }
-
-        .kds-new-order-button {
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.14);
-          color: #F8FAFC;
-          border-radius: 999px;
-          padding: 8px 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: transform 0.15s ease, background 0.15s ease;
-        }
-
-        .kds-new-order-button:hover {
-          background: rgba(255,255,255,0.16);
-          transform: translateY(-1px);
-        }
-
-        @keyframes pulseOrder {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.18); }
-          50% { box-shadow: 0 0 0 10px rgba(245,158,11,0.05); }
-        }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 2px; }
-      `}</style>
-
-      <div className="kds-root">
-        <div className="kds-scanline" />
-
-
-        {/* Tabs / Filters */}
-        <div style={{display:'flex', flexDirection: 'column'}}>
-          <div className="kds-tabs" style={{ justifyContent: "space-between", gap: 12 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              className={`kds-tab ${activeTab === "delivery" ? "active" : ""}`}
-              onClick={() => setActiveTab("delivery")}
-            >
-              Delivery / Balcao <span style={{marginLeft:8, background:'#0b0b0d', padding:'2px 8px', borderRadius:8}}>{totalAtivos}</span>
-            </button>
-            <button
-              className={`kds-tab ${activeTab === "mesas" ? "active" : ""}`}
-              onClick={() => setActiveTab("mesas")}
-            >
-              Mesas
-            </button>
-            </div>
-            <button
-              onClick={() => setNovoPedidoOpen(true)}
-              style={{
-                border: "1px solid rgba(249,115,22,0.42)",
-                background: "linear-gradient(135deg, #F97316, #EF4444)",
-                color: "#fff",
-                borderRadius: 12,
-                padding: "10px 16px",
-                fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: ".02em",
-                cursor: "pointer",
-                boxShadow: "0 10px 26px rgba(249,115,22,0.22)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              + Novo Pedido
-            </button>
-          </div>
-
-          {novosCount > 0 && (
-            <div className="kds-new-order-banner">
-              <div>
-                <strong>{novosCount} novo{novosCount > 1 ? "s" : ""} pedido{novosCount > 1 ? "s" : ""}</strong> aguardando aceitação.
-                <div style={{ color: "#E2E8F0", fontSize: 12, marginTop: 4 }}>
-                  Abra a coluna de pedidos novos e aceite agora para não atrasar a preparação.
-                </div>
-              </div>
+            return (
               <button
-                className="kds-new-order-button"
-                onClick={() => setActiveTab("delivery")}
+                key={filtro.value}
+                className={`kds-channel-filter ${canalFiltro === filtro.value ? "active" : ""}`}
+                onClick={() => setCanalFiltro(filtro.value)}
               >
-                Ver pedidos
+                {filtro.label}
+                <span>{count}</span>
               </button>
-            </div>
-          )}
-          {activeTab === "delivery" && (
-            <div className="kds-filterbar">
-              <div className="kds-chips">
-                <div className="kds-chip active">Todos os canais</div>
-                <div className="kds-chip">Cardapio Digital</div>
-                <div className="kds-chip">WhatsApp</div>
-                <div className="kds-chip">Instagram</div>
-                <div className="kds-chip">Chat</div>
-                <div className="kds-chip">Manual / Balcao</div>
-              </div>
-              <div style={{color:'#6B7280', fontSize:12}}>Exibindo: 6 colunas</div>
-            </div>
-          )}
+            );
+          })}
         </div>
 
-        {/* Content */}
-        {loading ? (
-          <div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            flexDirection: "column", gap: 12,
-          }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              border: "2px solid #1F2937",
-              borderTopColor: "#F97316",
-              animation: "spin 0.8s linear infinite",
-            }} />
-            <span style={{ fontSize: 13, color: "#6B7280" }}>Carregando pedidos...</span>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          </div>
-        ) : activeTab === "mesas" ? (
-          companyId ? <MesasView companyId={companyId} /> : null
-        ) : (
-          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-            <div className="kds-columns" style={{ flex: 1 }}>
-              {KDS_STATUSES.map((status) => (
-                <KDSColumn
-                  key={status}
-                  status={status}
-                  pedidos={pedidosByStatus[status]}
-                  itensByPedido={itensByPedido}
-                  newIds={newIds}
-                  onAdvance={handleAdvance}
-                  onEdit={abrirEdicaoPedido}
-                  onAddItem={abrirAdicaoItemPedido}
-                  onDelete={handleExcluirPedido}
-                  entregadoresList={entregadores}
-                />
-              ))}
-            </div>
+        <div className="kds-board">
+          {KDS_STATUSES.map((status) => {
+            const config = STATUS_CONFIG[status];
+            const pedidosStatus = deliveryPedidosFiltrados.filter((pedido) => pedido.status === status);
 
-            <div style={{
-              width: 200, flexShrink: 0,
-              borderLeft: "1px solid #111827",
-              background: "#0a0a0f",
-              display: "flex", flexDirection: "column",
-              overflowY: "auto",
-            }}>
-              <div style={{ padding: "12px 14px", borderBottom: "1px solid #111827" }}>
-                <div style={{ color: "#B980FF", fontSize: 11, fontWeight: 500, marginBottom: 4 }}>
-                  Entregadores
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ flex: 1, background: "#0d2012", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
-                    <div style={{ color: "#4ade80", fontSize: 14, fontWeight: 600 }}>
-                      {entregadores.filter((e) => e.online && !pedidos.some((p) => p.entregador_id === e.id && p.status === "saiu_entrega")).length}
-                    </div>
-                    <div style={{ color: "#444", fontSize: 8 }}>livres</div>
+            return (
+              <section className="kds-column" key={status}>
+                <div className="kds-column-head" style={{ background: config.bg, borderColor: config.border }}>
+                  <div className="kds-column-head-title">
+                    <span className="kds-column-dot" style={{ background: config.color, boxShadow: `0 0 6px ${config.color}` }} />
+                    <span style={{ color: config.color }}>{config.label}</span>
                   </div>
-                  <div style={{ flex: 1, background: "#12071A", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
-                    <div style={{ color: "#B980FF", fontSize: 14, fontWeight: 600 }}>
-                      {pedidos.filter((p) => p.status === "saiu_entrega").length}
-                    </div>
-                    <div style={{ color: "#444", fontSize: 8 }}>em rota</div>
-                  </div>
+                  <strong style={{ color: config.color, background: `${config.color}1F`, border: `0.5px solid ${config.color}4D` }}>{pedidosStatus.length}</strong>
                 </div>
-              </div>
-
-              <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                {entregadores.filter((e) => e.online).map((ent) => {
-                  const emRota = pedidos.find((p) => p.entregador_id === ent.id && p.status === "saiu_entrega");
-                  return (
-                    <div key={ent.id} style={{
-                      background: "#111118",
-                      border: `0.5px solid ${emRota ? "#3B2544" : "#14532d"}`,
-                      borderRadius: 10, padding: "8px 10px",
-                      display: "flex", alignItems: "center", gap: 8,
-                      opacity: emRota ? 0.75 : 1,
-                    }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: "50%",
-                        background: emRota ? "#1e0a2e" : "#0d2012",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 10, fontWeight: 600,
-                        color: emRota ? "#B980FF" : "#4ade80",
-                        flexShrink: 0,
-                      }}>
-                        {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: "#e5e5e5", fontSize: 10, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {ent.nome.split(" ")[0]}
+                <div className="kds-column-body">
+                  {pedidosStatus.map((pedido) => {
+                    const itens = itensByPedido[pedido.id] || [];
+                    const urgency = getUrgency(pedido.created_at, pedido.status);
+                    const cardConfig = urgency === "urgent"
+                      ? { ...config, color: "#EF4444", bg: "#1A0B0B", border: "#EF4444" }
+                      : config;
+                    const next = NEXT_STATUS[pedido.status];
+                    const isSaving = savingPedidoId === pedido.id;
+                    return (
+                      <article className={`kds-card ${urgency === "urgent" ? "urgent" : ""}`} style={{ background: cardConfig.bg, borderColor: cardConfig.border }} key={pedido.id}>
+                      <div className="kds-card-stripe" style={{ background: `linear-gradient(90deg, transparent, ${cardConfig.color}, transparent)` }} />
+                      <div className="kds-card-header">
+                        <div className="kds-card-title">
+                          <div className="kds-card-code-row">
+                            <span className="kds-card-code" style={{ color: cardConfig.color }}>#{pedido.codigo_pedido}</span>
+                            {urgency === "urgent" && <span className="kds-urgent-badge">URGENTE</span>}
+                          </div>
+                          <div className="kds-client">{pedido.cliente_nome || "Cliente sem nome"}</div>
                         </div>
-                        <div style={{ color: "#555", fontSize: 8, marginTop: 1 }}>
-                          {emRota ? `em rota - #${emRota.codigo_pedido}` : "disponivel"}
+                        <div className="kds-card-timer">
+                          <strong style={{ color: urgency === "normal" ? "#6B7280" : cardConfig.color }}>{elapsedLabel(pedido.created_at)}</strong>
+                          <span>espera</span>
                         </div>
                       </div>
-                      <span style={{
-                        fontSize: 8, padding: "2px 6px", borderRadius: 20,
-                        background: emRota ? "#12071A" : "#0d2012",
-                        color: emRota ? "#B980FF" : "#4ade80",
-                        border: `0.5px solid ${emRota ? "#3B2544" : "#14532d"}`,
-                        whiteSpace: "nowrap",
-                      }}>
-                        {emRota ? "rota" : "livre"}
-                      </span>
-                    </div>
-                  );
-                })}
 
-                {entregadores.filter((e) => !e.online).map((ent) => (
-                  <div key={ent.id} style={{
-                    background: "#0d0d0d", border: "0.5px solid #1a1a1a",
-                    borderRadius: 10, padding: "7px 10px",
-                    display: "flex", alignItems: "center", gap: 8, opacity: 0.4,
-                  }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#333", fontWeight: 600, flexShrink: 0 }}>
-                      {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: "#444", fontSize: 10, fontWeight: 500 }}>{ent.nome.split(" ")[0]}</div>
-                      <div style={{ color: "#333", fontSize: 8 }}>offline</div>
-                    </div>
-                    <span style={{ fontSize: 8, color: "#333" }}>off</span>
-                  </div>
-                ))}
-
-                {entregadores.length === 0 && (
-                  <div style={{ color: "#333", fontSize: 10, textAlign: "center", padding: "16px 0" }}>
-                    Nenhum entregador cadastrado
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {pedidoParaAtribuir && (
-          <div style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 1000,
-          }}>
-            <div style={{
-              background: "#111118", borderRadius: 16,
-              border: "1px solid #2ECC8F",
-              width: "100%", maxWidth: 400,
-              boxShadow: "0 0 40px rgba(46,204,143,0.15)",
-              overflow: "hidden",
-            }}>
-              <div style={{ background: "#001A08", borderBottom: "0.5px solid #14532d", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ color: "#2ECC8F", fontSize: 13, fontWeight: 500 }}>Atribuir entregador</span>
-                <button onClick={() => setPedidoParaAtribuir(null)} style={{ background: "none", border: "none", color: "#444", fontSize: 18, cursor: "pointer" }}>x</button>
-              </div>
-
-              <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #1a1a22" }}>
-                <div style={{ color: "#555", fontSize: 10, marginBottom: 2 }}>#{pedidoParaAtribuir.codigo_pedido}</div>
-                <div style={{ color: "#e5e5e5", fontSize: 14, fontWeight: 500 }}>{pedidoParaAtribuir.cliente_nome}</div>
-                <div style={{ color: "#2ECC8F", fontSize: 11, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                  R${pedidoParaAtribuir.total.toFixed(2)} - comissao aprox. R${(pedidoParaAtribuir.total * ((entregadores.find((e) => e.id === entregadorSelecionado)?.pct_comissao ?? 10) / 100)).toFixed(2)}
-                </div>
-              </div>
-
-              <div style={{ padding: "10px 18px 4px" }}>
-                <div style={{ color: "#555", fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 8 }}>
-                  Entregadores disponiveis
-                </div>
-              </div>
-
-              <div style={{ padding: "0 18px 10px", display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
-                {entregadores.filter((e) => e.online).map((ent) => {
-                  const emRota = pedidos.some((p) => p.entregador_id === ent.id && p.status === "saiu_entrega");
-                  const isSelected = entregadorSelecionado === ent.id;
-                  return (
-                    <div
-                      key={ent.id}
-                      onClick={() => !emRota && setEntregadorSelecionado(ent.id)}
-                      style={{
-                        background: isSelected ? "#001A08" : "#0d0d16",
-                        border: `1px solid ${isSelected ? "#2ECC8F" : "#1e1e28"}`,
-                        borderRadius: 10, padding: "10px 12px",
-                        display: "flex", alignItems: "center", gap: 10,
-                        cursor: emRota ? "not-allowed" : "pointer",
-                        opacity: emRota ? 0.45 : 1,
-                      }}
-                    >
-                      <div style={{
-                        width: 36, height: 36, borderRadius: "50%",
-                        background: isSelected ? "#0d2012" : "#1a1a2e",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 12, fontWeight: 600,
-                        color: isSelected ? "#4ade80" : "#6B7280",
-                        flexShrink: 0,
-                      }}>
-                        {ent.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      <div className="kds-chips">
+                        <span className="kds-chip">{CANAL_LABEL[pedido.canal || ""] || pedido.canal || "Balcao"}</span>
+                        <span className="kds-chip">{atendimentoLabel(pedido)}</span>
+                        <span className="kds-chip">{formatDate(pedido.created_at)}</span>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: "#e5e5e5", fontSize: 12, fontWeight: 500 }}>{ent.nome}</div>
-                        <div style={{ color: "#555", fontSize: 9, marginTop: 2 }}>
-                          {emRota ? "em rota" : "disponivel"} - {ent.veiculo}
+
+                      <div className="kds-items-box">
+                        {itens.slice(0, 3).map((item) => (
+                          <div key={item.id}>
+                            <div className="kds-item-row">
+                              <span className="kds-item-qty" style={{ color: cardConfig.color }}>{Number(item.quantidade || 0)}x</span>
+                              <span className="kds-item-name">{item.produto_nome}</span>
+                            </div>
+                            {item.observacoes && <div className="kds-item-obs">{item.observacoes}</div>}
+                          </div>
+                        ))}
+                        {itens.length > 3 && <small>+{itens.length - 3} item(ns)</small>}
+                      </div>
+
+                      {pedido.observacoes && <div className="kds-card-obs">{pedido.observacoes}</div>}
+
+                      <div className="kds-card-footer">
+                        <b>{brl(pedido.total)}</b>
+                        <span className="kds-status" style={{ color: cardConfig.color, borderColor: cardConfig.border }}>
+                          {config.label}
+                        </span>
+                      </div>
+
+                      <div className="kds-card-actions">
+                        <button className="kds-btn-sm kds-btn-soft" disabled={isSaving} onClick={() => abrirEdicaoPedido(pedido)}>
+                          Editar
+                        </button>
+                        <button className="kds-btn-sm kds-btn-danger" disabled={isSaving} onClick={() => cancelarPedido(pedido)}>
+                          Excluir
+                        </button>
+                      </div>
+
+                      {/* Atribuir entregador quando pedido estiver pronto e sem entregador */}
+                      {pedido.status === "pronto" && !pedido.entregador_id && (
+                        <div style={{ marginTop: 6 }}>
+                          <button className="kds-btn-sm kds-btn-soft" onClick={() => openAssignModal(pedido)}>Atribuir entregador</button>
                         </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ color: "#F5A623", fontSize: 10 }}>Nota {Number(ent.avaliacao_media || 0).toFixed(1)}</div>
-                        <div style={{ color: "#2ECC8F", fontSize: 10, marginTop: 2 }}>{Number(ent.pct_comissao || 0)}%</div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      )}
 
-                {entregadores.filter((e) => e.online).length === 0 && (
-                  <div style={{ color: "#444", fontSize: 12, textAlign: "center", padding: "20px 0" }}>
-                    Nenhum entregador online no momento
-                  </div>
-                )}
-              </div>
-
-              <div style={{ padding: "10px 18px 16px", display: "flex", gap: 8, borderTop: "0.5px solid #1a1a22" }}>
-                <button
-                  onClick={() => setPedidoParaAtribuir(null)}
-                  style={{ flex: 1, background: "#1a1a2e", color: "#555", border: "0.5px solid #2a2a3e", borderRadius: 10, padding: 10, fontSize: 11, cursor: "pointer" }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAtribuirEntregador}
-                  disabled={!entregadorSelecionado || atribuindo}
-                  style={{
-                    flex: 2, background: entregadorSelecionado ? "#2ECC8F" : "#0a2a18",
-                    color: entregadorSelecionado ? "#001A08" : "#333",
-                    border: "none", borderRadius: 10, padding: 10,
-                    fontSize: 11, fontWeight: 600, cursor: entregadorSelecionado ? "pointer" : "not-allowed",
-                  }}
-                >
-                  {atribuindo ? "Atribuindo..." : entregadorSelecionado
-                    ? `Atribuir ${entregadores.find((e) => e.id === entregadorSelecionado)?.nome.split(" ")[0]}`
-                    : "Selecione um entregador"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {editOrderId && (
-          <div style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.76)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100,
-          }}>
-            <div style={{ width: "min(520px,calc(100vw-40px))", background: "#0f1724", borderRadius: 16, border: "1px solid #334155", padding: 24, boxShadow: "0 20px 70px rgba(0,0,0,0.55)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Editar Pedido</div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>Atualize cliente, telefone e observações.</div>
+                      {next && (
+                        <button
+                          className="kds-btn-advance"
+                          disabled={isSaving}
+                          style={{ color: cardConfig.color, borderColor: cardConfig.color, background: `${cardConfig.color}1F` }}
+                          onClick={() => atualizarStatusPedido(pedido, next.status)}
+                        >
+                          {isSaving ? "Salvando..." : next.label}
+                        </button>
+                      )}
+                      </article>
+                    );
+                  })}
+                  {!pedidosStatus.length && <div className="kds-column-empty">Sem pedidos</div>}
                 </div>
-                <button onClick={() => setEditOrderId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>×</button>
-              </div>
-              <div style={{ display: "grid", gap: 12 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
-                  Nome do cliente
-                  <input
-                    value={editCustomerName}
-                    onChange={(e) => setEditCustomerName(e.target.value)}
-                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
-                  />
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
-                  Telefone
-                  <input
-                    value={editCustomerPhone}
-                    onChange={(e) => setEditCustomerPhone(e.target.value)}
-                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
-                  />
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
-                  Observações
-                  <textarea
-                    value={editObservations}
-                    onChange={(e) => setEditObservations(e.target.value)}
-                    rows={4}
-                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px", resize: "vertical" }}
-                  />
-                </label>
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-                <button
-                  onClick={() => setEditOrderId(null)}
-                  style={{ background: "#111827", color: "#94a3b8", border: "1px solid #334155", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
-                >Cancelar</button>
-                <button
-                  onClick={handleAtualizarPedido}
-                  disabled={isSavingOrderEdit}
-                  style={{ background: "#f97316", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
-                >{isSavingOrderEdit ? "Salvando..." : "Salvar"}</button>
-              </div>
-            </div>
-          </div>
-        )}
+              </section>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
 
-        {addItemOrderId && (
-          <div style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.76)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100,
-          }}>
-            <div style={{ width: "min(520px,calc(100vw-40px))", background: "#0f1724", borderRadius: 16, border: "1px solid #334155", padding: 24, boxShadow: "0 20px 70px rgba(0,0,0,0.55)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Adicionar Produto</div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>Adicione um item ao pedido.</div>
-                </div>
-                <button onClick={() => setAddItemOrderId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>×</button>
-              </div>
-              <div style={{ display: "grid", gap: 12 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
-                  Produto
-                  <select
-                    value={selectedAddProductId}
-                    onChange={(e) => setSelectedAddProductId(e.target.value)}
-                    style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
-                  >
-                    <option value="">Selecione um produto</option>
-                    {produtos.map((produto) => (
-                      <option key={produto.id} value={produto.id}>{produto.nome} {produto.preco_sugerido != null ? `- R$ ${Number(produto.preco_sugerido).toFixed(2)}` : ""}</option>
-                    ))}
-                  </select>
-                </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
-                    Quantidade
-                    <input
-                      type="number"
-                      min={1}
-                      value={addItemQuantity}
-                      onChange={(e) => setAddItemQuantity(Number(e.target.value))}
-                      style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#cbd5e1", fontSize: 12 }}>
-                    Observações
-                    <input
-                      value={addItemObservations}
-                      onChange={(e) => setAddItemObservations(e.target.value)}
-                      style={{ width: "100%", borderRadius: 10, border: "1px solid #334155", background: "#020617", color: "#e2e8f0", padding: "10px 12px" }}
-                    />
-                  </label>
-                </div>
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-                <button
-                  onClick={() => setAddItemOrderId(null)}
-                  style={{ background: "#111827", color: "#94a3b8", border: "1px solid #334155", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
-                >Cancelar</button>
-                <button
-                  onClick={handleAdicionarItemPedido}
-                  disabled={isAddingItem}
-                  style={{ background: "#22c55e", color: "#0f172a", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
-                >{isAddingItem ? "Adicionando..." : "Adicionar"}</button>
-              </div>
-            </div>
-          </div>
-        )}
+  return (
+    <div className="kds-root">
+      <style>{`
+        .kds-root{min-height:100%;display:flex;flex-direction:column;background:#05060a;color:#e5e7eb;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+        .kds-tabs{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid #1f2937;background:#070809}
+        .kds-tabs-left{display:flex;gap:10px;flex-wrap:wrap}
+        .kds-tab{padding:8px 12px;border-radius:10px;background:transparent;color:#9ca3af;border:1px solid transparent;cursor:pointer;font-size:13px;font-family:inherit}
+        .kds-tab.active{background:#0f1724;border-color:#1f2937;color:#e5e7eb}
+        .kds-tab-count{margin-left:8px;background:#0b0b0d;padding:2px 8px;border-radius:8px;font-family:ui-monospace,monospace;font-size:12px}
+        .new-pedido-btn{border:1px solid rgba(249,115,22,.42);background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:800;letter-spacing:.02em;cursor:pointer;box-shadow:0 10px 26px rgba(249,115,22,.22);white-space:nowrap;font-family:inherit}
+        .kds-content{flex:1;min-height:0;overflow:hidden}
+        .kds-channel-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 16px 0}
+        .kds-channel-filter{display:inline-flex;align-items:center;gap:8px;border:1px solid #1f2937;background:#080d14;color:#cbd5e1;border-radius:999px;padding:8px 13px;font-size:13px;font-family:inherit;cursor:pointer}
+        .kds-channel-filter span{font-family:ui-monospace,monospace;font-size:11px;color:#64748b}
+        .kds-channel-filter.active{background:#2a1003;border-color:#f97316;color:#fb923c}
+        .kds-channel-filter.active span{color:#fdba74}
+        .kds-board{display:grid;grid-template-columns:repeat(6,minmax(220px,1fr));gap:12px;padding:12px 16px 16px;overflow:auto;height:calc(100vh - 220px)}
+        .kds-column{min-width:220px;display:flex;flex-direction:column;min-height:240px}
+        .kds-column-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border:1px solid #1f2937;border-radius:8px;margin-bottom:10px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:#0d0e12}
+        .kds-column-head-title{display:flex;align-items:center;gap:7px}
+        .kds-column-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+        .kds-column-head strong{font-family:ui-monospace,monospace;font-size:11px;padding:2px 7px;border-radius:5px}
+        .kds-column-body{display:flex;flex-direction:column;gap:10px;padding:10px;overflow:auto}
+        .kds-card{border:1px solid;border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+        .kds-card.urgent{box-shadow:0 0 16px rgba(239,68,68,.25)}
+        .kds-card-stripe{position:absolute;top:0;left:0;right:0;height:2px;opacity:.75}
+        .kds-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+        .kds-card-title{min-width:0}
+        .kds-card-code-row{display:flex;align-items:center;gap:6px}
+        .kds-card-code{font-family:ui-monospace,monospace;font-size:14px;font-weight:800;line-height:1}
+        .kds-client{font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;color:#6b7280}
+        .kds-card-timer{text-align:right;font-family:ui-monospace,monospace;line-height:1}
+        .kds-card-timer strong{display:block;font-size:15px}
+        .kds-card-timer span{display:block;font-size:9px;margin-top:2px;color:#4b5563}
+        .kds-urgent-badge{font-size:8px;font-weight:800;padding:2px 5px;border-radius:3px;background:#ef4444;color:#fff;letter-spacing:.4px;animation:kdsUrgPulse 1s ease-in-out infinite}
+        .kds-chips{display:flex;gap:5px;flex-wrap:wrap}
+        .kds-chip{font-size:10px;padding:2px 7px;border-radius:12px;background:rgba(255,255,255,.05);color:#9ca3af;border:.5px solid rgba(255,255,255,.09)}
+        .kds-items-box{background:rgba(0,0,0,.28);border:.5px solid rgba(255,255,255,.06);border-radius:7px;padding:7px 9px;display:flex;flex-direction:column;gap:5px}
+        .kds-items-box small{color:#9ca3af;font-size:10px}
+        .kds-item-row{display:flex;align-items:baseline;gap:6px}
+        .kds-item-qty{font-family:ui-monospace,monospace;font-size:12px;font-weight:800;min-width:18px}
+        .kds-item-name{font-size:11px;color:#d1d5db;line-height:1.35;flex:1}
+        .kds-item-obs{font-size:10px;color:#fbbf24;font-style:italic;margin-top:1px;padding-left:24px}
+        .kds-card-obs{font-size:10px;font-style:italic;padding:4px 8px;border-radius:5px;background:rgba(245,158,11,.07);border:.5px solid rgba(245,158,11,.2);color:#fcd34d}
+        .kds-card-footer,.kds-card-actions{display:flex;align-items:center;justify-content:space-between;gap:6px}
+        .kds-card-footer b{font-family:ui-monospace,monospace;color:#e5e7eb;font-size:12px}
+        .kds-status{display:inline-flex;border:1px solid;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,0,0,.16)}
+        .kds-card-actions{display:grid;grid-template-columns:1fr 1fr}
+        .kds-btn-sm,.kds-btn-advance{border:1px solid;border-radius:7px;font-family:inherit;cursor:pointer}
+        .kds-btn-sm{padding:6px 0;font-size:10px;font-weight:700;letter-spacing:.2px}
+        .kds-btn-soft{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:#9ca3af}
+        .kds-btn-danger{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:#f87171}
+        .kds-btn-advance{padding:8px 0;font-size:11px;font-weight:800;width:100%;letter-spacing:.3px}
+        .kds-btn-sm:disabled,.kds-btn-advance:disabled{opacity:.55;cursor:not-allowed}
+        .kds-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:1300;padding:16px}
+        .kds-modal{width:min(480px,100%);background:#0f1117;border:1px solid #263244;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.58);overflow:hidden}
+        .kds-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #1f2937}
+        .kds-modal-head strong{display:block;color:#f8fafc;font-size:14px}
+        .kds-modal-head span{display:block;color:#f97316;font-family:ui-monospace,monospace;font-size:12px;margin-top:3px}
+        .kds-modal-head button{background:transparent;border:0;color:#6b7280;font-size:20px;line-height:1;cursor:pointer}
+        .kds-modal-body{display:grid;gap:12px;padding:16px 18px}
+        .kds-modal-body label{display:flex;flex-direction:column;gap:6px;color:#9ca3af;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+        .kds-modal-body input,.kds-modal-body textarea{width:100%;border-radius:9px;border:1px solid #263244;background:#05060a;color:#e5e7eb;padding:10px 12px;font-family:inherit;font-size:13px;outline:none}
+        .kds-modal-body input:focus,.kds-modal-body textarea:focus{border-color:#f97316}
+        .kds-modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #1f2937}
+        .kds-modal-actions button{border-radius:9px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;border:1px solid}
+        .kds-modal-cancel{background:#111827;color:#9ca3af;border-color:#263244}
+        .kds-modal-save{background:#f97316;color:#fff;border-color:#f97316}
+        .kds-modal-save:disabled{opacity:.6;cursor:not-allowed}
+        .kds-empty,.kds-column-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#6b7280;padding:48px 20px;text-align:center}
+        .kds-column-empty{padding:24px 8px;font-size:12px}
+        @keyframes kdsUrgPulse{0%,100%{opacity:1}50%{opacity:.5}}
+        @media(max-width:1100px){.kds-board{grid-template-columns:repeat(3,minmax(220px,1fr));height:auto}.kds-content{overflow:auto}}
+        @media(max-width:760px){.kds-board{grid-template-columns:1fr}.kds-tabs{align-items:stretch}.kds-tabs-left,.new-pedido-btn{width:100%}.kds-tab{flex:1}}
+      `}</style>
 
-        {companyId && (
-          <PedidoChatModal
-            open={novoPedidoOpen}
-            onOpenChange={async (open) => {
-              setNovoPedidoOpen(open);
-              if (!open) await load(companyId);
-            }}
-            companyId={companyId}
-            clienteNome=""
-            clienteTelefone=""
-          />
-        )}
+      <div className="kds-tabs">
+        <div className="kds-tabs-left">
+          <button className={`kds-tab ${activeTab === "delivery" ? "active" : ""}`} onClick={() => setActiveTab("delivery")}>
+            Delivery / Balcao <span className="kds-tab-count">{deliveryPedidos.length}</span>
+          </button>
+          <button className={`kds-tab ${activeTab === "mesas" ? "active" : ""}`} onClick={() => setActiveTab("mesas")}>
+            Mesas
+          </button>
+          <button className={`kds-tab ${activeTab === "relatorios" ? "active" : ""}`} onClick={() => setActiveTab("relatorios")}>
+            Relatorios
+          </button>
+        </div>
+        <button className="new-pedido-btn" onClick={() => setNovoPedidoOpen(true)}>
+          + Novo Pedido
+        </button>
       </div>
-    </>
+
+      <div className="kds-content">
+        {activeTab === "delivery" && renderDelivery()}
+        {activeTab === "mesas" && companyId && <MesasView companyId={companyId} />}
+        {activeTab === "relatorios" && companyId && <RelatorioPedidosView companyId={companyId} />}
+      </div>
+
+      {companyId && (
+        <PedidoChatModal
+          open={novoPedidoOpen}
+          onOpenChange={(open) => {
+            setNovoPedidoOpen(open);
+            if (!open) load();
+          }}
+          companyId={companyId}
+          clienteNome=""
+          clienteTelefone=""
+        />
+      )}
+
+      {editPedido && (
+        <div className="kds-modal-overlay" onClick={(event) => event.currentTarget === event.target && setEditPedido(null)}>
+          <div className="kds-modal">
+            <div className="kds-modal-head">
+              <div>
+                <strong>Editar pedido</strong>
+                <span>#{editPedido.codigo_pedido}</span>
+              </div>
+              <button onClick={() => setEditPedido(null)}>x</button>
+            </div>
+            <div className="kds-modal-body">
+              <label>
+                Cliente
+                <input value={editClienteNome} onChange={(event) => setEditClienteNome(event.target.value)} />
+              </label>
+              <label>
+                Telefone
+                <input value={editClienteTelefone} onChange={(event) => setEditClienteTelefone(event.target.value)} />
+              </label>
+              <label>
+                Observacoes
+                <textarea rows={4} value={editObservacoes} onChange={(event) => setEditObservacoes(event.target.value)} />
+              </label>
+            </div>
+            <div className="kds-modal-actions">
+              <button className="kds-modal-cancel" onClick={() => setEditPedido(null)}>Cancelar</button>
+              <button className="kds-modal-save" disabled={savingPedidoId === editPedido.id} onClick={salvarEdicaoPedido}>
+                {savingPedidoId === editPedido.id ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de atribuir entregador */}
+      {assignModalOpen && pedidoToAssign && (
+        <div className="kds-modal-overlay" onClick={(e) => e.currentTarget === e.target && setAssignModalOpen(false)}>
+          <div className="kds-modal">
+            <div className="kds-modal-head">
+              <div>
+                <strong>Atribuir entregador</strong>
+                <span>#{pedidoToAssign.codigo_pedido}</span>
+              </div>
+              <button onClick={() => setAssignModalOpen(false)}>x</button>
+            </div>
+            <div className="kds-modal-body">
+              <div style={{ display: "grid", gap: 8 }}>
+                {entregadores.length === 0 && <div>Nenhum entregador disponível</div>}
+                {entregadores.map((e) => (
+                  <label key={e.id} style={{ display: "flex", alignItems: "center", gap: 8, border: selectedEntregadorId === e.id ? `1px solid #10B981` : '1px solid #263244', padding: 8, borderRadius: 8, cursor: 'pointer' }}>
+                    <input type="radio" name="entregador" checked={selectedEntregadorId === e.id} onChange={() => setSelectedEntregadorId(e.id)} />
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{e.nome}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af' }}>{e.telefone || ''}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="kds-modal-actions">
+              <button className="kds-modal-cancel" onClick={() => setAssignModalOpen(false)}>Cancelar</button>
+              <button className="kds-modal-save" disabled={assigning || !selectedEntregadorId} onClick={handleAssignEntregador}>{assigning ? 'Atribuindo...' : 'Atribuir'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
